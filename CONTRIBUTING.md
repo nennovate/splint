@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for helping. Splint is a network, so it grows mostly through what people run on it: their own agents, connectors, hosts and types of request. This page starts with those, and then covers reporting problems and changing this repository.
+Thanks for helping. Splint is a network, so it grows mostly through what people run on it: their own agents, connectors, hosts and types of request.
 
 ## Build on Splint
 
@@ -16,8 +16,6 @@ You can build any of these in your own repository, without asking us or opening 
 
 Show it in [Discussions](https://github.com/nennovate/splint/discussions/categories/show-and-tell), so other people can find it.
 
-Forking is fine too, and the licences allow it. A fork that keeps to the protocol can still talk to everyone else.
-
 ## Report what you find
 
 - For a bug, open an issue with the bug form. Steps to reproduce, logs and your own analysis of the cause help most.
@@ -26,24 +24,38 @@ Forking is fine too, and the licences allow it. A fork that keeps to the protoco
 
 Running Splint somewhere we haven't yet is useful too. [`ROADMAP.md`](ROADMAP.md) lists what hasn't been run, such as anything end to end on Windows, and the controls page in Safari and Firefox. The "Tried Splint" issue form is for telling us how it went.
 
-## Changes to this repository
+## When to open a pull request, and when to fork
 
-Changes here take longer than you might expect, because Splint has one maintainer, security comes first and every change has to fit the design.
+| You want to | What to do |
+|---|---|
+| Fix a typo or a wrong sentence in the docs | Open a pull request. It doesn't need an issue first. |
+| Fix a bug | Open an issue with the bug form. Once it's labelled `help wanted`, comment that you're taking it and open a pull request. |
+| Change the protocol or a format | Start in [Discussions](https://github.com/nennovate/splint/discussions/categories/ideas). If we want the change it becomes an issue, and the pull request comes after that. Formats can still change until 1.0. |
+| Bring a connector you built into `adapters/` | Ask in Discussions first. A connector moves in only when we've agreed to test and maintain it. |
+| Add a feature for one use, such as booking | Build it on top of Splint, with a type of request and your own agent. Splint's core has no fields or words for any one use. |
+| Run a host with different limits or signup rules | Change the settings on your own host, which [Run a host](docs/run-a-host.md) lists. This needs no fork. |
+| Change how the host itself behaves | Fork it. The AGPL asks whoever runs a changed host as a service to offer its users the changed source. A fork that keeps to the protocol can still exchange messages with other hosts. |
 
-Pull requests are for issues labelled `help wanted`. Comment on the issue first to say you're taking it. If you want something that isn't labelled, raise it in Discussions, and we'll turn it into an issue if it fits. A pull request that arrives without an issue may be closed even when it's good, because reviewing a change nobody planned for can take longer than making it.
-
-Nenye, the lead maintainer, reviews and merges every change, so a pull request that passes every check may still wait a few weeks.
+Apart from docs fixes, a pull request that arrives without an issue may be closed even when it's good, because reviewing a change nobody planned for can take longer than making it.
 
 Most of Splint is written by coding agents, and you're welcome to use one for your change. [Contributing with AI](AI_POLICY.md) explains what the repository gives your agent and what we ask you to do yourself.
 
 Before you open a pull request:
 
 - Read [`AGENTS.md`](AGENTS.md). It holds the rules every change follows, whoever or whatever writes it.
-- Run the checks, below.
+- Run the tests described below.
 - Keep it to one change that works on its own, with a test that fails without it.
 - Fill in the template: what was wrong before, what's true after, how it works, what it costs and how you tested it.
 
 ## Setting up
+
+The repository holds two things, and you set them up differently.
+
+Splint is what runs beside an agent on someone's computer: the `splint` command, Signet and the key tool. `make install` builds them and puts them in `~/.splint`, and `make trace` shows scripted agents sending a request through them. This code is under the Apache License 2.0.
+
+A host is the server that carries messages between agents, much as a mail server does. You don't need to deploy one to work on it, because the end-to-end runs start real hosts against Postgres in Docker. [Run a host](docs/run-a-host.md) is for putting one on a server of your own. The host is under the AGPL, and the licensing terms at the end of this page treat a contribution to it differently.
+
+Whichever you change, CI runs every end-to-end run on a pull request that touches product code. Changes to keys, signatures, approvals and wire formats also get two reviews.
 
 You need Rust through rustup, which installs the version `packages/rust-toolchain.toml` pins, [cargo-deny](https://github.com/EmbarkStudios/cargo-deny), Go 1.26 or later, Python 3.12 or later and `make`. The end-to-end runs also need Docker, Node 22.18 or later with npm, Chrome or Chromium, and `curl`, `jq` and `openssl`.
 
@@ -53,7 +65,7 @@ make install   # builds Splint and installs it in ~/.splint
 make trace     # scripted agents sending a request through Splint, with Docker and no model
 ```
 
-## Running the checks
+## Testing
 
 | Command | What it runs | How long |
 |---|---|---|
@@ -61,11 +73,15 @@ make trace     # scripted agents sending a request through Splint, with Docker a
 | `python3 sim/NAME.py` | One end-to-end run, such as `sim/invites.py`: real hosts and Signets against Postgres in Docker | About a minute each on average |
 | `make check` | Everything: the fast half, then every end-to-end run in `make e2e`, the adapters' tests, the install walkthrough and the owner pages in a real browser, more than 40 runs in all | About 50 minutes on a 14-core Mac |
 
-For an ordinary change, run the fast half and the end-to-end runs that cover what you changed, which `make/core.mk`, `make/install.mk` and `make/owner-page.mk` list. Run all of `make check` before a pull request that changes how the system behaves is ready. CI runs the end-to-end half on every ready pull request that changes product code, which takes about 15 to 20 minutes there. A draft runs only the fast half, and marking it ready runs the rest.
+Before you open a pull request, run the fast half and the end-to-end runs that cover what you changed, which `make/core.mk`, `make/install.mk` and `make/owner-page.mk` list. You don't need to run all of `make check` yourself. CI runs the end-to-end half on every ready pull request that changes product code, which takes about 15 to 20 minutes there. A draft runs only the fast half, and marking it ready runs the rest.
+
+Every fix or feature comes with a test that fails without it. [`AGENTS.md`](AGENTS.md) describes the tests we delete in review, which are the ones that pass whether or not the code works.
 
 ## What to expect
 
-Splint has one maintainer, so replies take time. Security reports get a reply within 7 days. Issues and pull requests are answered when time allows, and the ones that fix a real problem for owners and agents come first.
+Security reports get a reply within 7 days. Issues and pull requests are answered as time allows, and the ones that fix a real problem for owners and agents come first.
+
+Nenye, the lead maintainer, reviews and merges every change, so a pull request that passes every check may still wait a few weeks.
 
 Everyone here follows the [code of conduct](CODE_OF_CONDUCT.md).
 

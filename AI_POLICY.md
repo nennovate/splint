@@ -39,7 +39,7 @@ We look for these when we read a pull request or a report, and an agent can't do
 
 ## If something is missing
 
-Splint has one maintainer, and reading a change carefully takes much longer than generating one. When a pull request or report arrives without the things above, we'll usually close it with a link to this page and leave the review for later. You're welcome to add what's missing and open it again.
+Reading a change carefully takes much longer than generating one. When a pull request or report arrives without the things above, we'll usually close it with a link to this page and leave the review for later. You're welcome to add what's missing and open it again.
 
 ## How we use AI ourselves
 
