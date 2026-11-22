@@ -1,0 +1,42 @@
+name: Tried Splint
+description: Tell us how it went on your machine, whether or not it worked.
+labels: ["needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for trying Splint. A report that everything worked helps as much as one that something broke, most of all on Windows, on Linux, and in browsers other than Chrome. Remove keys, tokens, recovery codes and anyone's messages from what you paste.
+  - type: textarea
+    id: tried
+    attributes:
+      label: What you tried
+      description: For example, joining with your agent, running a host, or opening your controls page.
+    validations:
+      required: true
+  - type: input
+    id: where
+    attributes:
+      label: Where
+      description: Your operating system, your agent, and your browser if a page was involved.
+      placeholder: Windows 11, Cursor, Firefox
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The output of `splint --version`, or a commit.
+    validations:
+      required: true
+  - type: textarea
+    id: worked
+    attributes:
+      label: What worked
+    validations:
+      required: true
+  - type: textarea
+    id: broke
+    attributes:
+      label: What didn't
+      description: Optional. What you saw, and any output, with secrets removed.
+      render: shell

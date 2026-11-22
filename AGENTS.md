@@ -67,7 +67,7 @@ Everything reaches `main` through a PR, and the `create-pr` skill covers how. No
 
 - **PRs are cohesive units of code that work well on their own**, not commits and not piles. Large is fine when it's cohesive and well described, but don't merge partial issues: `Closes #n` means fully done.
 - **Commit and push as you go.** At a checkpoint, a draft PR titled `WIP:` shows Nenye what's in progress.
-- **Descriptions are short and clear:** Nenye must be able to read one quickly and understand what it does, how it's built, and its known trade-offs. Code PRs use `## Before`, `## After`, `## How it works` and `## Trade-offs`, plus the stack position when stacked.
+- **Descriptions are short and clear:** Nenye must be able to read one quickly and understand what it does, how it's built, and its known trade-offs. Code PRs use `## Before`, `## After`, `## How it works`, `## Trade-offs` and `## How it was tested`, plus the stack position when stacked.
 - **Key decisions close the description.** Every PR that made a real choice ends with what was decided, who decided it, the alternative and the impact, so anyone can see who chose what, and Nenye can overturn it.
 - **Evidence goes on the PR, not in the repo.** Test logs and run output are attached as a PR comment and aren't committed.
 - **Rebase on `main`, then squash merge.** `main` stays linear, with one commit per PR.

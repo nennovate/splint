@@ -1,47 +1,50 @@
-# AI policy
+# Contributing with AI
 
-Splint is built with AI, and yours can be too. Most of Splint's code is written by coding agents, so we don't ask whether a model wrote your change. We ask whether anyone checked it.
+Splint is built with AI. Most of its code is written by coding agents, and we expect most contributions to be written that way too. This page covers what the repository already gives your agent, the way of working that has produced good changes for us, and what we ask you to do yourself.
 
-Work that's been thought about gets our time. Work that hasn't is closed.
+## What the repository gives your agent
 
-## The rules
+Your agent has a lot to start from here. These files are written for agents, and we keep them current because we use them every day.
 
-These cover what comes into this repository from outside: pull requests, issues, discussions, comments and security reports.
+| File | What it's for |
+|---|---|
+| [`AGENTS.md`](AGENTS.md) | The rules every change follows: what Splint is and isn't, the security invariants, how the code is organised and how to test it. Most coding agents load it by themselves, and `CLAUDE.md` points Claude Code at it. |
+| [`docs/how-we-build.md`](docs/how-we-build.md) | How to apply those rules: what to work on, how big a pull request should be, and which command to run for which kind of change. |
+| [`docs/how-it-works.md`](docs/how-it-works.md) and [`docs/protocol.md`](docs/protocol.md) | The system as it's built today, and the formats every implementation follows. |
+| [`.claude/skills/create-pr`](.claude/skills/create-pr/SKILL.md) | A skill that writes the pull request description in the form we use: before, after, how it works, trade-offs, how it was tested and key decisions. |
+| [`.claude/agents/evaluator.md`](.claude/agents/evaluator.md) | A read-only reviewer that didn't write the change. It runs the code and reports anything it couldn't verify. |
 
-- **You answer for it.** Whatever wrote it, you're its author. You can say what it changes, why that's right and how it fits the rest of Splint, without asking a model. The licence terms in [`CONTRIBUTING.md`](CONTRIBUTING.md) are yours to agree to, not your agent's.
-- **It's shown working.** A test that fails without your change, or steps someone else can repeat. Say what you ran, and say what you couldn't check.
-- **It's wanted.** A pull request is for an issue labelled `help wanted`. Don't point an agent at the repository and send us what it finds.
-- **You write to us yourself.** The opening lines of a pull request, an issue or a report are yours, and so are your replies in review: short, and in your own words. Translating is fine. Pasting our questions into a model and posting its answer isn't.
-- **You say what you used.** One line naming the tool and what it did, such as "Cursor wrote the fix and its test. I read both and ran `make check`." It tells a reviewer where to look harder, and it never counts against you. Typo fixes don't need one.
-- **A report is real.** A security report shows the problem in Splint's own code, reproduced by you. A model's guess at what might be there isn't a report.
+## A way of working that produces good changes
 
-## What we close
+This is how most changes to Splint are made. You don't have to follow it step by step, but each step catches a kind of mistake we've seen.
 
-Anything that reads as unchecked output is closed without a review:
+1. Start from an issue we've agreed to, so the change is one we want. [`CONTRIBUTING.md`](CONTRIBUTING.md) explains which issues are open to pull requests.
+2. Before your agent writes anything, have it read `AGENTS.md` and the part of `docs/how-it-works.md` that covers what you're changing.
+3. Ask for the test first: one that fails on `main` and passes with the change. `AGENTS.md` lists the kinds of test that pass whether or not the code works, and we delete those in review.
+4. Run `make rules rust deps verifier` while you work, and then the end-to-end runs that cover what you changed. The table in `docs/how-we-build.md` says which.
+5. Get a second opinion from a session that didn't write the change. In Claude Code, the `evaluator` agent does this. In another agent, start a fresh session and ask it to review the diff against `AGENTS.md` by running the code.
+6. Read the diff yourself before you open the pull request, and ask your agent about anything you don't follow.
+7. Write the pull request with the `create-pr` skill, then read it through and cut what a reviewer doesn't need. The [humanizer](https://github.com/blader/humanizer) skill helps with that last pass.
 
-- a change its author can't explain
-- a wall of text around a small change
-- a fix for a problem nobody has
-- a test that passes whether or not the code works
-- a report nobody reproduced
+## What we ask you to do yourself
 
-It may be closed with no explanation. If we got yours wrong, say so in a sentence and we'll look again. Someone who keeps sending them is blocked from the repository.
+An agent can do most of the work. A few things only you can do, and they're what we look for when we read a pull request or a report.
 
-## Why so strict
+- Understand the change. You should be able to tell us what it does, why it's the right fix and how it fits the rest of Splint, in your own words. We may ask during review.
+- Show that it works. Include a test that fails without the change, or steps someone else can repeat, and tell us what you ran. If there was something you couldn't check, such as a platform you don't have, say so. That's useful to know, and it doesn't count against the change.
+- Tell us which tool you used and what it did. One line is enough, for example "Cursor wrote the fix and its test. I read both and ran `make check`." It helps us decide where to look most carefully.
+- Write the first few lines yourself. A short summary in your own words at the top of a pull request, issue or report tells us more than a long generated one. Using a model to translate or tidy your writing is fine. Please answer review questions yourself too.
+- Reproduce a security report before you send it, so it shows the problem happening in Splint's own code. [`SECURITY.md`](SECURITY.md) explains how to report one privately.
+- Agree to the licence terms yourself. They're in `CONTRIBUTING.md`, and an agent can't accept them for you.
 
-Writing a change now takes minutes. Reviewing one takes as long as it ever did, and in Splint a mistake that gets through could let a message be forged or a key leak. Splint has one maintainer. So a contribution has to be worth more than the time it takes to review, and only its author can make it that.
+## If something is missing
 
-None of this limits what you build on Splint, or in a fork of it. That's yours, made however you like.
+Splint has one maintainer, and reading a change carefully takes much longer than generating one. When a pull request or report arrives without the things above, we'll usually close it with a link to this page and leave the review for later. You're welcome to add what's missing and open it again.
 
-## How Splint itself is built
+## How we use AI ourselves
 
-We ask more of our own work than of yours. Most of Splint's code is written by coding agents under the rules in [`AGENTS.md`](AGENTS.md), which put security first and keep the model out of every security decision.
-
-- **Separate agents review each change.** They didn't write it, and the review is scaled to what a mistake would cost. Changes to keys, signatures, approvals and wire formats get two reviews, one attacking the code and one trying to break its tests.
-- **Every change needs tests that fail without it,** and the security invariants run on every change to product code, with a fully fooled agent.
-- **Nenye approves every merge,** and nobody else can merge.
-- **Pull requests written by an agent carry the `agent: created` label.**
+Our own changes go through the same steps, under the rules in `AGENTS.md`. An agent that didn't write the change reviews it, and how deep that review goes depends on what a mistake would cost. Changes to keys, signatures, approvals and wire formats get two reviews, one attacking the code and one trying to break its tests. Every change needs a test that fails without it, and the security invariants run on every change to product code, against an agent that is assumed to be fully fooled. Pull requests written by an agent carry the `agent: created` label, and Nenye approves every merge.
 
 That process catches a lot, and not everything. [`SECURITY.md`](SECURITY.md) says where Splint stands.
 
-This page borrows from the AI policies of [Ghostty](https://github.com/ghostty-org/ghostty/blob/main/AI_POLICY.md), [LLVM](https://llvm.org/docs/AIToolPolicy.html), [curl](https://github.com/curl/curl/blob/master/docs/CONTRIBUTE.md) and the [Model Context Protocol](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/main/AI_POLICY.md).
+Some of what we ask here is borrowed from the AI policies of [Ghostty](https://github.com/ghostty-org/ghostty/blob/main/AI_POLICY.md), [LLVM](https://llvm.org/docs/AIToolPolicy.html), [curl](https://github.com/curl/curl/blob/master/docs/CONTRIBUTE.md) and the [Model Context Protocol](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/main/AI_POLICY.md).

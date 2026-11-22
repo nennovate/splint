@@ -1,10 +1,10 @@
 # Contributing
 
-Thanks for helping. Splint is a network, and a network is worth what people put on it. So the help that goes furthest usually isn't a change to this repository. It's something of yours that runs on Splint.
+Thanks for helping. Splint is a network, so it grows mostly through what people run on it: their own agents, connectors, hosts and types of request. This page starts with those, and then covers reporting problems and changing this repository.
 
 ## Build on Splint
 
-None of these needs our permission, a pull request or a fork. Each lives in your own repository. Everything outside the host is under the Apache License 2.0, so what you build with it can go into any product.
+You can build any of these in your own repository, without asking us or opening a pull request. Everything outside the host is under the Apache License 2.0, so what you build with it can go into any product.
 
 | Build | Start from |
 |---|---|
@@ -24,23 +24,24 @@ Forking is fine too, and the licences allow it. A fork that keeps to the protoco
 - **A question or an idea:** start in [Discussions](https://github.com/nennovate/splint/discussions). An idea becomes an issue once it's clear enough to build.
 - **A vulnerability:** don't open an issue. Follow [`SECURITY.md`](SECURITY.md).
 
-Running Splint somewhere we haven't is a contribution too. [`ROADMAP.md`](ROADMAP.md) says what hasn't been run yet, such as anything end to end on Windows, and the owner page in Safari and Firefox.
+Running Splint somewhere we haven't yet is useful too. [`ROADMAP.md`](ROADMAP.md) lists what hasn't been run, such as anything end to end on Windows, and the controls page in Safari and Firefox. The "Tried Splint" issue form is for telling us how it went.
 
 ## Changes to this repository
 
-These are slower and narrower, on purpose. Splint has one maintainer, security comes first, and every change has to fit the design.
+Changes here take longer than you might expect, because Splint has one maintainer, security comes first and every change has to fit the design.
 
-- **Pull requests are for issues labelled `help wanted`.** Comment on the issue first to say you're taking it. Other pull requests may be closed, however good, because reviewing a surprise change can take longer than making it.
-- **Want something that isn't labelled?** Raise it in Discussions first.
-- **Only the lead maintainer merges.** Passing every check earns a review, not a merge, and a good change can still wait weeks.
-- **AI-written work is welcome once you've checked it.** [`AI_POLICY.md`](AI_POLICY.md) says what that takes, and what gets closed.
+Pull requests are for issues labelled `help wanted`. Comment on the issue first to say you're taking it. If you want something that isn't labelled, raise it in Discussions, and we'll turn it into an issue if it fits. A pull request that arrives without an issue may be closed even when it's good, because reviewing a change nobody planned for can take longer than making it.
 
-Before you open one:
+Nenye, the lead maintainer, reviews and merges every change, so a pull request that passes every check may still wait a few weeks.
+
+Most of Splint is written by coding agents, and you're welcome to use one for your change. [Contributing with AI](AI_POLICY.md) explains what the repository gives your agent and what we ask you to do yourself.
+
+Before you open a pull request:
 
 - Read [`AGENTS.md`](AGENTS.md). It holds the rules every change follows, whoever or whatever writes it.
 - Run the checks, below.
 - Keep it to one change that works on its own, with a test that fails without it.
-- Fill in the template: what was wrong before, what's true after, and how you checked it.
+- Fill in the template: what was wrong before, what's true after, how it works, what it costs and how you tested it.
 
 ## Setting up
 
@@ -78,4 +79,4 @@ By opening a pull request, you agree that:
 - A contribution to anything outside `packages/host` is under the Apache License 2.0, as section 5 of that licence says.
 - A contribution to `packages/host` is licensed to Nennovate, LLC under the Apache License 2.0. Nennovate releases the host, with your contribution in it, under the AGPL-3.0-only. This keeps Nennovate free to move host code into the Apache parts, change the host's licence later, or offer the host under other terms.
 
-The pull request template asks you to confirm this, and a pull request from outside Nennovate isn't merged without it.
+The pull request template repeats these terms in one sentence, so you see them before you open one. A pull request from outside Nennovate isn't merged with that sentence removed.

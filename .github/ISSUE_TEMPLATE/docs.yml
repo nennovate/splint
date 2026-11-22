@@ -1,0 +1,24 @@
+name: Docs problem
+description: Something in the docs is wrong, out of date or hard to follow.
+labels: ["documentation", "needs-triage"]
+body:
+  - type: input
+    id: where
+    attributes:
+      label: Where
+      description: The file or link, and the section if you can name it.
+      placeholder: docs/getting-started.md, "Find a host"
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What's wrong or unclear
+      description: What it says now, and what you found or expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested wording
+      description: Optional. What you'd write in its place.

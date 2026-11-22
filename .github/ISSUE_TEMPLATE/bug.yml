@@ -63,14 +63,8 @@ body:
     attributes:
       label: Likely cause
       description: Optional. Your analysis of why it happens, if you looked.
-  - type: dropdown
+  - type: input
     id: ai
     attributes:
-      label: AI use
-      description: As AI_POLICY.md asks.
-      options:
-        - None
-        - Some, to help investigate or write this
-        - Mostly written by AI, and I checked it
-    validations:
-      required: true
+      label: AI tools used
+      description: Which tool, and what it did. Leave this blank if you didn't use one.
