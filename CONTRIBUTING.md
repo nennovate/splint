@@ -20,9 +20,9 @@ Forking is fine too, and the licences allow it. A fork that keeps to the protoco
 
 ## Report what you find
 
-- **A bug:** open an issue with the bug form. Steps to reproduce, logs and your own analysis of the cause help most.
-- **A question or an idea:** start in [Discussions](https://github.com/nennovate/splint/discussions). An idea becomes an issue once it's clear enough to build.
-- **A vulnerability:** don't open an issue. Follow [`SECURITY.md`](SECURITY.md).
+- For a bug, open an issue with the bug form. Steps to reproduce, logs and your own analysis of the cause help most.
+- For a question or an idea, start in [Discussions](https://github.com/nennovate/splint/discussions). An idea becomes an issue once it's clear enough to build.
+- For a vulnerability, don't open an issue. Follow [`SECURITY.md`](SECURITY.md), which explains how to report one privately.
 
 Running Splint somewhere we haven't yet is useful too. [`ROADMAP.md`](ROADMAP.md) lists what hasn't been run, such as anything end to end on Windows, and the controls page in Safari and Firefox. The "Tried Splint" issue form is for telling us how it went.
 

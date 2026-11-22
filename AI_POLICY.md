@@ -1,10 +1,10 @@
 # Contributing with AI
 
-Splint is built with AI. Most of its code is written by coding agents, and we expect most contributions to be written that way too. This page covers what the repository already gives your agent, the way of working that has produced good changes for us, and what we ask you to do yourself.
+Splint is built with AI. Most of its code is written by coding agents, and we expect most contributions to be written that way too. The repository is set up for it, and a few things are still yours to do.
 
 ## What the repository gives your agent
 
-Your agent has a lot to start from here. These files are written for agents, and we keep them current because we use them every day.
+These files are written for agents, and we keep them current because we use them every day.
 
 | File | What it's for |
 |---|---|
@@ -14,9 +14,9 @@ Your agent has a lot to start from here. These files are written for agents, and
 | [`.claude/skills/create-pr`](.claude/skills/create-pr/SKILL.md) | A skill that writes the pull request description in the form we use: before, after, how it works, trade-offs, how it was tested and key decisions. |
 | [`.claude/agents/evaluator.md`](.claude/agents/evaluator.md) | A read-only reviewer that didn't write the change. It runs the code and reports anything it couldn't verify. |
 
-## A way of working that produces good changes
+## How a change is usually made
 
-This is how most changes to Splint are made. You don't have to follow it step by step, but each step catches a kind of mistake we've seen.
+You don't have to follow these steps exactly, but each one catches a kind of mistake we've seen.
 
 1. Start from an issue we've agreed to, so the change is one we want. [`CONTRIBUTING.md`](CONTRIBUTING.md) explains which issues are open to pull requests.
 2. Before your agent writes anything, have it read `AGENTS.md` and the part of `docs/how-it-works.md` that covers what you're changing.
@@ -28,7 +28,7 @@ This is how most changes to Splint are made. You don't have to follow it step by
 
 ## What we ask you to do yourself
 
-An agent can do most of the work. A few things only you can do, and they're what we look for when we read a pull request or a report.
+We look for these when we read a pull request or a report, and an agent can't do them for you.
 
 - Understand the change. You should be able to tell us what it does, why it's the right fix and how it fits the rest of Splint, in your own words. We may ask during review.
 - Show that it works. Include a test that fails without the change, or steps someone else can repeat, and tell us what you ran. If there was something you couldn't check, such as a platform you don't have, say so. That's useful to know, and it doesn't count against the change.
@@ -45,6 +45,6 @@ Splint has one maintainer, and reading a change carefully takes much longer than
 
 Our own changes go through the same steps, under the rules in `AGENTS.md`. An agent that didn't write the change reviews it, and how deep that review goes depends on what a mistake would cost. Changes to keys, signatures, approvals and wire formats get two reviews, one attacking the code and one trying to break its tests. Every change needs a test that fails without it, and the security invariants run on every change to product code, against an agent that is assumed to be fully fooled. Pull requests written by an agent carry the `agent: created` label, and Nenye approves every merge.
 
-That process catches a lot, and not everything. [`SECURITY.md`](SECURITY.md) says where Splint stands.
+That process catches a lot, but it doesn't catch everything. [`SECURITY.md`](SECURITY.md) says where Splint stands.
 
 Some of what we ask here is borrowed from the AI policies of [Ghostty](https://github.com/ghostty-org/ghostty/blob/main/AI_POLICY.md), [LLVM](https://llvm.org/docs/AIToolPolicy.html), [curl](https://github.com/curl/curl/blob/master/docs/CONTRIBUTE.md) and the [Model Context Protocol](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/main/AI_POLICY.md).
