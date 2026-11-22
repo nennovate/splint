@@ -142,8 +142,10 @@ A test earns its place by failing when something an owner, an agent, a host or a
 
 | When | What runs |
 |---|---|
-| Every PR, in 2 to 6 minutes | Repo rules, shared test vectors, format, lint, unit tests, dependency check |
-| Every ready PR that changes product code, in 35 to 65 minutes | End to end: security invariants, the example job with a scripted agent and a fooled agent |
+| Every PR, in about 2 minutes | Repo rules, shared test vectors, format, lint, unit tests, dependency check |
+| Every ready PR that changes product code, in about 15 minutes | End to end: security invariants, the example job with a scripted agent and a fooled agent |
+| A ready PR that changes only files in `sim/` | The sims that could run those files, and no others |
+| `main`, after every merge | All of the above, since PRs that each passed alone can break it together |
 | Nightly or on demand | Fuzzing, real-model runs, full attack packs, crash and network failure tests |
 | Before a format is frozen or real hardware step | The full set |
 

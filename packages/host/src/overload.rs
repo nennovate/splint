@@ -491,18 +491,28 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     async fn past_the_total_a_call_is_refused_at_once_and_a_place_comes_back() {
         let (address, release) = serving(calls_at_once(2), BODY_DEADLINE).await;
-        let first = tokio::spawn(status_of(address, "/wait"));
-        let second = tokio::spawn(status_of(address, "/wait"));
+        let mut waits = [
+            tokio::spawn(status_of(address, "/wait")),
+            tokio::spawn(status_of(address, "/wait")),
+        ];
         let mut third = 0;
         for _ in 0..100 {
             third = status_of(address, "/fast").await;
             if third == 503 {
                 break;
             }
+            // Whichever of three calls comes last is the one refused, and nothing makes that this
+            // one. A wait that came while this was being answered was refused instead and ended,
+            // which left a place free for good, so it's made again.
+            for wait in &mut waits {
+                if wait.is_finished() {
+                    *wait = tokio::spawn(status_of(address, "/wait"));
+                }
+            }
             tokio::time::sleep(Duration::from_millis(20)).await;
         }
         assert_eq!(third, 503);
-        while !first.is_finished() || !second.is_finished() {
+        while waits.iter().any(|wait| !wait.is_finished()) {
             release.notify_waiters();
             tokio::time::sleep(Duration::from_millis(20)).await;
         }

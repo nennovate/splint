@@ -15,11 +15,12 @@ WORKFLOW = ROOT / ".github" / "workflows" / "check.yml"
 CORE_MAKEFILE = ROOT / "make" / "core.mk"
 # What `make check` runs that isn't the end-to-end half, which CI's check job runs.
 FAST_HALF = {"rules", "rust", "deps", "verifier"}
-# Without these the workflow could run fewer shards than the plan splits the sims across.
+# Without these the workflow could run fewer shards than the plan splits the sims across, or other sims
+# than the plan chose.
 WORKFLOW_MUST_SAY = (
-    "tools/ci/shards.py matrix",
+    "tools/ci/shards.py needed",
     "fromJSON(needs.plan.outputs.shards)",
-    "tools/ci/shards.py run ${{ matrix.shard }}",
+    "tools/ci/shards.py run ${{ matrix.shard }} --of ${{ needs.plan.outputs.count }} --sims \"${{ needs.plan.outputs.sims }}\"",
 )
 
 
@@ -56,7 +57,11 @@ def check_workflow() -> list[str]:
 
 def main() -> int:
     try:
-        problems = check_targets() + check_plan(shards.make_commands(), shards.SHARD_COUNT) + check_workflow()
+        made = shards.make_commands()
+        problems = check_targets() + check_workflow()
+        # However many shards a machine's cores make of it, from one to the most.
+        for count in range(1, shards.SHARD_COUNT + 1):
+            problems += [f"split {count} ways: {problem}" for problem in check_plan(made, count)]
     except shards.PlanError as problem:
         problems = [str(problem)]
     for problem in problems:
