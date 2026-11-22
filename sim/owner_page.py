@@ -139,15 +139,23 @@ class OwnerPage:
         return self.browser.wait_for(f"document.querySelector({json.dumps(selector)}) === null", seconds)
 
     def click_twice(self, inside: str, label: str, armed: str) -> bool:
-        """As a person does: look, click, read what it now says, click again. A redraw starts it over."""
+        """As a person does: look, click, read what it now says, click again. A redraw starts it over.
+        It waits for the button to say it's armed, as a fast machine clicked again before the page had
+        redrawn, then found neither label and never clicked a second time."""
         for _ in range(4):
             self.reveal(inside)
             time.sleep(CLICK_SETTLE_SECONDS)
-            if not self.browser.click(inside, label):
-                continue
             if self.browser.click(inside, armed):
                 return True
+            if not self.browser.click(inside, label):
+                continue
+            if self.has_button(inside, armed) and self.browser.click(inside, armed):
+                return True
         return False
+
+    def has_button(self, inside: str, label: str, seconds: float = 3) -> bool:
+        return self.browser.wait_for(f"""[...(document.querySelector({json.dumps(inside)})?.querySelectorAll("button") ?? [])]
+          .some((one) => one.textContent.trim() === {json.dumps(label)})""", seconds)
 
     def click_once(self, inside: str, label: str, tag: str = "button") -> bool:
         self.reveal(inside)
