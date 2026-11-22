@@ -24,8 +24,8 @@ updates:
     groups:
       npm:
         update-types: [minor, patch]
-  # Monthly and all in one PR, majors included, since a change to the workflows runs the release build
-  # on GitHub's runners.
+  # Monthly and all in one PR, majors included, since a change to the release workflow builds every
+  # platform on GitHub's runners.
   - package-ecosystem: github-actions
     directory: /
     schedule:

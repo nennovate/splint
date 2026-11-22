@@ -5,13 +5,15 @@ name: release
 # Sigstore signature tied to this workflow, tag and commit, checks the install script takes exactly
 # that, and only then makes the release. A PR that changes any of this builds, rebuilds and installs
 # the same way, and publishes nothing. A PR builds one platform for each of Linux, Mac and Windows and
-# rebuilds the Linux one, unless it changes how a build is made or has the label "release: all
-# platforms", when it builds and rebuilds all six as a tag does. The label is read when the run starts,
+# rebuilds the Linux one, unless it changes how a build is made, this workflow included, or has the
+# label "release: all platforms", when it builds and rebuilds all six as a tag does. A draft builds
+# nothing: it runs once marked ready. The label is read when the run starts,
 # so add it and then re-run.
 on:
   push:
     tags: ["v*"]
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
     paths: [".github/workflows/release.yml", "deploy/release/**", "docs/agents.md"]
 
 permissions:
@@ -31,6 +33,7 @@ env:
 jobs:
   # Which platforms this run builds and rebuilds. Every platform is listed here once.
   plan:
+    if: github.event_name == 'push' || !github.event.pull_request.draft
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -58,8 +61,10 @@ jobs:
             labels=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/labels" --jq '.[].name')
           fi
           if [ "$EVENT" = pull_request ] && ! grep -qx 'release: all platforms' <<<"$labels"; then
-            # How a build is made: a change to it builds every platform, as a tag would.
-            git diff --name-only "$BASE_SHA...$HEAD_SHA" | grep -qE '^deploy/release/(build|package)\.sh$' || all=false
+            # How a build is made: a change to it builds every platform, as a tag would. A moved file
+            # counts where it was and where it went, and a diff that fails stops the plan.
+            changed=$(git diff --no-renames --name-only "$BASE_SHA...$HEAD_SHA")
+            grep -qE '^deploy/release/(build|package)\.sh$|^\.github/workflows/release\.yml$' <<<"$changed" || all=false
           fi
           ALL=$all python3 - <<'EOF' >> "$GITHUB_OUTPUT"
           import json, os
