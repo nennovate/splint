@@ -15,7 +15,7 @@ and every sim that imports it or names it. Nothing else can reach it, so nothing
 goes for what a runtime reads to connect, in adapters/ outside the two adapters that ship: no program
 here runs those files, so only a sim that names one is run for it.
 
-A shard runs several sims at once, one for each core. Two thirds of a sim's time is spent waiting on
+A shard runs several sims at once, one for each core up to three. Two thirds of a sim's time is spent waiting on
 real timers, a retry or a poll, so run one at a time a machine sits idle. Each sim makes its own ports,
 database and scratch folders, and none are pinned together. The one thing a sim took from those before
 it was the debug programs, which some use without building, so every shard builds them first.
@@ -241,8 +241,9 @@ def sims_for(changed: list[str], sims: tuple[str, ...], folder: Path = SIMS) -> 
 
 
 def at_once() -> int:
-    """How many sims a machine runs side by side: one for each core, and no more than four."""
-    return max(1, min(4, os.cpu_count() or 1))
+    """How many sims a machine runs side by side: one for each core, and no more than three. With four
+    on a 4-core runner, three sims in one run failed checks with a time limit and passed alone."""
+    return max(1, min(3, os.cpu_count() or 1))
 
 
 def count_for(sims: tuple[str, ...], side_by_side: int) -> int:
