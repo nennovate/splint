@@ -267,7 +267,8 @@ def one_contacts_unopenable_steps_hide_nothing(net: e2e.Network) -> None:
     started = time.monotonic()
     before = held_of(net.inbox("lou")).get("sealed_to_another_key", 0)
     quiet = time.monotonic() - started
-    check("control: nothing waits for the reader before", before == waiting_from(net, "lou", "max") == 0, before)
+    # Waited for, as what made them contacts can still be on its way to the reader on a fast machine.
+    check("control: nothing waits for the reader before", before == 0 and wait_until(lambda: waiting_from(net, "lou", "max") == 0), (before, waiting_from(net, "lou", "max")))
     ids = planted(net, "max", "lou", FLOOD, "a step that opens for nobody", by_reach=False)
     status, answer = net.send("ned", "lou", "from ned, behind the flood")
     check("control: another contact writes", status == 200, answer)

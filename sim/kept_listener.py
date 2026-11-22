@@ -163,6 +163,9 @@ def status_says_whether_anything_listens(lia: Agent, max_: Agent, bin_dir: Path)
     finally:
         stop(listener)
     check("and once it's gone, that none is", wait_until(lambda: listening(lia).get("wait_held") is False, 10), listening(lia))
+    # The second note is still on its way when a fast machine gets here, and the count below came one short.
+    unread = lambda: json.loads(lia.run("check", "--json").stdout or "{}").get("unread")  # noqa: E731
+    check("control: the second note has arrived too", wait_until(lambda: unread() == 2, ARRIVE_SECONDS), unread())
 
     # Where the MCP adapter runs splint from, as an install puts it.
     installed = lia.home / ".splint" / "bin" / "splint"

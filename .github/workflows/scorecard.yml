@@ -1,7 +1,7 @@
 name: scorecard
 
 # OpenSSF Scorecard rates the repo's supply-chain practices and publishes the score behind the README
-# badge. It works only on the public repository, so it doesn't run anywhere else.
+# badge. It works only on the public repository, so it doesn't run anywhere else, nor while that's private.
 on:
   branch_protection_rule:
   schedule:
@@ -13,7 +13,7 @@ permissions: {}
 
 jobs:
   analysis:
-    if: github.repository == 'nennovate/splint'
+    if: github.repository == 'nennovate/splint' && !github.event.repository.private
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:

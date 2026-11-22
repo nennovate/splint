@@ -1,4 +1,5 @@
-# Weekly version updates, grouped so a week's minor and patch bumps arrive as one PR per ecosystem.
+# Weekly version updates, grouped so a week's minor and patch bumps arrive as one PR per ecosystem, and
+# the workflows' actions monthly.
 # A new direct dependency still needs a reason in tools/checks/allowed-dependencies.toml.
 version: 2
 updates:
@@ -23,10 +24,11 @@ updates:
     groups:
       npm:
         update-types: [minor, patch]
+  # Monthly and all in one PR, majors included, since a change to check.yml runs every suite.
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: weekly
+      interval: monthly
     groups:
       actions:
-        update-types: [minor, patch]
+        patterns: ["*"]

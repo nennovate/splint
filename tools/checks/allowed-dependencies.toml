@@ -22,7 +22,7 @@ thiserror = "Typed errors"
 tokio = "Async runtime"
 tracing = "Structured logging"
 tracing-subscriber = "Log output for host and Signet"
-windows-sys = "Microsoft's own bindings, Windows only, for the few calls the standard library lacks: an ACL naming only this user on Splint's files, folders and Signet's pipe"
+windows-sys = "Microsoft's own bindings, Windows only, for the few calls the standard library lacks: an ACL naming only this user on Splint's files, folders and Signet's pipe, and keeping a program's own input and output from passing to what it starts"
 
 # Adapters talk to a process that holds keys, so each one here is something to audit, and is pinned
 # exactly. These two only type-check: the adapter runs with nothing installed.

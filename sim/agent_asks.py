@@ -637,6 +637,11 @@ def a_place_approved_with_no_session_is_left_by_the_sign_ins_own_proof(signup: S
     asked = json.loads(signup.walk.run_as("ola", f"splint ask --paid-at {place} --json").stdout or "{}")
     check("control: her agent asks where she gets paid", wait_until(lambda: asked.get("id") in [one.get("id") for one in every_waiting(port, same)], 20), asked)
     before = at_host()
+    # A statement is dated to the second, and Signet takes one only if it's dated after the one it
+    # holds, as only a replay comes with an older date. The one it holds was signed a moment ago, and in
+    # about four runs in ten this one was signed in that same second, and refused.
+    dated = ola.api("GET", "/v0/where-paid")[1].get("signed_at") or 0
+    check("control: the second the last one was signed in has passed", wait_until(lambda: time.time() >= dated + 1, 5), dated)
     status, approved = http("POST", port, "/local/approve", {"ids": [asked.get("id")], "passphrase": "correct horse"}, same)
     check("one approval signs it, with her passphrase given once", status == 200 and approved.get("approved") == 1, approved)
     check("her agent's Signet holds the place", wait_until(lambda: held() == [place], SIGNET_HEARS_SECONDS), held())
