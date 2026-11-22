@@ -227,10 +227,24 @@ def one_source_cant_hold_every_call(net: e2e.Network) -> None:
     """Issue 157: past the ceiling calls waited until everyone timed out, and nothing said to come back."""
     port = net.host_port["a"]
     check("control: a call is answered", ask(port, "203.0.113.7")[0] == 200)
-    held = [slow_body(port, "203.0.113.7") for _ in range(CALLS_AT_ONCE_PER_SOURCE)]
+    # A call the host closed at the door or has answered holds nothing, so another is made in its place
+    # until all of them wait. Right after a start the network's own idle connections can fill most of
+    # the host's connection cap, and on some machines that left room for too few of these, so the call
+    # after them was answered.
+    held: list[socket.socket] = []
+    turned_away, answer, deadline = 0, (0, None), time.monotonic() + 30
+    while answer != (429, "1") and time.monotonic() < deadline:
+        waiting = [connection for connection in held if not select.select([connection], [], [], 0)[0]]
+        for connection in held:
+            if connection not in waiting:
+                connection.close()
+        turned_away += len(held) - len(waiting)
+        held = waiting + [slow_body(port, "203.0.113.7") for _ in range(CALLS_AT_ONCE_PER_SOURCE - len(waiting))]
+        time.sleep(0.25)
+        answer = ask(port, "203.0.113.7")
     check(
         f"a source holding {CALLS_AT_ONCE_PER_SOURCE} calls is told to wait",
-        wait_until(lambda: ask(port, "203.0.113.7") == (429, "1"), timeout=5), ask(port, "203.0.113.7"),
+        answer == (429, "1"), (answer, f"{turned_away} held calls were turned away or answered"),
     )
     check(
         "whatever it adds in front of what the proxy wrote",
