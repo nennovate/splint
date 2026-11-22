@@ -81,7 +81,7 @@ Every fix or feature comes with a test that fails without it. [`AGENTS.md`](AGEN
 
 Security reports get a reply within 7 days. Issues and pull requests are answered as time allows, and the ones that fix a real problem for owners and agents come first.
 
-Nenye, the lead maintainer, reviews and merges every change, so a pull request that passes every check may still wait a few weeks.
+A pull request that passes every check may still wait a few weeks for review.
 
 Everyone here follows the [code of conduct](CODE_OF_CONDUCT.md).
 

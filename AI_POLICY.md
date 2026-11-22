@@ -43,7 +43,7 @@ Reading a change carefully takes much longer than generating one. When a pull re
 
 ## How we use AI ourselves
 
-Our own changes go through the same steps, under the rules in `AGENTS.md`. An agent that didn't write the change reviews it, and how deep that review goes depends on what a mistake would cost. Changes to keys, signatures, approvals and wire formats get two reviews, one attacking the code and one trying to break its tests. Every change needs a test that fails without it, and the security invariants run on every change to product code, against an agent that is assumed to be fully fooled. Pull requests written by an agent carry the `agent: created` label, and Nenye approves every merge.
+Our own changes go through the same steps, under the rules in `AGENTS.md`. An agent that didn't write the change reviews it, and how deep that review goes depends on what a mistake would cost. Changes to keys, signatures, approvals and wire formats get two reviews, one attacking the code and one trying to break its tests. Every change needs a test that fails without it, and the security invariants run on every change to product code, against an agent that is assumed to be fully fooled. Pull requests written by an agent carry the `agent: created` label.
 
 That process catches a lot, but it doesn't catch everything. [`SECURITY.md`](SECURITY.md) says where Splint stands.
 
