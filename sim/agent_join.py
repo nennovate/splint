@@ -64,10 +64,9 @@ CURSOR_LINK = re.compile(r"cursor://anysphere\.cursor-deeplink/mcp/install\?name
 SKILL_SERVER = re.compile(r'^\s*(\{"mcpServers".*\})$', re.M)
 CONNECTOR_GUIDES = ("skill/SKILL.md", "claude-code/skills/splint/SKILL.md", "cursor/splint.mdc")
 INSTALL_BLOCK = re.compile(r"^## Install\n.*?^```sh\n(.*?)^```$", re.M | re.S)
-# What the release's pinning sed rewrites, which must be one line in each guide.
-PIN = re.compile(r"v=v0\.1\.0-rc\.[0-9]+ sum=[0-9a-f]{64}")
+# What each guide's install block fetches: the latest release's install.sh, as docs/agents.md does.
+LATEST_INSTALL = "https://github.com/nennovate/splint/releases/latest/download/install.sh"
 DOWNLOAD_FAILED = "couldn't download"
-NOT_PINNED = "doesn't match the pinned checksum"
 # What a sender sees for a note held or dropped, which look the same.
 QUARANTINED = "quarantined"
 
@@ -568,8 +567,8 @@ def an_owner_beside_the_agent_removes_one_it_added_whom_reach_approves(signup: S
 
 def each_connectors_install_line_says_what_went_wrong(work: Path) -> None:
     """Each guide's install block, run as an agent runs it, with curl fetching the release from a server on
-    this machine. Bug caught: a download that failed, as it does while the repository is private,
-    reported as an install.sh that isn't the pinned one, which the guide says means stop."""
+    this machine. Bugs caught: a download that failed going on to run something; and a guide installing
+    one release fixed inside it, which went stale and once named a release that was never published."""
     here = work / "connector-install"
     release = here / "release"
     release.mkdir(parents=True)
@@ -582,21 +581,16 @@ def each_connectors_install_line_says_what_went_wrong(work: Path) -> None:
 
     try:
         for guide in CONNECTOR_GUIDES:
-            text = (ADAPTERS / guide).read_text()
-            block = INSTALL_BLOCK.search(text)
-            pins = PIN.findall(text)
-            check(f"{guide} has one line the release pins, in its install block", len(pins) == 1 and block is not None and PIN.search(block.group(1)) is not None, pins)
-            if len(pins) != 1 or block is None:
+            block = INSTALL_BLOCK.search((ADAPTERS / guide).read_text())
+            check(f"{guide} installs the latest release, in its install block", block is not None and LATEST_INSTALL in block.group(1), block.group(1) if block else None)
+            if block is None:
                 continue
             (release / "install.sh").unlink(missing_ok=True)
             missing = run(block.group(1))
-            check("a download that fails says so, and not that the file was changed", missing.returncode != 0 and DOWNLOAD_FAILED in missing.stderr and NOT_PINNED not in missing.stderr, missing.stderr)
+            check("a download that fails says so, and runs nothing", missing.returncode != 0 and DOWNLOAD_FAILED in missing.stderr and not ran.exists(), missing.stderr)
             (release / "install.sh").write_text(f': > "{ran}"\n')
-            changed = run(block.group(1))
-            check("an install.sh that isn't the pinned one says so, and runs nothing", changed.returncode != 0 and NOT_PINNED in changed.stderr and DOWNLOAD_FAILED not in changed.stderr and not ran.exists(), changed.stderr)
-            pinned = PIN.sub(f"v=v0.1.0-rc.0 sum={hashlib.sha256((release / 'install.sh').read_bytes()).hexdigest()}", block.group(1))
-            installed = run(pinned)
-            check("control: pinned to what's served, as a release pins it, it runs", installed.returncode == 0 and ran.exists(), installed.stderr)
+            installed = run(block.group(1))
+            check("control: what the release serves, it runs", installed.returncode == 0 and ran.exists(), installed.stderr)
             ran.unlink(missing_ok=True)
     finally:
         server.shutdown()

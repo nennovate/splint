@@ -12,7 +12,8 @@ sys.path.insert(0, str(ROOT / "tools" / "ci"))
 import shards  # noqa: E402
 
 # A sim folder in small: `shared` is imported by two sims, one of them through `helper`, `script.sh` is
-# read by one, `runner` starts another as a program, and `alone` touches nothing.
+# read by one, `runner` starts another as a program, `guided` reads a connector's guide from adapters/,
+# and `alone` touches nothing.
 FILES = {
     "shared.py": "",
     "helper.py": "import shared\n",
@@ -20,29 +21,31 @@ FILES = {
     "second.py": "import shared\n",
     "reader.py": 'SCRIPT = HERE / "script.sh"\n',
     "runner.py": 'subprocess.run([sys.executable, str(HERE / "alone.py")])\n',
+    "guided.py": 'GUIDES = ("skill/SKILL.md",)\n',
     "alone.py": '"""Says shared.py and script.sh in its docstring, and runs neither."""\n',
     "script.sh": "",
 }
-SIMS = tuple(f"python3 sim/{name}.py" for name in ("first", "second", "reader", "runner", "alone"))
+EVERY = ["first", "second", "reader", "runner", "guided", "alone"]
+SIMS = tuple(f"python3 sim/{name}.py" for name in EVERY)
 
 
 class WhichSimsAChangeNeeds(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        with tempfile.TemporaryDirectory() as folder:
-            for name, source in FILES.items():
-                (Path(folder) / name).write_text(source)
-            cls.reached = shards.reaches(Path(folder))
+        cls.kept = tempfile.TemporaryDirectory()
+        cls.addClassCleanup(cls.kept.cleanup)
+        for name, source in FILES.items():
+            (Path(cls.kept.name) / name).write_text(source)
 
     def needed(self, *changed: str) -> list[str]:
-        return [shards.name_of(sim) for sim in shards.sims_for(list(changed), SIMS, self.reached)]
+        return [shards.name_of(sim) for sim in shards.sims_for(list(changed), SIMS, Path(self.kept.name))]
 
     def test_product_code_and_ci_itself_run_every_sim(self) -> None:
         # Bug caught: a change to product code, or to what picks the sims, running only some of them.
         for path in ("packages/host/src/main.rs", "spec/vectors/requests.json", "deploy/install.sh", "adapters/mcp/src/a.ts",
-                     "make/core.mk", "Makefile", "tools/ci/shards.py", ".github/workflows/check.yml", "docs/agents.md",
-                     "sim/load/load.py"):
-            self.assertEqual(self.needed(path), ["first", "second", "reader", "runner", "alone"], path)
+                     "adapters/http/watch.sh", "make/core.mk", "Makefile", "tools/ci/shards.py",
+                     ".github/workflows/check.yml", "docs/agents.md", "sim/load/load.py"):
+            self.assertEqual(self.needed(path), EVERY, path)
 
     def test_a_sim_file_runs_every_sim_that_could_run_it(self) -> None:
         # Bug caught: a change to a file sims share running none of them, or only the ones importing it directly.
@@ -51,6 +54,13 @@ class WhichSimsAChangeNeeds(unittest.TestCase):
         self.assertEqual(self.needed("sim/script.sh"), ["reader"])
         self.assertEqual(self.needed("sim/alone.py"), ["runner", "alone"])
         self.assertEqual(self.needed("sim/first.py", "README.md"), ["first"])
+
+    def test_what_a_runtime_reads_to_connect_runs_the_sims_that_name_it(self) -> None:
+        # Bug caught: a change to a connector's guide, which no program here runs, running every sim, or
+        # running none though a sim reads it.
+        self.assertEqual(self.needed("adapters/skill/SKILL.md"), ["guided"])
+        self.assertEqual(self.needed("adapters/claude-code/skills/splint/SKILL.md"), ["guided"])
+        self.assertEqual(self.needed("adapters/claude-code/.claude-plugin/plugin.json"), [])
 
     def test_product_code_beside_a_sim_still_runs_every_sim(self) -> None:
         # Bug caught: one sim file in a change narrowing what the product code in it needs.

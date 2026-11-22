@@ -387,6 +387,10 @@ jobs:
           ${GITHUB_SHA}, and listed in SHA256SUMS. A host's own page only points to it, and whatever a
           host's page says, install only from github.com/${GITHUB_REPOSITORY}.
 
-          Or, once the repository is public: gh attestation verify install.sh --repo ${GITHUB_REPOSITORY}
+          Or, with GitHub's own attestation: gh attestation verify install.sh --repo ${GITHUB_REPOSITORY}
           EOF
-          gh release create "$VERSION" dist/* --verify-tag --title "Splint $VERSION" --notes-file notes.md
+          # A candidate, such as v0.2.0-rc.1, is a pre-release, so it never becomes the release that
+          # `releases/latest` gives, which is where the docs send people and agents to install.
+          candidate=
+          case "$VERSION" in *-*) candidate=--prerelease ;; esac
+          gh release create "$VERSION" dist/* --verify-tag $candidate --title "Splint $VERSION" --notes-file notes.md

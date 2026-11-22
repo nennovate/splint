@@ -254,7 +254,9 @@ def a_kept_listener_runs_its_command_and_comes_back(work: Path, lia: Agent, max_
         apart = runs(record)[-1]["at"] - runs(record)[0]["at"] if back else 0
         # Bug caught: a listener that restarts forgetting when it last woke anyone, so a crash loop runs
         # the command each time, whatever gap its runtime chose to bound its cost.
-        check(f"and it holds to its {GAP_SECONDS} second gap across the restart", apart >= GAP_SECONDS, apart)
+        # Half a second short still counts: each time is taken when the command starts writing, not when
+        # the listener ran it, and a command that was slower to start the first time read as 5.998.
+        check(f"and it holds to its {GAP_SECONDS} second gap across the restart", apart >= GAP_SECONDS - 0.5, apart)
 
         # A session's after-turn hook: one wait on its own mark, which says its line and leaves.
         read_all(lia)

@@ -11,7 +11,9 @@ tools/checks/check_ci_shards.py fails `make rules` if the shards ever stop addin
 
 Which sims a change needs: every one, for a change to product code, to what builds or installs it, or
 to this. For a change to files in sim/ alone, only the sims that could run that file: the sim itself,
-and every sim that imports it or names it. Nothing else can reach it, so nothing else is run.
+and every sim that imports it or names it. Nothing else can reach it, so nothing else is run. The same
+goes for what a runtime reads to connect, in adapters/ outside the two adapters that ship: no program
+here runs those files, so only a sim that names one is run for it.
 
 A shard runs several sims at once, one for each core. Two thirds of a sim's time is spent waiting on
 real timers, a retry or a poll, so run one at a time a machine sits idle. Each sim makes its own ports,
@@ -49,14 +51,17 @@ SHARD_SECONDS = 660
 SIM = re.compile(r"python3 sim/(\w+)\.py")
 MENTIONS_SIM = re.compile(r"\bsim/\w+\.py\b")
 
-# A change to any of these runs every sim: product code, what builds or installs it, the two docs the
-# sims follow or ship, the folders under sim/, and the workflow and this, so a change to CI is always
-# tested by the CI it makes. A moved file counts where it was and where it went.
+# A change to any of these runs every sim: product code, the two adapters an install and a release
+# copy, what builds or installs them, the two docs the sims follow or ship, the folders under sim/,
+# and the workflow and this, so a change to CI is always tested by the CI it makes. A moved file
+# counts where it was and where it went.
 EVERY_SIM = re.compile(
-    r"^(packages|adapters|deploy|make|spec|tools/ci|sim/[^/]+)/|^docs/(agents|getting-started)\.md$"
+    r"^(packages|adapters/(mcp|http)|deploy|make|spec|tools/ci|sim/[^/]+)/|^docs/(agents|getting-started)\.md$"
     r"|^Makefile$|^\.github/workflows/check\.yml$"
 )
-ONE_SIM_FILE = re.compile(r"^sim/([^/]+)$")
+# What only a sim that names it could run or read: a file in sim/, and the rest of adapters/, which is
+# what a runtime reads to connect and no program here runs.
+NAMED_BY_A_SIM = re.compile(r"^(sim/[^/]+|adapters/.+)$")
 # What Windows builds: its four crates, the workspace's own files, the schemas built into them and how
 # git writes their files out. The host runs on Linux and nothing depends on it, so it isn't one.
 WINDOWS = re.compile(
@@ -187,11 +192,13 @@ def seconds_of(sim: str) -> int:
     return SECONDS.get(name_of(sim), DEFAULT_SECONDS)
 
 
-def reaches(folder: Path = SIMS) -> dict[str, set[str]]:
-    """For each Python file in sim/, the files in sim/ it could run: those it imports, and those it
-    names in a string, as one sim starts another as a program or reads a script beside it. Then theirs,
-    and so on. A file named only in a comment or a docstring isn't run, so it doesn't count."""
+def reaches(named: set[str], folder: Path = SIMS) -> dict[str, set[str]]:
+    """For each Python file in sim/, which of the files in sim/ and of those `named` it could run or
+    read: those it imports, and those it names in a string, as one sim starts another as a program or
+    reads a script or a guide. Then theirs, and so on. A file named only in a comment or a docstring
+    isn't run, so it doesn't count. A name is a file's last part, so two files of one name count as one."""
     files = sorted(path.name for path in folder.iterdir() if path.is_file())
+    known = set(files) | named
     direct: dict[str, set[str]] = {}
     for name in files:
         if not name.endswith(".py"):
@@ -207,7 +214,7 @@ def reaches(folder: Path = SIMS) -> dict[str, set[str]]:
                 modules.append(node.module)
             found |= {f"{module}.py" for module in modules if f"{module}.py" in files}
             if isinstance(node, ast.Constant) and isinstance(node.value, str) and id(node) not in docstrings:
-                found |= {word.rsplit("/", 1)[-1] for word in node.value.split()} & set(files)
+                found |= {word.rsplit("/", 1)[-1] for word in node.value.split()} & known
         direct[name] = found - {name}
     reached: dict[str, set[str]] = {}
     for name in direct:
@@ -221,13 +228,14 @@ def reaches(folder: Path = SIMS) -> dict[str, set[str]]:
     return reached
 
 
-def sims_for(changed: list[str], sims: tuple[str, ...], reached: dict[str, set[str]]) -> tuple[str, ...]:
-    """The sims a change needs, in make's order. None, when it touches nothing a sim could run."""
+def sims_for(changed: list[str], sims: tuple[str, ...], folder: Path = SIMS) -> tuple[str, ...]:
+    """The sims a change needs, in make's order. None, when it touches nothing a sim could run or read."""
     if any(EVERY_SIM.search(path) for path in changed):
         return sims
-    touched = {found.group(1) for path in changed if (found := ONE_SIM_FILE.match(path))}
+    touched = {path.rsplit("/", 1)[-1] for path in changed if NAMED_BY_A_SIM.match(path)}
     if not touched:
         return ()
+    reached = reaches(touched, folder)
     return tuple(sim for sim in sims
                  if (file := f"{name_of(sim)}.py") in touched or reached.get(file, set()) & touched)
 
@@ -297,7 +305,7 @@ def print_needed(changed: list[str] | None, draft: bool) -> None:
     elif changed is None:
         sims, windows = every, True
     else:
-        sims = sims_for(changed, every, reaches())
+        sims = sims_for(changed, every)
         windows = any(WINDOWS.search(path) for path in changed)
     side_by_side = at_once()
     count = count_for(sims, side_by_side) if sims else 0
