@@ -60,7 +60,7 @@ make trace     # scripted agents sending a request through Splint, with Docker a
 | `python3 sim/NAME.py` | One end-to-end run, such as `sim/invites.py`: real hosts and Signets against Postgres in Docker | About a minute each on average |
 | `make check` | Everything: the fast half, then every end-to-end run in `make e2e`, the adapters' tests, the install walkthrough and the owner pages in a real browser, more than 40 runs in all | About 50 minutes on a 14-core Mac |
 
-For an ordinary change, run the fast half and the end-to-end runs that cover what you changed, which `make/core.mk`, `make/install.mk` and `make/owner-page.mk` list. Run all of `make check` before a pull request that changes how the system behaves is ready. CI runs the end-to-end half on every ready pull request that changes product code, which took 36 to 65 minutes there.
+For an ordinary change, run the fast half and the end-to-end runs that cover what you changed, which `make/core.mk`, `make/install.mk` and `make/owner-page.mk` list. Run all of `make check` before a pull request that changes how the system behaves is ready. CI runs the end-to-end half on every ready pull request that changes product code, which takes about 15 to 20 minutes there. A draft runs only the fast half, and marking it ready runs the rest.
 
 ## What to expect
 
