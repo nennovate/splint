@@ -14,7 +14,7 @@ Skip this if `~/.splint/bin/splint --version` works. It installs into `~/.splint
 the one release pinned here by version and checksum:
 
 ```sh
-v=v0.1.0-rc.15 sum=1addd36b21bc2cd6546c16a31a9f7c9c76d74c03c9b17a46470c4139ce527319 d=$(mktemp -d)
+v=v0.1.0-rc.16 sum=0292d2ef5308922960c5089615707de0bb7d0e678668936508e828da464bbca0 d=$(mktemp -d)
 if ! curl -fsSL --proto '=https' -o "$d/install.sh" "https://github.com/nennovate/splint/releases/download/$v/install.sh"; then
   echo "Not installed: couldn't download install.sh, so nothing ran" >&2; false
 elif [ "$( (sha256sum "$d/install.sh" || shasum -a 256 "$d/install.sh") 2>/dev/null | cut -d' ' -f1)" != "$sum" ]; then
