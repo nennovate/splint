@@ -1,17 +1,18 @@
 name: check
 
+# Not on an edit: a run for one skips every job, and as GitHub shows the newest result under each name,
+# those skips would stand in for the real results, and a skipped required check counts as passed. A PR
+# moved to a new base gets a push bringing in that base, which runs this.
 on:
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review, edited]
+    types: [opened, synchronize, reopened, ready_for_review]
 
 permissions:
   contents: read
 
-# A new push to a PR cancels the run still going for its last one, as that result no longer counts. An
-# edit that doesn't move the PR to a new base runs nothing, so it gets a group of its own and cancels
-# nothing.
+# A new push to a PR cancels the run still going for its last one, as that result no longer counts.
 concurrency:
-  group: check-${{ github.event.pull_request.number }}-${{ github.event.action == 'edited' && !github.event.changes.base && github.run_id || 'run' }}
+  group: check-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 # Which machines run the tests: the repository variables LINUX_TEST_RUNNER and WINDOWS_TEST_RUNNER
@@ -19,9 +20,8 @@ concurrency:
 # they run on GitHub's own. Releases always build on GitHub's own runners, in release.yml.
 jobs:
   # Decides once, from what the PR changes, which of the jobs below it needs, and how many shards the
-  # suites take. An edit counts only when it moves the PR to a new base, as when the PR below it merges.
+  # suites take.
   plan:
-    if: github.event.action != 'edited' || github.event.changes.base
     runs-on: ${{ vars.LINUX_TEST_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 5
     outputs:
@@ -86,9 +86,7 @@ jobs:
       matrix:
         runner: ${{ github.event.repository.private && fromJSON(format('["{0}"]', vars.WINDOWS_TEST_RUNNER || 'windows-latest')) || fromJSON(format('["{0}", "windows-11-arm"]', vars.WINDOWS_TEST_RUNNER || 'windows-latest')) }}
     runs-on: ${{ matrix.runner }}
-    # A PR's first run builds with nothing cached, as nothing runs on main to fill the cache, and that
-    # took over 30 minutes on Windows. A run after that, from the PR's own cache, takes about 10.
-    timeout-minutes: 60
+    timeout-minutes: 30
     defaults:
       run:
         shell: bash
@@ -181,7 +179,7 @@ jobs:
   checks:
     name: All checks
     needs: [plan, check, windows, e2e-build, e2e-shard]
-    if: always() && needs.plan.result != 'skipped'
+    if: always()
     runs-on: ${{ vars.LINUX_TEST_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 5
     steps:

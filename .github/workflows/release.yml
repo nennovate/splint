@@ -6,21 +6,20 @@ name: release
 # that, and only then makes the release. A PR that changes any of this builds, rebuilds and installs
 # the same way, and publishes nothing. A PR builds one platform for each of Linux, Mac and Windows and
 # rebuilds the Linux one, unless it changes how a build is made or has the label "release: all
-# platforms", when it builds and rebuilds all six as a tag does.
+# platforms", when it builds and rebuilds all six as a tag does. The label is read when the run starts,
+# so add it and then re-run.
 on:
   push:
     tags: ["v*"]
   pull_request:
-    types: [opened, synchronize, reopened, labeled]
     paths: [".github/workflows/release.yml", "deploy/release/**", "docs/agents.md"]
 
 permissions:
   contents: read
 
-# A new push to a PR cancels the run still going for its last one. A tag's run is never cancelled, and
-# a label other than "release: all platforms" runs nothing, so it gets a group of its own.
+# A new push to a PR cancels the run still going for its last one. A tag's run is never cancelled.
 concurrency:
-  group: "release-${{ github.event.pull_request.number || github.ref }}-${{ github.event.action == 'labeled' && github.event.label.name != 'release: all platforms' && github.run_id || 'run' }}"
+  group: release-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
@@ -32,9 +31,11 @@ env:
 jobs:
   # Which platforms this run builds and rebuilds. Every platform is listed here once.
   plan:
-    if: "github.event.action != 'labeled' || github.event.label.name == 'release: all platforms'"
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
     outputs:
       all: ${{ steps.plan.outputs.all }}
       build: ${{ steps.plan.outputs.build }}
@@ -48,10 +49,15 @@ jobs:
           EVENT: ${{ github.event_name }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          ALL_LABEL: "${{ contains(github.event.pull_request.labels.*.name, 'release: all platforms') }}"
+          PR: ${{ github.event.pull_request.number }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           all=true
-          if [ "$EVENT" = pull_request ] && [ "$ALL_LABEL" != true ]; then
+          # Read now rather than from the event, so a re-run after adding the label sees it.
+          if [ "$EVENT" = pull_request ]; then
+            labels=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/labels" --jq '.[].name')
+          fi
+          if [ "$EVENT" = pull_request ] && ! grep -qx 'release: all platforms' <<<"$labels"; then
             # How a build is made: a change to it builds every platform, as a tag would.
             git diff --name-only "$BASE_SHA...$HEAD_SHA" | grep -qE '^deploy/release/(build|package)\.sh$' || all=false
           fi
