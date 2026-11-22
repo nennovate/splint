@@ -4,11 +4,12 @@ headless Chrome against a real host, Signet and Splint on the computer, with the
 fooled.
 
 Lia's agent, on her computer, asks for its controls, and she approves on that computer, with a key file
-locked with her passphrase. She opens her controls from `splint controls`, types her passphrase and
-sees them. In Settings she asks to be asked first, and one approval signs that. A price setting changes
-what the page says of prices. A place to be paid no Signet takes is refused on the page, with nothing
-signed. Her off switch pauses the agent at its host and its Signet, and turns it back on. A reminder
-sets her recovery code and shows it once. Cal, an agent with its owner's key beside it, writes to Lia's
+locked with her passphrase. She opens her controls from `splint controls`, unlocks them with her
+passphrase once, and sees them. In Permissions she asks to be asked first, which signs at once, with no
+passphrase, as her unlocked session does. Her price setting signs the same way. A place to be paid no
+Signet takes is refused on the page, with nothing signed. Her off switch pauses the agent at its host
+and its Signet, and turns it back on. A reminder sets her recovery code, which always asks for her
+passphrase, and shows it once. Cal, an agent with its owner's key beside it, writes to Lia's
 agent and is held. Views of her agent sealed to her that her agent's key didn't sign draw nothing, and
 one her agent's key did sign, as a fooled agent holding its Signet's key can, still can't get someone
 let in at an address that isn't theirs. She lets Cal in. Cal asks for a meeting, her fooled agent
@@ -82,20 +83,29 @@ class Controls:
         return sum(1 for method, url in self.browser.requests if method == "POST" and url.endswith(path))
 
     def approve(self, label: str, inside: str = "main", path: str = "/local/sign") -> bool:
-        """Types her passphrase and clicks what asks her computer to sign, again if the page had just
+        """Clicks what asks her computer to sign, and types her passphrase where the page asks for it,
+        as it does for what always asks or once her session has locked, again if the page had just
         redrawn and said that click didn't count, as a person would. True once it asked."""
         before = self.approvals(path)
         for _ in range(5):
-            self.browser.type_into("#passphrase-here", PASSPHRASE)
             time.sleep(0.8)
             if not self.browser.click(inside, label):
                 return False
-            if wait_until(lambda: self.approvals(path) > before, 5):
+            sheet = lambda: self.browser.eval("document.getElementById('sheet-passphrase') !== null")  # noqa: E731
+            if wait_until(lambda: self.approvals(path) > before or sheet(), 5) and sheet():
+                self.browser.type_into("#sheet-passphrase", PASSPHRASE)
+                self.browser.eval("document.getElementById('sheet-go').click(); true")
+            if wait_until(lambda: self.approvals(path) > before, 10):
                 return True
         return False
 
     def pick(self, selector: str) -> bool:
-        return self.browser.eval(f"(() => {{ const found = document.querySelector({json.dumps(selector)}); if (!found) return false; found.click(); return found.checked; }})()")
+        """Clicks a choice or a switch in Permissions, which signs at once."""
+        return self.browser.eval(f"(() => {{ const found = document.querySelector({json.dumps(selector)}); if (!found) return false; found.click(); return true; }})()")
+
+    def permissions(self, agent: str) -> None:
+        """Her agent's Permissions, as clicking it in the list of her agents and then the tab opens them."""
+        self.browser.eval(f"go('agent', {{agent: {json.dumps(agent)}, tab: 'permissions'}}); true")
 
     def rules_held(self, agent: str) -> dict:
         """The rules the agent's host holds, read as the page reads them, through Splint here."""
@@ -270,7 +280,6 @@ def a_view_her_agent_didnt_sign_draws_nothing(signup: Signup, controls: Controls
         signed = sealed_view(controls, host, agent, made_up, key)
         check("control: the same view signed by her agent's own key, as a fooled agent can, is drawn", views.run(signed, shown), controls.text())
         before = controls.approvals()
-        controls.browser.type_into("#passphrase-here", PASSPHRASE)
         time.sleep(0.8)
         clicked = controls.browser.click(f"#held-{stranger_id}", "Let them in")
         refused = views.run(signed, lambda: "isn't theirs" in controls.text())
@@ -406,73 +415,65 @@ def lia_sets_up_her_controls_on_her_computer(signup: Signup, port: int):
 
 def she_opens_her_controls(controls: Controls) -> None:
     controls.open()
-    check("control: her controls open, asking for her sign-in's passphrase", controls.browser.wait_for("document.getElementById('passphrase-here') !== null", SEEN_SECONDS), controls.text())
-    for _ in range(5):
-        controls.browser.type_into("#passphrase-here", PASSPHRASE)
-        controls.browser.click("main", "Show my controls")
-        if controls.browser.wait_for("document.querySelector('#account') !== null", 20):
-            break
-    check("one approval shows them, saying she's signed in on this computer", controls.shows("signed in on this computer"), controls.text())
-
+    check("control: her controls open on what needs her, offering to unlock", controls.browser.wait_for("document.getElementById('unlock-callout') !== null", SEEN_SECONDS), controls.text())
+    check("control: she unlocks, with her passphrase once", controls.approve("Unlock", "#unlock-callout", "/local/unlock"))
+    check("unlocking once shows them, saying they're unlocked", controls.shows("Unlocked") and controls.browser.wait_for("document.getElementById('unlock-callout') === null", SEEN_SECONDS), controls.text())
 
 def asking_first_signs_new_rules_once(controls: Controls, agent: str) -> None:
-    """Bug caught, from review on 2026-11-14: home drawn again every few seconds putting Settings back
-    as signed, so Save signed the old level and said Saved, and the person thought they'd asked first."""
+    """Bug caught, from review on 2026-11-14: Save signing the level the page had drawn before, so the
+    person thought they'd asked first. A choice now signs as it's made, from the rules in force."""
     settings = f"#settings-{agent}"
-    check("control: her agent's settings show, from rules the page checked", controls.browser.wait_for(f"document.querySelector('{settings} input[value=ask_me]') !== null", SEEN_SECONDS), controls.text())
-    check("control: Ask me first", controls.pick(f"{settings} input[value=ask_me]"))
-    the_price_words_follow_the_setting(controls, settings)
-    controls.browser.eval(f"window.__settings = document.querySelector('{settings}'); true")
-    # As the page does whenever what it shows changed, which a refresh may find at any time.
-    controls.browser.eval("draw(true); true")
-    check("control: home is drawn again while the choice is unsaved", controls.browser.wait_for("!document.contains(window.__settings)", 10))
+    controls.permissions(agent)
+    check("control: her agent's settings show, from rules the page checked", controls.browser.wait_for(f"document.getElementById('level-ask_me-{agent}') !== null", SEEN_SECONDS), controls.text())
+    the_price_setting_signs_as_chosen(controls, agent)
     before = controls.approvals()
-    check("control: Save", controls.approve("Save", settings))
-    check("one approval signs her agent's new rules", controls.shows("Saved.") and controls.approvals() - before == 1, (controls.approvals() - before, controls.text()))
+    check("control: Ask me first", controls.pick(f"#level-ask_me-{agent}"))
+    check("one approval signs her agent's new rules, with no passphrase asked", controls.shows("Saved.") and wait_until(lambda: controls.approvals() - before == 1, 10) and controls.browser.eval("document.getElementById('sheet-passphrase') === null"), (controls.approvals() - before, controls.text()))
     level = lambda: controls.rules_held(agent).get("permissions", {}).get("level")  # noqa: E731
-    check("at Ask me first, as chosen before the redraw", wait_until(lambda: level() == "ask_me", SEEN_SECONDS), level())
+    check("at Ask me first, as chosen", wait_until(lambda: level() == "ask_me", SEEN_SECONDS), level())
+    check("and the page shows it chosen", controls.browser.wait_for(f"document.querySelector('{settings} #level-ask_me-{agent}[aria-checked=true]') !== null", SEEN_SECONDS), controls.text(settings))
 
-
-def the_price_words_follow_the_setting(controls: Controls, settings: str) -> None:
-    """Issue 847. Bug caught: Settings saying every amount waits for the person beside a price setting
-    that lets the agent's own quotes go. The setting is put back as it was."""
-    text = lambda: controls.text(settings)  # noqa: E731
-    was = controls.browser.eval(f"(document.querySelector('{settings} input[name^=quoted]:checked') || {{value: ''}}).value")
-    check("control: a price it quotes goes ahead within its limits", controls.pick(f"{settings} input[value=within_limits]"))
-    check("and the settings say so, and not that every amount waits", "a price your agent quotes, where you'd be paid, goes by itself" in text() and "anything with an amount still waits" not in text().lower(), text())
-    check("control: a price it quotes waits", controls.pick(f"{settings} input[value=wait]"))
-    check("and nothing says then that one goes by itself", "goes by itself within its limits" not in text(), text())
-    check("control: the price setting as it was", controls.pick(f"{settings} input[value={was}]"))
-
+def the_price_setting_signs_as_chosen(controls: Controls, agent: str) -> None:
+    """Issue 847. Bug caught: the page saying every amount waits for the person beside a price setting
+    that lets the agent's own quotes go. The page now says only what holds either way, and the setting
+    is put back as it was."""
+    quoted = lambda: controls.rules_held(agent).get("permissions", {}).get("quoted_prices", "wait")  # noqa: E731
+    was = quoted()
+    check("control: a price it quotes goes ahead within its limits", controls.pick(f"#quotes-{agent}") and wait_until(lambda: quoted() != was, SEEN_SECONDS), quoted())
+    words = controls.text(f"#settings-{agent}").lower()
+    check("and nothing says then that every amount waits", "anything with an amount still waits" not in words and "a price you'd pay or one it quotes" not in words, words)
+    check("control: the price setting as it was", controls.pick(f"#quotes-{agent}") and wait_until(lambda: quoted() == was, SEEN_SECONDS), quoted())
 
 def a_place_no_signet_takes_is_never_signed(controls: Controls) -> None:
     """Bug caught: the page reading lno1name@domain as a Lightning address, where every Signet reads an
     lno1 start as an offer's alone and refuses it, so the person signed a place their agent dropped."""
+    controls.browser.eval("document.getElementById('where-paid-open').click(); true")
     check("control: Getting paid is offered", controls.browser.wait_for("document.getElementById('where-paid') !== null", SEEN_SECONDS), controls.text())
     before = controls.approvals()
     controls.browser.eval("(() => { const box = document.getElementById('where-paid'); box.value = 'lno1lia@wallet.example'; box.dispatchEvent(new Event('input')); return true; })()")
-    controls.browser.type_into("#passphrase-here", PASSPHRASE)
+    controls.browser.type_into("#paid-passphrase", PASSPHRASE)
     time.sleep(0.8)
-    controls.browser.click("#getting-paid", "Sign where you get paid")
+    controls.browser.click("#sheet-where-paid", "Sign where you get paid")
     check("a place no Signet takes is refused on the page", controls.shows("lno1lia@wallet.example isn't a place Splint takes"), controls.text())
     check("with nothing signed", controls.approvals() == before, controls.approvals() - before)
-    controls.browser.eval("(() => { const box = document.getElementById('where-paid'); box.value = ''; box.dispatchEvent(new Event('input')); return true; })()")
-
+    controls.browser.eval("(() => { const box = document.getElementById('where-paid'); box.value = ''; box.dispatchEvent(new Event('input')); ui.sheet = null; draw(true); return true; })()")
 
 def the_off_switch_stops_the_agent(controls: Controls, agent: str) -> None:
     """Bugs caught: a page with no way to stop a hijacked agent, and a pause its host doesn't hold."""
-    settings = f"#settings-{agent}"
-    check("the person pauses her agent from its settings", controls.approve("Pause it", settings))
-    check("with one approval", controls.shows("is paused"), controls.text())
+    switch = f"#off-switch-{agent}"
+    before = controls.approvals()
+    check("the person pauses her agent from its settings", controls.pick(switch))
+    check("with one approval", controls.shows("is paused") and wait_until(lambda: controls.approvals() - before == 1, 10), controls.text())
     check("its host holds rules with it paused", wait_until(lambda: controls.rules_held(agent).get("paused") is True, SEEN_SECONDS), controls.rules_held(agent))
-    check("Turn it back on", controls.approve("Turn it back on", settings))
+    check("Turn it back on", controls.browser.wait_for(f"(document.querySelector('{switch}') || {{innerText: ''}}).innerText.includes('back on')", SEEN_SECONDS) and controls.pick(switch))
     check("its host holds rules with it running again", wait_until(lambda: controls.rules_held(agent).get("paused") is False, SEEN_SECONDS), controls.rules_held(agent))
 
-
 def a_reminder_sets_the_recovery_code_and_shows_it_once(controls: Controls) -> None:
-    """Bugs caught: an owner ID made with no recovery code never offered one, and a code shown again."""
+    """Bugs caught: an owner ID made with no recovery code never offered one, a code shown again, and a
+    code set with no passphrase, by the unlocked session alone."""
+    controls.browser.eval("go('home'); true")
     check("home reminds her to set her recovery code", controls.browser.wait_for("document.getElementById('recovery-reminder') !== null", SEEN_SECONDS), controls.text())
-    check("control: Set my recovery code", controls.approve("Set my recovery code", "#recovery-reminder", "/local/recovery"))
+    check("control: Set up", controls.approve("Set up", "#recovery-reminder", "/local/recovery"))
     shown = controls.browser.wait_for("document.getElementById('recovery-code') !== null", SEEN_SECONDS)
     # Bug caught: the page's next refresh, every 5 seconds, drawing home over the code before she'd
     # written it down. One runs now, as it would.
@@ -483,10 +484,10 @@ def a_reminder_sets_the_recovery_code_and_shows_it_once(controls: Controls) -> N
     home = "document.querySelector('#account') !== null && document.getElementById('recovery-reminder') === null"
     # Again if the page had just redrawn and said that click didn't count, as a person would.
     for _ in range(5):
+        time.sleep(0.8)
         if not controls.browser.click("main", "I've written it down") or controls.browser.wait_for(home, 5):
             break
     check("and once written down, home has no reminder and doesn't show it again", controls.browser.wait_for(home, SEEN_SECONDS) and code not in controls.text(), controls.text())
-
 
 def run() -> None:
     print("\n== your controls on your own computer ==", flush=True)

@@ -1,20 +1,22 @@
-//! The pages a browser reaches Splint on this computer at. `http://localhost:7480/ask`: an agent's link
-//! opens it with one signed ask after the `#`, which no browser sends anywhere: the page hands it here
-//! only once the person clicks to see it, as any website can open a link, and it then waits for an
-//! approval of it on the page, never going into a prompt by itself. The page shows each ask in its own
-//! fixed words, from the ask's typed changes, never the agent's. `http://localhost:7480/owner`: the
-//! person's controls, signing through this computer's sign-in with no passkey, reading through the
-//! sessions this keeps, opening what's sealed to them here, and leaving what they sign for an agent at
-//! its host only through `/local/mail`, which seals it to the agent.
+//! What a browser reaches Splint on this computer at: `http://localhost:7480`, where it serves the
+//! person's controls (`/owner`), each request waiting for them (`/requests/ID`) and an agent's link
+//! (`/ask`), all one page from [`crate::page::controls`]. An agent's link carries one signed ask after
+//! the `#`, which no browser sends anywhere: the page hands it here only once the person clicks to see
+//! it, as any website can open a link, and it then waits for an approval of it on the page, never going
+//! into a prompt by itself. The page shows each ask in its own fixed words, from the ask's typed
+//! changes, never the agent's. The controls sign through this computer's sign-in with no passkey, read
+//! through the sessions this keeps, open what's sealed to the person here, and leave what they sign for
+//! an agent at its host only through `/local/mail`, which seals it to the agent.
 //!
-//! A request header proves nothing about who sent it, so every call under `/local` but handing over a
-//! link's ask needs the page key: a secret made at each start, which only a page opened from a one-time
-//! opening gets, and only a program run as the person gets an opening, on the socket. So another of
-//! the computer's users, or a program that reaches the port but not the person's files, gets nothing.
-//! A call from another site carries no `Sec-Fetch-Site: same-origin`, or an `Origin` of its own, and is
-//! refused, and one naming any other host is refused, so a site the person visits can't rename itself
-//! to reach it. What a program running as the person can do, it can do anyway: ask the socket for an
-//! opening.
+//! A request header proves nothing about who sent it, so every call under `/local` needs the page key,
+//! but handing over a link's ask, trading an opening for the key, and unlocking: a secret made at each
+//! start, which only a page opened from a one-time opening, or one the person unlocked with their
+//! passphrase or the chip's prompt, gets. Only a program run as the person gets an opening, on the
+//! socket. So another of the computer's users, or a program that reaches the port but not the person's
+//! files, gets nothing without the passphrase, and wrong tries at it wait. A call from another site
+//! carries no `Sec-Fetch-Site: same-origin`, or an `Origin` of its own, and is refused, and one naming
+//! any other host is refused, so a site the person visits can't rename itself to reach it. What a
+//! program running as the person can do, it can do anyway: ask the socket for an opening.
 
 use std::sync::Arc;
 
@@ -35,10 +37,8 @@ use super::owner_page::NotLeft;
 use super::{Asked, Computer, port};
 use crate::failure::Failure;
 
-const PAGE: &str = include_str!("../page/web/ask.html");
-const SCRIPT: &str = include_str!("../page/web/ask.js");
-const POLICY: &str = "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; \
-connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
+const POLICY: &str =
+    "default-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
 
 pub fn routes(computer: Arc<Computer>) -> Router {
     let local = Router::new()
@@ -48,6 +48,8 @@ pub fn routes(computer: Arc<Computer>) -> Router {
         .route("/local/opened", post(opened))
         .route("/local/owner", post(make_owner))
         .route("/local/sign", post(sign))
+        .route("/local/unlock", post(unlock).get(unlock_asks))
+        .route("/local/lock", post(lock))
         .route("/local/session", post(start_sessions))
         .route("/local/read", post(read))
         .route("/local/mail", post(leave_mail))
@@ -69,23 +71,11 @@ pub fn routes(computer: Arc<Computer>) -> Router {
     .map(|controls| crate::page::controls::routes(Arc::new(controls)))
     .unwrap_or_default();
     Router::new()
-        .route(
-            "/ask",
-            get(|| async { file("text/html; charset=utf-8", PAGE) }),
-        )
-        .route(
-            "/ask.js",
-            get(|| async { file("text/javascript; charset=utf-8", SCRIPT) }),
-        )
         .merge(local)
         .layer(middleware::from_fn(only_this_address))
         .layer(middleware::from_fn(with_safety_headers))
         .with_state(computer)
         .merge(owner_page)
-}
-
-fn file(kind: &'static str, content: &'static str) -> Response {
-    ([(CONTENT_TYPE, kind)], content).into_response()
 }
 
 #[derive(Deserialize)]
@@ -246,14 +236,46 @@ struct ToSign {
     inputs: Vec<String>,
     #[serde(default)]
     passphrase: Option<String>,
+    /// The token of the signing session the page unlocked, in place of the passphrase.
+    #[serde(default)]
+    session: Option<String>,
 }
+
+/// The passphrase to sign with: the one given, or the one the page's signing session holds, for
+/// what a session signs. `Err` with the response to give, for a session that has ended.
+async fn passphrase_for(
+    computer: &Computer,
+    passphrase: Option<String>,
+    session: Option<String>,
+) -> Result<Option<String>, Response> {
+    match (passphrase, session) {
+        (Some(given), _) => Ok(Some(given)),
+        (None, Some(token)) => computer.unlocked_with(&token).await.ok_or_else(|| {
+            (StatusCode::UNAUTHORIZED, Json(json!({ "error": LOCKED }))).into_response()
+        }),
+        (None, None) => Ok(None),
+    }
+}
+
+const LOCKED: &str = "your controls locked, so unlock them again";
+const ALWAYS_ASKS: &str = "where you get paid is signed only with your passphrase, so type it";
 
 /// What the page prepared, signed after the owner key's own prompt, written from exactly that.
 async fn sign(State(computer): State<Arc<Computer>>, Json(body): Json<ToSign>) -> Response {
-    if let Err(why) = gated(&computer, body.passphrase.as_deref()) {
+    if body.passphrase.is_none()
+        && body.session.is_some()
+        && !super::unlock::session_signs(&body.inputs)
+    {
+        return refused(ALWAYS_ASKS);
+    }
+    let passphrase = match passphrase_for(&computer, body.passphrase, body.session).await {
+        Ok(passphrase) => passphrase,
+        Err(locked) => return locked,
+    };
+    if let Err(why) = gated(&computer, passphrase.as_deref()) {
         return refused(why);
     }
-    match computer.sign(body.inputs, body.passphrase).await {
+    match computer.sign(body.inputs, passphrase).await {
         Ok(signed) => Json(signed).into_response(),
         Err(failure) => refused(&failure.to_string()),
     }
@@ -265,16 +287,22 @@ struct SessionsAt {
     hosts: Vec<String>,
     #[serde(default)]
     passphrase: Option<String>,
+    #[serde(default)]
+    session: Option<String>,
 }
 
 async fn start_sessions(
     State(computer): State<Arc<Computer>>,
     Json(body): Json<SessionsAt>,
 ) -> Response {
-    if let Err(why) = gated(&computer, body.passphrase.as_deref()) {
+    let passphrase = match passphrase_for(&computer, body.passphrase, body.session).await {
+        Ok(passphrase) => passphrase,
+        Err(locked) => return locked,
+    };
+    if let Err(why) = gated(&computer, passphrase.as_deref()) {
         return refused(why);
     }
-    match computer.start_sessions(body.hosts, body.passphrase).await {
+    match computer.start_sessions(body.hosts, passphrase).await {
         Ok((sessions, code)) => Json(json!({ "sessions": sessions, "code": code })).into_response(),
         Err(failure) => refused(&failure.to_string()),
     }
@@ -378,6 +406,42 @@ async fn set_viewing(
     }
 }
 
+/// Unlocks the controls for the page that asks, with the passphrase or the chip's own prompt: sessions
+/// at the hosts this computer knows, the page key, and a signing session whose token only this page
+/// gets. It's how a page with no page key gets one, so it needs none, and wrong tries wait.
+async fn unlock(State(computer): State<Arc<Computer>>, Json(body): Json<Passphrase>) -> Response {
+    if computer.owner.kept_identity().is_none() {
+        return refused("there's no owner ID on this computer yet, so set it up first");
+    }
+    if let Err(why) = gated(&computer, body.passphrase.as_deref()) {
+        return refused(why);
+    }
+    match computer.unlock(body.passphrase).await {
+        Ok((sessions, session)) => Json(json!({
+            "key": computer.page_key.expose(),
+            "session": session,
+            "sessions": sessions,
+        }))
+        .into_response(),
+        Err(failure) => refused(&failure.to_string()),
+    }
+}
+
+/// What unlocking will ask for, before a page has its key: whether there's a Splint ID here to unlock,
+/// and whether the chip asks for itself. Nothing more, and it opens no prompt.
+async fn unlock_asks(State(computer): State<Arc<Computer>>) -> Json<Value> {
+    Json(json!({
+        "set_up": computer.owner.kept_identity().is_some(),
+        "chip": computer.owner.sign_in() == Some(SignIn::Chip) || computer.prompts_by_itself(),
+    }))
+}
+
+/// Ends the signing session, so the next change asks again.
+async fn lock(State(computer): State<Arc<Computer>>) -> Json<Value> {
+    computer.lock().await;
+    Json(json!({}))
+}
+
 async fn sign_out(State(computer): State<Arc<Computer>>) -> Json<Value> {
     computer.sign_out().await;
     Json(json!({}))
@@ -426,15 +490,15 @@ async fn only_from_this_page(request: Request, next: Next) -> Response {
 const PAGE_KEY: &str = "splint-page";
 
 /// Every call under `/local` needs the page key, but handing over a link's ask, which only puts it in
-/// front of the person, and trading an opening for the key.
+/// front of the person, trading an opening for the key, and unlocking, which takes the passphrase.
 async fn only_with_the_page_key(
     State(computer): State<Arc<Computer>>,
     request: Request,
     next: Next,
 ) -> Response {
     let path = request.uri().path();
-    let open_to_any_page =
-        request.method() == Method::POST && (path == "/local/asks" || path == "/local/page");
+    let open_to_any_page = path == "/local/unlock"
+        || (request.method() == Method::POST && (path == "/local/asks" || path == "/local/page"));
     let keyed = request
         .headers()
         .get(PAGE_KEY)

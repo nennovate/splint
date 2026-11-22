@@ -113,6 +113,22 @@ def said_in_its_log(person) -> int:
     return sum("Warning" in line and "no passphrase" in line for line in log.read_text().splitlines()) if log.exists() else 0
 
 
+def unlock_from_home(browser: Browser, passphrase: str) -> bool:
+    """Her controls, opened by `splint controls`, unlocked from the callout on what needs her: the
+    passphrase typed once, in the sheet the page asks in. True once the page is unlocked."""
+    if not browser.wait_for("document.getElementById('unlock-callout') !== null", 30):
+        return False
+    for _ in range(5):
+        time.sleep(0.8)
+        browser.click("#unlock-callout", "Unlock")
+        if browser.wait_for("document.getElementById('sheet-passphrase') !== null", 10):
+            browser.type_into("#sheet-passphrase", passphrase)
+            browser.eval("document.getElementById('sheet-go').click(); true")
+        if browser.wait_for("document.body.innerText.includes('Unlocked') && document.getElementById('unlock-callout') === null", 20):
+            return True
+    return False
+
+
 def warns_of_a_plain_key_file(browser: Browser) -> bool:
     """Whether the page in front of the person says their sign-in is a plain key file, and how to lock it."""
     return browser.wait_for("(() => { const said = document.getElementById('plain-key-file'); return !!said && !said.hidden && said.textContent.includes('no passphrase') && said.textContent.includes('splint computer lock'); })()", 30)
@@ -453,13 +469,13 @@ def a_website_opening_a_link_puts_nothing_in_front_of_the_person(signup: Signup,
         # running as the person can, so they never lock it.
         check("and warns that her sign-in is a plain key file, with how to lock it", warns_of_a_plain_key_file(browser), browser.text())
         browser.goto(f"http://127.0.0.1:{website.server_address[1]}/")
-        check("control: the website sends the browser to the link", browser.wait_for("document.body.innerText.includes('See what it asks')", 20), browser.text())
+        check("control: the website sends the browser to the link", browser.wait_for("document.body.innerText.includes('Open request')", 20), browser.text())
         time.sleep(3)
         eves = lambda: [one for one in every_waiting(port, same) if one.get("address") == f"eve~{host}"]  # noqa: E731
         # Bug caught: any website putting a stranger's ask in front of the person, and on a Mac into the
         # next Touch ID prompt with their own asks, with no click.
         check("a website opening an agent's link puts nothing waiting until the person clicks", eves() == [], eves())
-        check("control: the person clicks to see it", browser.click("body", "See what it asks"))
+        check("control: the person clicks to see it", browser.click("body", "Open request"))
         check("then it waits, shown as from a link", wait_until(lambda: [one.get("from_link") for one in eves()] == [True], 20), eves())
         check("in the page's words, with the warning", browser.wait_for(f"document.body.innerText.includes('let eve~{host} act for you, if you asked it to join')", 20), browser.text())
         asked = signup.walk.run_as("ivy", "splint ask --paid-at ivy@wallet.example --json")
@@ -527,30 +543,32 @@ def the_page_signs_what_it_listed_when_she_began(signup: Signup, ola, port: int,
         # Windows took for a sign-in and approved without knowing what it changed; and one agent's
         # two asks listed under its address twice, as if two requests.
         listed = browser.text()
-        check("under the agent that asked, once for both its asks, naming the settings they change, and saying approving signs them and logs her in nowhere",
-              listed.count(f"{ola.address} asks you to:") == 1 and f"set {ola.address} to Ask me first" in listed and f"set prices {ola.address} quotes to Wait for me" in listed
-              and "with your owner key on this computer" in listed and "doesn't log you in to a website or account" in listed, listed)
-        check("control: and asks for the passphrase, with no warning of a plain key file, as hers is locked", browser.wait_for("!document.getElementById('passphrase-row').hidden", 20) and browser.eval("document.getElementById('plain-key-file').hidden") is True)
+        check("under the agent that asked, once for both its asks, naming the settings they change",
+              listed.count("asks you for these changes") == 1 and f"set {ola.address} to Ask me first" in listed and f"set prices {ola.address} quotes to Wait for me" in listed, listed)
+        check("control: no warning of a plain key file, as hers is locked", browser.eval("document.getElementById('plain-key-file') === null") is True)
         # What the page hears on each refresh, kept by the page, so the run waits for a refresh rather
         # than for a time.
         browser.eval("""window.__heard = []; (() => { const fetched = window.fetch; window.fetch = async (url, options) => {
           const answer = await fetched(url, options);
           if (String(url) === '/local/asks' && !(options && options.method)) answer.clone().json().then((listed) => {
-            window.__heard.push([...listed.asks, ...(listed.later || []).flatMap((one) => one.asks)].map((ask) => ask.id)); });
+            window.__heard.push([...listed.asks, ...(listed.later || []).flatMap((ask) => ask.asks || [ask]).filter((ask) => ask && ask.id)].map((ask) => ask.id)); });
           return answer; }; })(); 1""")
-        browser.type_into("#passphrase", "correct horse")
+        time.sleep(1)
+        check("control: she clicks Approve on what's listed", browser.click(f"#ask-{first.get('id')}", "Approve"))
+        check("and the page asks for her passphrase, saying approving signs with her key and logs her in nowhere",
+              browser.wait_for("document.getElementById('sheet-passphrase') !== null", 20) and "with your key on this computer" in browser.text() and "doesn't log you in to any website" in browser.text(), browser.text())
+        browser.type_into("#sheet-passphrase", "correct horse")
         later = json.loads(signup.walk.run_as("ola", "splint ask --resume --json").stdout or "{}")
         check("control: a fooled agent asks while she types", later.get("status") == "waiting", later)
         check("control: the page hears of it on a refresh", browser.wait_for(f"window.__heard.some((ids) => ids.includes({json.dumps(later.get('id', ''))}))", 30))
-        check("control: she clicks Approve, which counts the two changes listed", browser.click("body", "Approve these 2 changes"))
+        browser.eval("document.getElementById('sheet-go').click(); true")
         waiting = lambda: [one.get("id") for one in every_waiting(port, same)]  # noqa: E731
         check("control: the page's approval is done", wait_until(lambda: first.get("id") not in waiting() and second.get("id") not in waiting(), 30), waiting())
         # Bug caught: the page's refresh rewriting what Approve sends while the person types, so an
         # ask that came in after she read the list is signed by her click.
-        check("Approve on the page signs what was listed when she began, never one that came in after", waiting() == [later.get("id")], waiting())
+        check("Approve on the page signs what was listed when she clicked, never one that came in after", waiting() == [later.get("id")], waiting())
     finally:
         browser.close()
-
 
 def she_signs_where_she_gets_paid_on_her_controls(signup: Signup, ola, port: int, same: dict, work) -> None:
     """Bugs caught: her controls on this computer preparing where she gets paid for a passkey to sign,
@@ -569,7 +587,7 @@ def she_signs_where_she_gets_paid_on_her_controls(signup: Signup, ola, port: int
     check("control: her agent's Signet holds no place yet", held() == (200, []), held())
     before = at_host()
     browser = Browser(work / "paid")
-    told = lambda: browser.eval("document.getElementById('told').innerText")  # noqa: E731
+    told = lambda: browser.eval("(document.getElementById('told') || {innerText: ''}).innerText")  # noqa: E731
 
     def approvals() -> int:
         """Every time the page asked this computer's sign-in to sign, which is what she approves."""
@@ -579,30 +597,24 @@ def she_signs_where_she_gets_paid_on_her_controls(signup: Signup, ola, port: int
     try:
         status, opened = http_on_socket("POST", socket_of(ola), "/v0/page")
         browser.goto(f"http://localhost:{port}/owner#open={opened.get('opening', '')}")
-        check("control: her controls open, asking for her sign-in's passphrase", browser.wait_for("document.getElementById('passphrase-here') !== null", 30), browser.text())
-        offered = False
-        # Clicked again if the page had just redrawn and said that click didn't count, as a person would.
-        for _ in range(5):
-            browser.type_into("#passphrase-here", "correct horse")
-            browser.click("main", "Show my controls")
-            offered = browser.wait_for("document.getElementById('where-paid') !== null", 20)
-            if offered:
-                break
-        check("control: one approval shows them, with Getting paid", offered, browser.text())
+        check("control: unlocking once shows them", unlock_from_home(browser, "correct horse"), browser.text())
+        browser.eval(f"go('agent', {{agent: {json.dumps(agent)}, tab: 'permissions'}}); true")
         # Bug caught: the page here taking a host's answer for something wrapped around it, so it read
         # no rules and nothing her agent left her, and showed no settings and nothing waiting.
-        check("her controls on this computer read her agent's rules at its host, and offer its settings", browser.wait_for("document.querySelector('#settings input[value=ask_me]') !== null", 30), browser.text())
+        check("her controls on this computer read her agent's rules at its host, and offer its settings", browser.wait_for(f"document.getElementById('level-ask_me-{agent}') !== null", 30), browser.text())
+        browser.eval("document.getElementById('where-paid-open').click(); true")
+        check("control: Getting paid is offered", browser.wait_for("document.getElementById('where-paid') !== null", 20), browser.text())
         browser.type_into("#where-paid", place)
-        browser.type_into("#passphrase-here", "correct ")
+        browser.type_into("#paid-passphrase", "correct ")
         # Home is drawn again while she's halfway through her passphrase, as it is whenever what it
         # shows changed: here her agent's rules, approved in a terminal meanwhile.
-        browser.eval("window.__drawn = document.getElementById('getting-paid'); true")
+        browser.eval("window.__drawn = lastDrawn; true")
         asked = json.loads(signup.walk.run_as("ola", "splint ask --level ask-me --json").stdout or "{}")
         waiting = lambda: [one.get("id") for one in http("GET", port, "/local/asks", headers=same)[1].get("asks", [])]  # noqa: E731
         check("control: her agent asks for a change", wait_until(lambda: asked.get("id") in waiting(), 20), waiting())
         status, approved = http("POST", port, "/local/approve", {"ids": [asked.get("id")], "passphrase": "correct horse"}, same)
         check("control: which she approves away from the page", status == 200 and approved.get("approved") == 1, approved)
-        check("control: and home is drawn again while she types", browser.wait_for("window.__drawn && !document.contains(window.__drawn)", 60), browser.text())
+        check("control: and the page is drawn again while she types", browser.wait_for("lastDrawn > window.__drawn", 60), browser.text())
         # The rest, typed where the cursor is, as her next keys go: nothing here puts it back in the box.
         browser.call("Input.insertText", text="horse")
         asked_before = approvals()
@@ -610,9 +622,9 @@ def she_signs_where_she_gets_paid_on_her_controls(signup: Signup, ola, port: int
         # count, and asks for nothing. The button takes no second click while an approval is out.
         for _ in range(5):
             time.sleep(0.8)
-            if not browser.click("#getting-paid", "Sign where you get paid") or wait_until(lambda: approvals() > asked_before, 5):
+            if not browser.click("#sheet-where-paid", "Sign where you get paid") or wait_until(lambda: approvals() > asked_before, 5):
                 break
-        signed = browser.wait_for("document.getElementById('told').innerText.startsWith('Signed.')", 30)
+        signed = browser.wait_for("(document.getElementById('told') || {innerText: ''}).innerText.startsWith('Signed.')", 30)
         check("her controls on this computer sign where she gets paid, with the passphrase she typed through a redraw", signed, told())
         check("in one approval", approvals() - asked_before == 1, approvals() - asked_before)
     finally:
@@ -819,8 +831,8 @@ def controls_say_why_splint_here_wont_start(signup: Signup, port: int) -> None:
 
 def una_becomes_an_owner_on_her_page_with_a_passphrase(signup: Signup, port: int, work) -> None:
     """The page's own way of making an owner ID, in a real browser, where no chip keeps the sign-in.
-    Bug caught: "Create your owner ID" making a plain key file, which the page itself then can't sign
-    with, or asking for a passphrase with no word on why."""
+    Bug caught: setting up making a plain key file, which the page itself then can't sign with, or
+    asking for a passphrase with no word on why."""
     una = signup.device("una")
     on_the_computer(una, port)
     started = signup.walk.run_as("una", "splint computer start")
@@ -834,21 +846,22 @@ def una_becomes_an_owner_on_her_page_with_a_passphrase(signup: Signup, port: int
     try:
         browser.goto(link.group(0))
         check("the page asks her to choose a passphrase, typed twice", browser.wait_for("!!document.getElementById('new-passphrase') && !!document.getElementById('new-passphrase-again')", 30), browser.text())
-        check("and says why: it locks her sign-in's key file", "locks your sign-in's key file" in browser.text(), browser.text())
+        browser.click("body", "Why a passphrase?")
+        check("and says why: it locks her key", browser.wait_for("document.body.innerText.includes('It locks your key on this computer')", 10), browser.text())
         time.sleep(1)
-        check("control: she clicks Create with nothing typed", browser.click("body", "Create your owner ID"))
+        check("control: she clicks Continue with nothing typed", browser.click("body", "Continue"))
         check("which makes nothing, and says a passphrase is needed", browser.wait_for("document.getElementById('told').textContent.includes('passphrase')", 20) and sign_in_of(una).get("owner") is None, browser.text())
         browser.type_into("#new-passphrase", PASSPHRASE)
         browser.type_into("#new-passphrase-again", PASSPHRASE)
         time.sleep(1)
-        check("control: she clicks Create with one chosen", browser.click("body", "Create your owner ID"))
-        check("she's an owner, on her controls", browser.wait_for("!!document.getElementById('who') && document.querySelector('h1').textContent === 'Your controls'", 60), browser.text())
+        check("control: she clicks Continue with one chosen", browser.click("body", "Continue"))
+        check("she's an owner, on her controls", browser.wait_for("document.querySelector('.shell') !== null && document.getElementById('account') !== null", 60), browser.text())
         here = sign_in_of(una)
         check("with a sign-in locked by the passphrase she chose", "locked with a passphrase" in str(here.get("sign_in")) and here.get("plain_key_file") is False, here)
         sessions = http("GET", port, "/local/here", headers=page_key(una, port))[1].get("sessions", [])
         # Bug caught: the passphrase asked for again, or the first sign-in failing, in the same click.
         check("and typing it once also signed her in, with nothing asked twice", len(sessions) == 1, sessions)
-        check("from then on the page asks for it to approve, with no warning of a plain key file", browser.wait_for("!!document.getElementById('passphrase-here')", 20) and browser.eval("!document.getElementById('plain-key-file')") is True, browser.text())
+        check("from then on her controls are unlocked, with no warning of a plain key file", browser.wait_for("document.body.innerText.includes('Unlocked')", 20) and "no passphrase" not in browser.text(), browser.text())
     finally:
         browser.close()
 

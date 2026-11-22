@@ -27,7 +27,7 @@ use crate::host_calls::SealedMail;
 use crate::page::controls::{bounded, host_url};
 
 /// The most hosts one prompt makes sessions for, as the page signs in at.
-const MOST_HOSTS: usize = 6;
+pub(super) const MOST_HOSTS: usize = 6;
 const HOUR: u64 = 60 * 60;
 const READ_TIMEOUT_SECS: u64 = 30;
 
@@ -148,6 +148,7 @@ impl Computer {
 
     pub async fn sign_out(&self) {
         self.sessions.lock().await.clear();
+        self.lock().await;
     }
 
     pub async fn sessions_shown(&self) -> Vec<SessionShown> {

@@ -1,91 +1,10 @@
-:root {
-  --ink: #1d1d1f; --soft: #5f6368; --card: #ffffff; --page: #f5f5f7; --line: #d9d9de;
-  --accent: #2456c7; --accent-ink: #ffffff; --good: #1e7d3c; --warn: #875600; --stop: #b3261e;
-  --shaded: #eef0f4; --field: #8a8d94; --radius: 12px;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --ink: #ececf0; --soft: #a3a6ad; --card: #1f2024; --page: #141518; --line: #34363c;
-    --accent: #7aa2ff; --accent-ink: #0d1222; --good: #5ccf7f; --warn: #e7b04a; --stop: #ff7b72;
-    --shaded: #2a2c32; --field: #6b6e76;
-  }
-}
-* { box-sizing: border-box; }
-body { margin: 0; background: var(--page); color: var(--ink); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
-/* The bottom padding leaves room to scroll the last of the page clear of a message. */
-main { max-width: 44rem; margin: 0 auto; padding: 1.5rem 1rem 5rem; }
-h1 { font-size: 1.6rem; margin: 0.5rem 0 1rem; }
-h2 { font-size: 1.15rem; margin: 2rem 0 0.75rem; }
-h3 { font-size: 1rem; margin: 0 0 0.5rem; display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
-h4 { font-size: 0.9rem; margin: 1rem 0 0.25rem; color: var(--soft); }
-.soft { color: var(--soft); }
-.small { font-size: 0.85rem; }
-.card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 1rem; margin: 0 0 0.75rem; overflow-wrap: anywhere; }
-.acts { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin: 1rem 0; }
-button { font: inherit; border-radius: 999px; border: 1px solid var(--field); background: var(--card); color: var(--ink); padding: 0.55rem 1.1rem; cursor: pointer; }
-button.main { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
-button:disabled { opacity: 0.5; cursor: default; }
-.code { font: 1.2rem/1.6 ui-monospace, "SF Mono", Menlo, monospace; background: var(--card); border: 1px dashed var(--line); border-radius: var(--radius); padding: 0.75rem 1rem; overflow-wrap: anywhere; user-select: all; }
-.banner { border-radius: var(--radius); padding: 0.6rem 0.9rem; background: var(--shaded); }
-.banner.stop { color: var(--stop); }
-.banner.warn { color: var(--warn); }
-.banner.warn, .banner.stop { border-left: 4px solid currentColor; }
-/* A message floats over the page, so nothing under it moves when it comes or goes, and clicks go through it. */
-#told { position: fixed; left: 50%; bottom: max(1rem, env(safe-area-inset-bottom)); transform: translateX(-50%); width: max-content; max-width: min(40rem, calc(100% - 32px)); margin: 0; padding: 0.6rem 1rem; text-align: center; background: var(--ink); color: var(--page); border-radius: var(--radius); box-shadow: 0 4px 16px rgb(0 0 0 / 0.2); z-index: 10; pointer-events: none; }
-#told.bad { background: var(--card); color: var(--stop); border: 1px solid var(--stop); }
-.dot { width: 0.6rem; height: 0.6rem; border-radius: 50%; background: var(--line); display: inline-block; }
-.dot.good { background: var(--good); }
-.dot.warn { background: var(--warn); }
-.dot.stop { background: var(--stop); }
-.dot.pulse { background: var(--accent); animation: pulse 1.6s ease-in-out infinite; }
-@keyframes pulse { 50% { opacity: 0.25; } }
-@media (prefers-reduced-motion: reduce) { .dot.pulse { animation: none; } }
-.tag.stop { color: var(--stop); margin-left: 0.5rem; font-size: 0.85rem; }
-.app { font-size: 0.8rem; color: var(--soft); margin: 0.75rem 0 0; overflow-wrap: anywhere; }
-.summary-type { font-weight: 600; margin: 0 0 0.5rem; }
-.summary-terms { display: grid; grid-template-columns: minmax(6rem, max-content) 1fr; gap: 0.25rem 1rem; margin: 0; }
-.summary-terms > div { display: contents; }
-.summary-terms dt { color: var(--soft); }
-.summary-terms dd { margin: 0; white-space: pre-line; }
-.summary-terms .chosen dd span { background: var(--shaded); border-radius: 4px; padding: 0 0.25rem; }
-.exact { display: grid; grid-template-columns: minmax(6rem, max-content) 1fr; gap: 0.25rem 1rem; font-size: 0.85rem; }
-.exact dd { margin: 0; overflow-wrap: anywhere; }
-.id { display: block; color: var(--soft); font-size: 0.8rem; }
-.by { color: var(--soft); font-size: 0.85rem; }
-details.more summary { cursor: pointer; color: var(--soft); font-size: 0.9rem; }
-fieldset { border: 0; margin: 0; padding: 0; display: grid; gap: 0.4rem; }
-.option { display: grid; grid-template-columns: auto 1fr; gap: 0 0.5rem; align-items: baseline; }
-.option .soft { grid-column: 2; }
-.block { display: block; }
-.mono, .full-id { font-family: ui-monospace, "SF Mono", Menlo, monospace; }
-.full-id { font-size: 0.85rem; overflow-wrap: anywhere; user-select: all; }
-.id-row { display: flex; flex-wrap: wrap; gap: 0.25rem 0.75rem; align-items: center; }
-dl.facts { display: grid; grid-template-columns: minmax(7rem, max-content) 1fr; gap: 0.6rem 1rem; margin: 0 0 1.25rem; }
-dl.facts dt { font-weight: 600; }
-dl.facts dd { margin: 0; overflow-wrap: anywhere; }
-.field { margin: 0 0 0.5rem; }
-.field label { display: block; font-weight: 600; margin: 0 0 0.3rem; }
-.field input { font: inherit; width: 100%; max-width: 24rem; padding: 0.45rem 0.7rem; border: 1px solid var(--field); border-radius: 8px; background: var(--card); color: var(--ink); }
-.field p { margin: 0.3rem 0 0; }
-button.link { background: none; border: 0; border-radius: 0; padding: 0; color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
-button.small-button { font-size: 0.85rem; padding: 0.25rem 0.75rem; }
-/* A hyphen is a place to break, so without this the code breaks after "splint-" and leaves it alone on a line. */
-#pairing-code { word-break: break-all; font-size: 1rem; }
-details > summary { padding: 0.4rem 0; }
-@media (pointer: coarse) {
-  button, details > summary { min-height: 44px; }
-  button.link { padding: 0.6rem 0; }
-}
-.who { display: flex; flex-wrap: wrap; gap: 0.25rem 1rem; justify-content: space-between; align-items: baseline; margin: 0 0 0.5rem; padding: 0.5rem 0.9rem; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); font-size: 0.9rem; overflow-wrap: anywhere; }
-.who a, details.menu summary { color: var(--accent); }
-details.menu { margin: 1rem 0; }
-details.menu summary { cursor: pointer; font-size: 0.9rem; }
-details.menu .menu-body { padding: 0.25rem 0 0 1rem; }
-ul.plain { list-style: none; padding: 0; margin: 0; }
-ul { padding-left: 1.2rem; }
-ul.defaults li { margin: 0.35rem 0; }
-@media (max-width: 480px) {
-  main { padding: 1rem 16px 2rem; }
-  .summary-terms, .exact, dl.facts { grid-template-columns: 1fr; }
-  dl.facts dd { margin-bottom: 0.4rem; }
-}
+/* Your controls: what only this page needs beyond splint.css. */
+
+/* The recovery code, shown once: big enough to copy by hand without mistakes. */
+.code-shown { padding: 14px 16px; font-family: var(--mono); font-size: 18px; letter-spacing: 0.04em; text-align: center; word-break: break-all; user-select: all; }
+
+/* An agent's ask, its changes listed under it. */
+.changes { margin: 0; padding: 0; list-style: none; }
+
+/* Where the person gets paid, one a line. */
+#where-paid { min-height: 96px; }

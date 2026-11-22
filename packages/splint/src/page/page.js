@@ -351,9 +351,10 @@ function kindCard(waiting) {
 // A number its kind doesn't label as money never waits for the owner, so it's said where it's shown.
 function numbersNotMoney(exchange) {
   const names = exchange.numbers_not_money || [];
-  return names.length
-    ? el("p", { class: "why" }, `A number not labelled as money: ${names.join(", ")}. It doesn't wait for you.`)
-    : null;
+  if (!names.length) return null;
+  const shown = names.map((name) => fieldLabel(withHiddenShown(String(name))).label);
+  const list = shown.length > 1 ? `${shown.slice(0, -1).join(", ")} and ${shown[shown.length - 1]}` : shown[0];
+  return el("p", { class: "why" }, `${capital(list.toLowerCase())} ${shown.length === 1 ? "isn't" : "aren't"} an amount of money, so ${shown.length === 1 ? "it doesn't" : "they don't"} wait for you.`);
 }
 
 // Another step waiting on the same exchange, as its own card says it.
@@ -452,7 +453,14 @@ function dialogueLine(line, role) {
   const seen = line.by === role && line.received ? " · received" : "";
   return el("li", { class: kinds.join(" ") },
     el("div", { class: "said" }, [line.who, ORIGINS[line.origin], short(line.at)].filter(Boolean).join(" · ") + seen),
-    el("div", {}, line.says));
+    el("div", {}, plainSaid(line.says)));
+}
+
+/** A plain message as the quoted words alone, where the record says `said: text "…"`: the quotes, and
+ * what's escaped inside them, stay as the record has them, so someone's words read as theirs. */
+function plainSaid(says) {
+  const found = /^said: text ("(?:[^"\\]|\\.)*")$/.exec(String(says));
+  return found ? found[1] : says;
 }
 
 function dialogue(exchange) {
@@ -546,6 +554,12 @@ function riskyBanners(risky) {
 }
 
 /** Who kept the agent busy today, busiest first, with anyone sending far more than on a usual day marked. */
+/** An address, or any text, that breaks only after a tilde, never in the middle of a name or a number. */
+function breakable(text) {
+  const at = String(text).indexOf("~");
+  return at < 0 ? [String(text)] : [String(text).slice(0, at + 1), el("wbr", {}), String(text).slice(at + 1)];
+}
+
 function usagePart(usage) {
   if (!usage || !usage.length) return [];
   const busier = usage.filter((line) => line.busier_than_usual);
@@ -555,11 +569,11 @@ function usagePart(usage) {
     el("div", { class: "table" }, el("table", { class: "list usage" },
       el("thead", {}, el("tr", {}, el("th", {}, "Who"), el("th", {}, "Came today"), el("th", {}, "Usual day"), el("th", {}, "Notes in and out"), el("th", {}, "Requests in and out"))),
       el("tbody", {}, ...usage.map((line) => el("tr", { class: line.busier_than_usual ? "busier" : "" },
-        el("td", {}, line.address),
-        el("td", {}, String(line.arrivals_today)),
-        el("td", {}, String(line.usual_per_day)),
-        el("td", {}, `${line.texts_from} / ${line.texts_to}`),
-        el("td", {}, `${line.new_requests_from} / ${line.new_requests_to}`)))))),
+        el("td", {}, ...breakable(line.address)),
+        el("td", { "data-label": "Came today" }, String(line.arrivals_today)),
+        el("td", { "data-label": "Usual day" }, String(line.usual_per_day)),
+        el("td", { "data-label": "Notes in and out" }, `${line.texts_from} / ${line.texts_to}`),
+        el("td", { "data-label": "Requests in and out" }, `${line.new_requests_from} / ${line.new_requests_to}`)))))),
   ];
 }
 
@@ -618,7 +632,7 @@ function exchangeRow(exchange) {
   },
     el("summary", { class: "cells" },
       el("span", { class: "who" }, exchange.with.label, standingTag(standing)),
-      el("span", { class: "what" }, typeName(exchange.type)),
+      el("span", { class: "what" }, String(exchange.type).startsWith("type/") ? "Agreeing a kind" : typeName(exchange.type)),
       el("span", { class: "state" }, dot(STATE_DOTS[exchange.state] ?? "accent"), el("span", {}, STATES[exchange.state] || exchange.state)),
       el("span", { class: "when", title: when(exchange.last_at) }, short(exchange.last_at))),
     el("div", { class: "row-body" },
@@ -674,17 +688,22 @@ function linkFieldInput(type, name, rule) {
   if (rule.times) {
     const room = Math.min(rule.times.max, 5);
     const times = remembered || [];
+    // One empty field at a time: the next shows once one's filled, up to the type's most.
+    const inputs = Array.from({ length: room }, (_, index) => el("input", { type: "datetime-local", id: `${id}-${index}`, value: times[index] || "", step: rule.times.grid_secs }));
+    const showNext = () => {
+      const filled = inputs.filter((input) => input.value).length;
+      inputs.forEach((input, index) => { input.hidden = index > filled && !input.value; });
+    };
+    inputs.forEach((input, index) => input.addEventListener("input", () => {
+      const now = linkForm.fields.get(key) || [];
+      now[index] = input.value;
+      linkForm.fields.set(key, now);
+      showNext();
+    }));
+    showNext();
     return [
-      el("span", { class: "field-name" }, label, el("span", { class: "soft" }, ` · up to ${room}, they pick one`)),
-      ...Array.from({ length: room }, (_, index) => {
-        const input = el("input", { type: "datetime-local", id: `${id}-${index}`, value: times[index] || "", step: rule.times.grid_secs });
-        input.addEventListener("input", () => {
-          const now = linkForm.fields.get(key) || [];
-          now[index] = input.value;
-          linkForm.fields.set(key, now);
-        });
-        return input;
-      }),
+      el("span", { class: "field-name" }, label, el("span", { class: "soft" }, room > 1 ? ` · up to ${room}, they pick one` : "")),
+      ...inputs,
     ];
   }
   const numeric = Boolean(rule.range);
@@ -1222,14 +1241,13 @@ function contactRow(contact) {
       : [dot("good"), "Contact"];
   return el("tr", { id: `contact-${contact.agent}` },
     el("td", { class: "name" },
-      contact.label,
-      el("span", { class: "soft" }, contact.never_a_contact ? "Never a contact" : contact.address),
+      ...breakable(contact.label),
+      el("span", { class: "soft" }, ...(contact.never_a_contact ? ["Never a contact"] : breakable(contact.address))),
       showIds ? el("span", { class: "id" }, contact.agent) : null),
     el("td", { class: "soft small" },
       [contact.types.map(typeName).join(", "), !contact.blocked && contact.text ? "words" : ""].filter(Boolean).join(" · ") || "Nothing"),
     el("td", {}, el("span", { class: "state" }, ...status)),
-    el("td", { class: "soft small", title: contact.sealed_why }, contact.sealed ? "Sealed" : "Unsealed",
-      el("span", { class: "soft" }, contact.sealed_why)),
+    el("td", { class: "soft small", title: contact.sealed_why }, contact.sealed ? "Sealed" : "Unsealed"),
     el("td", { class: "acts-cell" },
       contact.blocked
         ? contact.never_a_contact

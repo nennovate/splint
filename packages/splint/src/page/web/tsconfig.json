@@ -15,9 +15,9 @@
     "types": []
   },
   "files": [
+    "preact.d.ts",
     "../terms.js",
     "keys.js",
-    "owner.js",
-    "ask.js"
+    "owner.js"
   ]
 }

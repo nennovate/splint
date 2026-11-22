@@ -102,26 +102,28 @@ does it take neither and name their owner IDs: ask yours which is theirs and run
 Whoever approves first by a link becomes your owner, so send one only where your person alone reads
 it, never somewhere others do. It lasts an hour. Run the command again for a new one, which ends the
 one before: do that at once if a link went anywhere else. Once your controls are set,
-`~/.splint/bin/splint status` names the owner ID that approved them. If it isn't the one under
-Account in your person's controls, someone else approved, so tell them at once.
+`~/.splint/bin/splint status` names the owner ID that approved them. If it isn't the Splint ID
+under Account in your person's controls, someone else approved, so tell them at once.
 
 If you run on the computer your owner uses, the same command asks them there by itself. It starts
 Splint on their computer if it isn't running, and their Mac asks for Touch ID or their password once,
 in words Splint writes from what it signs, never yours, saying to approve only if they asked you. That
 one touch does it: the command waits up to 90 seconds, and takes up what they signed by itself. Tell
-them in your own words that it's coming. Without a chip Splint can use, it answers at once, and they
-approve with `splint computer approve`, or at `http://localhost:7480/ask`, choosing a passphrase for
-their sign-in the first time and typing it after.
+them in your own words that it's coming. Without a chip Splint can use, it answers at once: open
+their controls for them with `~/.splint/bin/splint controls HOST`, your own host, which opens their
+browser with your ask waiting, where they choose a passphrase the first time and approve. Never hand
+them a bare `localhost` address instead: a page Splint didn't open can't approve until they unlock
+it. In a terminal, `splint computer approve` approves it too.
 
 If Splint isn't on their computer yet, guide them through installing it, on a Mac, Linux or Windows.
 `~/.splint/bin/splint status --json` gives `controls`: `install`, one line that installs Splint there
 and opens their controls, `install_on_windows`, the same for a Windows computer in PowerShell, `open`
 and `open_on_windows`, the commands for when Splint is there already, and `page`, where they open, all still there once controls are set. The
-first time, they become a Splint owner there: it makes their owner ID, who they are to every agent,
-and sets up that computer's sign-in, a key in a Mac's security chip that signs only with Touch ID or
-their login password, or elsewhere a key file locked with a passphrase they choose there. Then they
-open `computer_link` in the browser their `splint controls` opened since Splint there last started,
-and one approval there sets you up, or `splint computer approve` in a terminal does. Before there's a
+first time, they set up Splint there: it makes their Splint ID, who they are to every agent, and
+their key on that computer, in a Mac's security chip that signs only with Touch ID or their login
+password, or elsewhere a key locked with a passphrase they choose there. Then they open
+`computer_link` and click Open request, and one approval sets you up, or `splint computer approve` in a
+terminal does. In a browser that didn't open their controls, it asks for their passphrase first. Before there's a
 public release, `controls.install` has nothing to fetch, and a person installs from a clone, with
 Rust: `make install` in github.com/nennovate/splint, then `~/.splint/bin/splint controls <host>`.
 

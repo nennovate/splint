@@ -103,6 +103,7 @@ fn waiting_words(
     controls: Option<u64>,
     waits: Waits,
     waited: Option<Duration>,
+    host: &str,
 ) -> String {
     let splint = home.command();
     let unanswered = match waited {
@@ -112,10 +113,11 @@ fn waiting_words(
     let here = match waits {
         Waits::ByLinkOnly => "Asked.".to_owned(),
         Waits::Here => format!(
-            "Asked. Where your person uses this computer, it waits for them here: they approve it \
-             with splint computer approve in a terminal, or at http://localhost:{}/ask in the \
-             browser their splint controls opened.{unanswered}",
-            computer::port()
+            "Asked. Where your person uses this computer, open it for them: run {splint} controls \
+             {host}, which opens their controls in their browser with this waiting at the top, \
+             ready to approve. Never hand them a bare localhost address instead: a page Splint \
+             didn't open can't approve until they unlock it. In a terminal, splint computer approve \
+             approves it too.{unanswered}"
         ),
         Waits::AtAPrompt => format!(
             "Asked. This Mac asks whoever is at it for Touch ID or their password, and that one \
@@ -127,8 +129,9 @@ fn waiting_words(
     } else {
         "If they aren't at this computer, give them"
     };
-    let on_their_computer = "they approve it in the browser their splint controls opened since \
-                             Splint there last started, or with splint computer approve in a terminal";
+    let on_their_computer = "they approve it in the browser their Splint controls open in, \
+                             unlocking with their passphrase if it asks, or with splint computer \
+                             approve in a terminal";
     let by_link = format!(
         "{give} computer_link: it opens on Splint on their own computer, where {on_their_computer}. \
          If Splint isn't there yet, controls.install in {splint} status --json is the line that \
@@ -434,6 +437,9 @@ pub async fn ask(home: &Home, flags: &[&str]) -> Result<Asking, Failure> {
     }
     let hours = hours.or(controls.then_some(CONTROLS_HOURS));
     let who = signet.who().await?;
+    let host = splint_core::parse_address(&who.address)
+        .map(|(_, domain)| domain.to_owned())
+        .unwrap_or_default();
     let body = json!({"changes": changes, "hours": hours});
     let signed: Signed = serde_json::from_value(signet.agent_post("/v0/asks", &body).await?)
         .map_err(|_| Failure::refused("Signet's answer can't be read"))?;
@@ -500,7 +506,7 @@ pub async fn ask(home: &Home, flags: &[&str]) -> Result<Asking, Failure> {
     }
     let controls = hours.filter(|_| controls);
     Ok(Asking {
-        said: waiting_words(home, &signed.id, controls, waits, waited),
+        said: waiting_words(home, &signed.id, controls, waits, waited, &host),
         id: signed.id,
         // What Signet said of one only it holds, and waiting for one Splint here just took.
         status: if here {

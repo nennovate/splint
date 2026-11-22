@@ -55,11 +55,29 @@ pub const RETIRED_SCHEMA: &str = "
     DROP TABLE IF EXISTS owner_reading_keys;
 ";
 
-/// Where the page was, plain words for whoever follows a link an older agent gave them. Plain text
-/// runs nothing, and the policy asks the browser for nothing either, a passkey least of all.
-const OLD_PAGE_WORDS: &str = "Splint hosts no longer serve an owner page. Your controls are in \
-Splint on your own computer. Ask your agent for its link to them, with the line that installs \
-Splint if you don't have it yet.\n";
+/// Where the page was, in plain words, for whoever follows a link an older agent gave them. It's styled
+/// like every page a person sees, from the host's own stylesheets, and runs nothing: the policy lets in
+/// nothing but those, and asks the browser for nothing, a passkey least of all.
+const OLD_PAGE: &str = r#"<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="referrer" content="no-referrer">
+<title>Splint</title>
+<link rel="stylesheet" href="/tokens.css">
+<link rel="stylesheet" href="/guest.css">
+</head>
+<body>
+<main>
+<p class="eyebrow">Splint</p>
+<h1>Your controls are on your own computer</h1>
+<p class="hint">Hosts don't serve them. Ask your agent to open your Splint controls. If Splint isn't on your computer yet, your agent gives you the line that installs it.</p>
+</main>
+</body>
+</html>
+"#;
 
 pub fn routes() -> Router<Arc<Host>> {
     Router::new()
@@ -70,15 +88,16 @@ pub fn routes() -> Router<Arc<Host>> {
 async fn old_page() -> Response {
     (
         [
-            (CONTENT_TYPE, "text/plain; charset=utf-8"),
+            (CONTENT_TYPE, "text/html; charset=utf-8"),
             (
                 CONTENT_SECURITY_POLICY,
-                "default-src 'none'; frame-ancestors 'none'",
+                "default-src 'none'; style-src 'self'; base-uri 'none'; form-action 'none'; \
+                 frame-ancestors 'none'",
             ),
             (X_CONTENT_TYPE_OPTIONS, "nosniff"),
             (CACHE_CONTROL, "no-store"),
         ],
-        OLD_PAGE_WORDS,
+        OLD_PAGE,
     )
         .into_response()
 }

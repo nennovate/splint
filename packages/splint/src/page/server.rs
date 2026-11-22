@@ -44,6 +44,8 @@ const SCRIPT: &str = include_str!("page.js");
 /// What this page draws the same way as the owner page on this computer.
 const SHARED_SCRIPT: &str = include_str!("terms.js");
 const STYLE: &str = include_str!("page.css");
+/// Splint's tokens, shared by every page a person sees.
+const TOKENS: &str = include_str!("../../../style/tokens.css");
 
 /// Nothing here runs or loads unless it's this page's own script and style, so text that somehow
 /// became markup still couldn't do anything.
@@ -184,6 +186,10 @@ pub fn routes(page: Arc<Page>) -> Router {
         .route(
             "/page.css",
             get(|| async { file("text/css; charset=utf-8", STYLE) }),
+        )
+        .route(
+            "/tokens.css",
+            get(|| async { file("text/css; charset=utf-8", TOKENS) }),
         )
         .merge(calls)
         // A preflight from another site reaches this too, and gets no answer that lets it go ahead.

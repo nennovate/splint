@@ -674,9 +674,9 @@ You sign on your own computer, not the machine I run on, with Splint there and n
 
      {open_on_windows}
 
-2. The first time, become a Splint owner there: it makes your owner ID and sets up that computer's
-   sign-in. Then open the link I'm sending that starts http://localhost:7480/ in that same browser,
-   and one approval there sets me up.
+2. The first time, set up Splint there: it makes your Splint ID and your key on that computer. Then
+   open the link I'm sending, which starts http://localhost:7480/, click Open request, and one
+   approval there sets me up.
 
 Approve me only if this came from me. Never send me your recovery code or any key.
 

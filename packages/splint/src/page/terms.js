@@ -18,6 +18,8 @@ function el(tag, props, ...kids) {
       made.addEventListener("click", value);
     } else if (name === "class") {
       made.className = value;
+    } else if (name.startsWith("data-")) {
+      made.setAttribute(name, String(value));
     } else {
       made[name] = value;
     }

@@ -51,6 +51,11 @@ const SCRIPT: &str = include_str!("web/owner.js");
 const KEYS_SCRIPT: &str = include_str!("web/keys.js");
 const TERMS_SCRIPT: &str = include_str!("terms.js");
 const STYLE: &str = include_str!("web/owner.css");
+/// Splint's tokens, shared by every page a person sees, and the controls' components.
+const TOKENS: &str = include_str!("../../../style/tokens.css");
+const SHARED_STYLE: &str = include_str!("../../../style/splint.css");
+/// Preact with htm, kept in the repo as it came: what the page draws with.
+const DRAWING_SCRIPT: &str = include_str!("web/preact.js");
 
 /// One fixed port, so the page's origin, and what it remembers on this browser, stays the same.
 pub const DEFAULT_PORT: u16 = 7480;
@@ -69,6 +74,9 @@ static PAGE: LazyLock<String> = LazyLock::new(|| {
         .replace("{keys_integrity}", &integrity(KEYS_SCRIPT))
         .replace("{terms_integrity}", &integrity(TERMS_SCRIPT))
         .replace("{style_integrity}", &integrity(STYLE))
+        .replace("{tokens_integrity}", &integrity(TOKENS))
+        .replace("{shared_style_integrity}", &integrity(SHARED_STYLE))
+        .replace("{drawing_integrity}", &integrity(DRAWING_SCRIPT))
 });
 
 /// The page reaches only this server, which relays to hosts.
@@ -344,11 +352,13 @@ pub async fn serve(home_host: &str, port: u16, open: bool) -> Result<String, Fai
 }
 
 pub(crate) fn routes(controls: Arc<Controls>) -> Router {
+    let page_html = || async { file("text/html; charset=utf-8", PAGE.as_str()) };
     let page = Router::new()
-        .route(
-            "/owner",
-            get(|| async { file("text/html; charset=utf-8", PAGE.as_str()) }),
-        )
+        // One page: the controls, each request waiting for the person, and an agent's link to one.
+        .route("/owner", get(page_html))
+        .route("/ask", get(page_html))
+        .route("/requests", get(page_html))
+        .route("/requests/{id}", get(page_html))
         .route(
             "/owner.js",
             get(|| async { file("text/javascript; charset=utf-8", SCRIPT) }),
@@ -364,6 +374,18 @@ pub(crate) fn routes(controls: Arc<Controls>) -> Router {
         .route(
             "/owner.css",
             get(|| async { file("text/css; charset=utf-8", STYLE) }),
+        )
+        .route(
+            "/tokens.css",
+            get(|| async { file("text/css; charset=utf-8", TOKENS) }),
+        )
+        .route(
+            "/splint.css",
+            get(|| async { file("text/css; charset=utf-8", SHARED_STYLE) }),
+        )
+        .route(
+            "/preact.js",
+            get(|| async { file("text/javascript; charset=utf-8", DRAWING_SCRIPT) }),
         )
         .route("/.well-known/splint/host", get(describe))
         .route("/relay/{domain}/{*path}", any(relay));

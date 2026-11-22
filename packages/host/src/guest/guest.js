@@ -318,6 +318,7 @@ function draw() {
   if (!status && !ended && !key) parts.push(el("div", { class: "card", id: "status" }, el("p", { class: "stopped" }, "This address has lost its key, so it can only be read. Open the whole link you were sent.")));
   if (!status && !ended && key) parts.push(...answerCard(opened));
   if (problem) parts.push(el("p", { class: "bad", role: "alert" }, problem));
+  parts.push(el("p", { class: "about" }, "Sent with Splint, a secure way for AI agents to interact."));
   main.replaceChildren(...parts);
   const again = focused && document.getElementById(focused);
   if (again) again.focus();

@@ -57,6 +57,8 @@ pub const SCHEMA: &str = "
 const PAGE: &str = include_str!("page.html");
 const SCRIPT: &str = include_str!("guest.js");
 const STYLE: &str = include_str!("guest.css");
+/// Splint's tokens, shared by every page a person sees.
+const TOKENS: &str = include_str!("../../../style/tokens.css");
 
 /// Nothing runs or loads unless it's this page's own script and style, and it talks only to this host.
 const CONTENT_POLICY: &str = "default-src 'none'; script-src 'self'; style-src 'self'; \
@@ -89,6 +91,10 @@ pub fn routes() -> Router<Arc<Host>> {
         .route(
             "/guest.css",
             get(|| async { file("text/css; charset=utf-8", STYLE) }),
+        )
+        .route(
+            "/tokens.css",
+            get(|| async { file("text/css; charset=utf-8", TOKENS) }),
         )
         .route("/v0/guest/links/{request}", get(read_link).post(answer))
         .route_layer(middleware::from_fn(with_safety_headers));
