@@ -200,12 +200,19 @@ def what_says_who_she_is_is_lost(signup: Signup, ivy, ben, ivy_address: str, ivy
     bens_mail_waits(signup, ben, ivy_address, ivy_id, body)
     folder = ivy.dot / "signet"
     secrets, whole = secrets_in(folder), (folder / "who.json").read_bytes()
+    # What tells her keeper how to start her Signet, put back before each try. A `splint start` that's
+    # refused only after its whole wait stops the service, which takes this file away, and the next try
+    # then had nothing to run and ended with no error. That wait is skipped where Signet refuses fast
+    # enough, so this failed on slower machines only, and no start succeeds between these four.
+    launch = ivy.dot / "run" / f"{SIGNET}.json"
+    as_kept = launch.read_bytes()
     os.replace(folder / "agent.key", signup.walk.work / "aside-beside-who")
     for damage in (None, b"{}", b"", b"not what Signet writes"):
         if damage is None:
             (folder / "who.json").unlink()
         else:
             (folder / "who.json").write_bytes(damage)
+        launch.write_bytes(as_kept)
         # Bug caught: a folder with no ID read as a new agent, whose first start replaced the good agent.seal.
         refused_naming(signup, ivy, ivy_id, "who.json", unread_at_host(signup, ivy_id), secrets)
     (folder / "who.json").write_bytes(whole)
