@@ -42,9 +42,12 @@ def platform_name() -> str:
 
 
 def build(dist: Path) -> None:
-    """Builds the four programs with this version set, and packs them as the release workflow does."""
-    env = {**os.environ, "SPLINT_VERSION": VERSION}
-    built = Path(os.environ.get("CARGO_TARGET_DIR", ROOT / "packages" / "target")) / "debug"
+    """Builds the four programs with this version set, and packs them as the release workflow does. In
+    a target folder of their own: in the one every sim runs its programs from, the version made cargo
+    link those programs again, and a sim running beside this one found them changed under it."""
+    target = Path(os.environ.get("CARGO_TARGET_DIR", ROOT / "packages" / "target")) / "local-release"
+    env = {**os.environ, "SPLINT_VERSION": VERSION, "CARGO_TARGET_DIR": str(target)}
+    built = target / "debug"
     selected = [part for program in PROGRAMS for part in ("-p", program)]
     subprocess.run(["cargo", "build", "--quiet", "--locked", *selected], cwd=ROOT / "packages", env=env, check=True, timeout=BUILD_SECONDS)
     dist.mkdir(parents=True)

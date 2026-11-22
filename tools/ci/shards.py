@@ -71,10 +71,13 @@ WINDOWS = re.compile(
 
 # The debug programs, built exactly as the sims build them, so their own builds find nothing to do.
 PROGRAMS = "cd packages && cargo build --quiet -p host -p signet -p owner-key -p splint"
-# All that the sims compile, for the cache: the debug programs, the release ones `make install` builds,
+# All that the sims compile, for the cache: the debug programs, those again with a version set as
+# sim/local_release.py builds them in a folder of their own, the release ones `make install` builds,
 # the examples some sims sign with, and the release tests `make e2e` starts with.
 SHARED_BUILDS = (
     PROGRAMS,
+    "cd packages && SPLINT_VERSION=v0.0.0-local CARGO_TARGET_DIR=target/local-release cargo build --quiet --locked"
+    " -p splint -p host -p signet -p owner-key",
     "cd packages && cargo build --quiet --locked --profile release -p splint -p host -p signet -p owner-key",
     "cd packages && cargo build --quiet -p splint-core --examples",
     "cd packages && cargo test --release --quiet -p splint-core --lib --no-run",
