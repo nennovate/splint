@@ -24,7 +24,8 @@ updates:
     groups:
       npm:
         update-types: [minor, patch]
-  # Monthly and all in one PR, majors included, since a change to check.yml runs every suite.
+  # Monthly and all in one PR, majors included, since a change to a workflow runs every suite and
+  # builds every platform.
   - package-ecosystem: github-actions
     directory: /
     schedule:

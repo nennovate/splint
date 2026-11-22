@@ -1,63 +1,62 @@
 name: check
 
-# Not on an edit or a label: a run for one skips every job, and as GitHub shows the newest result under
-# each name, those skips would stand in for the real results. A PR moved to a new base gets a push
-# bringing in that base, which runs this.
+# On a PR, and on `main` after every merge, where everything runs: two PRs that each passed alone can
+# break `main` together, and that run is what says so. Not on an edit or a label: a run for one skips
+# every job, and as GitHub shows the newest result under each name, those skips would stand in for the
+# real results. A PR moved to a new base gets a push bringing in that base, which runs this.
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main]
 
 permissions:
   contents: read
 
-# A new push to a PR cancels the run still going for its last one, as that result no longer counts.
+# A new push to a PR cancels the run still going for its last one, as that result no longer counts. A
+# run on `main` is never cancelled, so every merge has a result of its own.
 concurrency:
-  group: check-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
+  group: check-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  # Decides once, from what the PR changes, which of the jobs below it needs. A draft needs only the
-  # quick checks: its suites and Windows run once it's marked ready, which starts a new run.
+  # Decides once, from what the PR changes, which of the jobs below it needs and which sims. A draft
+  # needs only the quick checks: the rest run once it's marked ready, which starts a new run.
   plan:
     # Where the Linux jobs run, written once here and used by name below: the runner the repository
     # variable LINUX_TEST_RUNNER names, so they can move to other runners and back with no change here.
     # Unset, they run on GitHub's own, and so does a PR from a fork, so it can't use another runner's
     # shared cache or its minutes. Releases always build on GitHub's own runners, in release.yml.
-    runs-on: &linux ${{ github.event.pull_request.head.repo.full_name == github.repository && vars.LINUX_TEST_RUNNER || 'ubuntu-latest' }}
+    runs-on: &linux ${{ (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository) && vars.LINUX_TEST_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 5
     outputs:
-      e2e: ${{ steps.needed.outputs.e2e }}
       windows: ${{ steps.needed.outputs.windows }}
-      shards: ${{ steps.shards.outputs.shards }}
+      e2e: ${{ steps.needed.outputs.e2e }}
+      sims: ${{ steps.needed.outputs.sims }}
+      count: ${{ steps.needed.outputs.count }}
+      shards: ${{ steps.needed.outputs.shards }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
-      # The suites run for code that a running system depends on. The two docs are the ones the sims
-      # follow or ship, so a change to either runs them. Windows runs for the crates it builds, the
-      # schemas built into them and how git writes their files out. A change to this workflow runs
-      # everything, so a change to CI is always tested by the CI it makes. A moved file counts where it
-      # was and where it went.
+      # tools/ci/shards.py holds the rules, and says what it chose. Every sim runs for a change to
+      # product code, to what builds or installs it, or to this workflow, so a change to CI is always
+      # tested by the CI it makes. A change to files in sim/ alone runs only the sims that could run
+      # them. Windows runs for the crates it builds. With no commits to compare, on `main`, all of it.
       - id: needed
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           DRAFT: ${{ github.event.pull_request.draft }}
         run: |
-          changed=$(git diff --no-renames --name-only "$BASE_SHA...$HEAD_SHA")
-          e2e=false windows=false
-          if [ "$DRAFT" = true ]; then
-            echo "A draft, so only the quick checks run. The rest run once it's marked ready." | tee -a "$GITHUB_STEP_SUMMARY"
+          if [ "$GITHUB_EVENT_NAME" = push ]; then
+            python3 tools/ci/shards.py needed >> "$GITHUB_OUTPUT"
+          elif [ "$DRAFT" = true ]; then
+            python3 tools/ci/shards.py needed "$BASE_SHA" "$HEAD_SHA" --draft >> "$GITHUB_OUTPUT"
           else
-            grep -qE '^(packages|sim|adapters|deploy|make|spec|tools/ci)/|^docs/(agents|getting-started)\.md$|^Makefile$|^\.github/workflows/check\.yml$' <<<"$changed" && e2e=true
-            grep -qE '^(packages|spec)/|^\.gitattributes$|^\.github/workflows/check\.yml$' <<<"$changed" && windows=true
+            python3 tools/ci/shards.py needed "$BASE_SHA" "$HEAD_SHA" >> "$GITHUB_OUTPUT"
           fi
-          echo "Suites: $e2e. Windows: $windows."
-          echo "e2e=$e2e" >> "$GITHUB_OUTPUT"
-          echo "windows=$windows" >> "$GITHUB_OUTPUT"
-      - id: shards
-        if: steps.needed.outputs.e2e == 'true'
-        run: echo "shards=$(python3 tools/ci/shards.py matrix)" >> "$GITHUB_OUTPUT"
+          cat "$GITHUB_OUTPUT"
 
   # The quick checks, on every PR: repo rules, format, lint, unit tests, dependencies and the verifier.
   check:
@@ -77,13 +76,17 @@ jobs:
           cache: false
       - run: make rules rust deps verifier
 
-  # What a person runs on Windows: splint, Signet and owner-key, linted and tested there. The host
-  # runs on Linux, so it isn't built here. On GitHub's own runner, which builds in a few minutes once
-  # warm. Windows on Arm has a free runner only for a public repository, so it's added when this is one.
+  # What a person runs on Windows: splint, Signet and owner-key, linted and tested there, on x86_64 and
+  # on Arm. The host runs on Linux, so it isn't built here. On GitHub's own runners. The run on `main`
+  # saves what it built, so a PR's first build doesn't start cold.
   windows:
     needs: plan
     if: needs.plan.outputs.windows == 'true'
-    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [windows-latest, windows-11-arm]
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
     defaults:
       run:
@@ -103,11 +106,11 @@ jobs:
           CARGO_TARGET_DIR=target/clippy cargo clippy --all-targets --quiet -p splint-core -p signet -p splint -p owner-key -- -D warnings
           cargo test --quiet --no-fail-fast -p splint-core -p signet -p splint -p owner-key
 
-  # Compiles once what every shard needs and saves it to the cache, so the shards don't each pay for
-  # the dependencies. Cargo still rebuilds this repository's own crates after a fresh checkout.
+  # On `main` only: compiles everything the sims build and saves it to the cache, which every PR's
+  # shards then start from. A PR saves nothing, so its shards never wait on a build that would only be
+  # thrown away. Cargo still builds this repository's own crates after a fresh checkout.
   e2e-build:
-    needs: plan
-    if: needs.plan.outputs.e2e == 'true'
+    if: github.event_name == 'push'
     runs-on: *linux
     timeout-minutes: 30
     steps:
@@ -118,11 +121,12 @@ jobs:
           cache-shared-key: e2e
       - run: python3 tools/ci/shards.py build
 
-  # The suites, split by tools/ci/shards.py across runners that each run their part one sim at a time.
-  # A sim that fails runs once more there, and one that then passes shows as a warning on the run.
+  # The sims the plan chose, split by tools/ci/shards.py across as few runners as hold them, each
+  # running one sim for each core at once, as most of a sim's time is spent waiting. A sim that fails
+  # runs once more there, alone, and one that then passes shows as a warning on the run.
   e2e-shard:
     name: e2e shard ${{ matrix.shard }}
-    needs: [plan, e2e-build]
+    needs: plan
     if: needs.plan.outputs.e2e == 'true'
     runs-on: *linux
     timeout-minutes: 45
@@ -137,10 +141,10 @@ jobs:
           fetch-depth: 0
       # The suites build the workspace several times over, which passed what one of GitHub's own
       # runners starts with free and ended a run with no result. These are toolchains its image ships
-      # that nothing here uses. Other runners, named by LINUX_TEST_RUNNER, start with room enough.
-      - if: vars.LINUX_TEST_RUNNER == ''
+      # that nothing here uses. Other runners start with room enough.
+      - if: runner.environment == 'github-hosted'
         run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
-      # Only e2e-build saves, so the shards don't race to write the same cache.
+      # Only e2e-build saves, on `main`, so the shards don't race to write the same cache.
       - uses: actions-rust-lang/setup-rust-toolchain@a188e68d0fd2bd36ad51dccb2b07ba6e75105f30 # v2.0.1
         with:
           rust-src-dir: packages
@@ -157,7 +161,7 @@ jobs:
           for _ in $(seq 100); do [ -S "$runtime/systemd/private" ] && break; sleep 0.1; done
           echo "XDG_RUNTIME_DIR=$runtime" >> "$GITHUB_ENV"
           XDG_RUNTIME_DIR="$runtime" systemctl --user show-environment > /dev/null
-      - run: python3 tools/ci/shards.py run ${{ matrix.shard }}
+      - run: python3 tools/ci/shards.py run ${{ matrix.shard }} --of ${{ needs.plan.outputs.count }} --sims "${{ needs.plan.outputs.sims }}"
       # Said whatever happened: how full the disk got, and what the machine is, as how many cores it
       # has and how much its network can buffer change what a timing or byte-count check sees.
       - if: always()
@@ -192,9 +196,10 @@ jobs:
             echo "| Plan | yes | $PLAN |"
             echo "| Rules, lint, unit tests | yes | $CHECK |"
             echo "| Windows | $WINDOWS | $WINDOWS_RESULT |"
-            echo "| Suites: build | $E2E | $BUILD |"
-            echo "| Suites: shards | $E2E | $SHARDS |"
+            echo "| Suites | $E2E | $SHARDS |"
+            echo "| Cache for the suites | on main | $BUILD |"
           } | tee -a "$GITHUB_STEP_SUMMARY"
           [ "$PLAN" = success ] && [ "$CHECK" = success ] || exit 1
           [ "$WINDOWS" != true ] || [ "$WINDOWS_RESULT" = success ] || exit 1
-          [ "$E2E" != true ] || { [ "$BUILD" = success ] && [ "$SHARDS" = success ]; } || exit 1
+          [ "$E2E" != true ] || [ "$SHARDS" = success ] || exit 1
+          [ "$BUILD" = success ] || [ "$BUILD" = skipped ] || exit 1
