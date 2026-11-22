@@ -77,6 +77,12 @@ Before you open a pull request, run the fast half and the end-to-end runs that c
 
 Every fix or feature comes with a test that fails without it. [`AGENTS.md`](AGENTS.md) describes the tests we delete in review, which are the ones that pass whether or not the code works.
 
+## How decisions are recorded
+
+Decisions are kept in the repository. A pull request that makes a real choice ends with a Key decisions table, which names who made the choice, what the alternative was and what it changes. The docs and the code comments also say who decided something and when, and we keep those notes as the record of why Splint works the way it does.
+
+If your change makes a choice, add it to that table under your own name. A choice nobody has confirmed yet is marked provisional until a maintainer confirms it.
+
 ## What to expect
 
 Security reports get a reply within 7 days. Issues and pull requests are answered as time allows, and the ones that fix a real problem for owners and agents come first.

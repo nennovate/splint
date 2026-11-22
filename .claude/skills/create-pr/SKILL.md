@@ -37,7 +37,7 @@ Stack only when two groups depend on each other and still shouldn't be one PR. U
 
 Commit and push as you go, in commits that make sense, rather than holding work until it's finished. Nothing has to pass before a push to a branch.
 
-Open a work-in-progress PR at a checkpoint, or when Nenye would need the context to follow what's happening. One PR per branch, not one per update.
+Open a work-in-progress PR at a checkpoint, or when a reviewer would need the context to follow what's happening. One PR per branch, not one per update.
 
 - Open it as a draft, with a title starting `WIP:`.
 - The description rules still apply. It says what exists now and what isn't done yet, and a test run isn't needed until it's ready.
