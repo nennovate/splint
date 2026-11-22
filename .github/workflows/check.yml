@@ -86,7 +86,9 @@ jobs:
       matrix:
         runner: ${{ github.event.repository.private && fromJSON(format('["{0}"]', vars.WINDOWS_TEST_RUNNER || 'windows-latest')) || fromJSON(format('["{0}", "windows-11-arm"]', vars.WINDOWS_TEST_RUNNER || 'windows-latest')) }}
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 30
+    # A PR's first run builds with nothing cached, as nothing runs on main to fill the cache, and that
+    # took over 30 minutes on Windows. A run after that, from the PR's own cache, takes about 10.
+    timeout-minutes: 60
     defaults:
       run:
         shell: bash
@@ -164,9 +166,14 @@ jobs:
           echo "XDG_RUNTIME_DIR=$runtime" >> "$GITHUB_ENV"
           XDG_RUNTIME_DIR="$runtime" systemctl --user show-environment > /dev/null
       - run: python3 tools/ci/shards.py run ${{ matrix.shard }}
-      # Said whatever happened, so a run that fills the disk again shows how close it came.
+      # Said whatever happened, so a run that fills the disk again shows how close it came, and what the
+      # machine is, as how many cores it has and how much its network can buffer change what a timing or
+      # byte-count check sees.
       - if: always()
-        run: df -h / && du -sh packages/target 2>/dev/null || true
+        run: |
+          df -h / && du -sh packages/target 2>/dev/null || true
+          echo "cores: $(nproc)"
+          sysctl net.ipv4.tcp_rmem net.ipv4.tcp_wmem net.core.rmem_max net.core.wmem_max || true
 
   # The one check a PR needs: every job the plan asked for passed. A job the plan didn't ask for counts
   # as passed, but one it asked for and that was skipped, cancelled or failed doesn't, nor does a plan
