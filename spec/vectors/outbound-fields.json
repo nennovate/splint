@@ -1,0 +1,1312 @@
+{
+ "contract": "protocol.md#messages",
+ "vectors": [
+  {
+   "name": "text_with_scope",
+   "status": "checked",
+   "case": "valid",
+   "check": "outbound.check",
+   "why": "Words pass only for a contact the owner signed text for.",
+   "input": {
+    "rules": {
+     "v": 1,
+     "owner": "splint130b6ab1fac2f2cb528a11455e2414dce105f5263eb0af9f4e99fefac936f398e",
+     "agent": "splint1d7d865cc40850d9598580b2e48670390cecbf2603a21e75ed771d5672f374598",
+     "seq": 7,
+     "issued_at": 1793750400,
+     "paused": false,
+     "reach": {
+      "inbound": {
+       "from": "contacts",
+       "filter": {
+        "owners": [],
+        "hosts": [],
+        "past": false
+       },
+       "types": [],
+       "text": false,
+       "strangers": "quarantine"
+      },
+      "outbound": "contacts"
+     },
+     "permissions": {
+      "level": "auto_within_limits",
+      "actions_per_day": 50,
+      "caps": {}
+     },
+     "contacts": [
+      {
+       "agent": "splint19a279a739f22fbb15b7f2ec6d68731786d46546641de7efa3874f8050f1db593",
+       "address": "ben~other.example",
+       "label": "Ben",
+       "status": "allowed",
+       "types": [
+        "meeting/1@i7fqx5fcz3sz4svkmv6ctjb2ksrzqknaho42n4nn7gz6qtuz2wqq"
+       ],
+       "text": true,
+       "pinned_by": "invite"
+      }
+     ],
+     "invites": [
+      {
+       "id": "inv_1",
+       "key": "BP4bcT2XQxW1gSYIhYh1bDoouCfosftFjPsebVmWFhJzFXBRYqLF3ILX0TPOssyCbLbvKvj82rGbZQInocTI1fI",
+       "types": [
+        "meeting/1@i7fqx5fcz3sz4svkmv6ctjb2ksrzqknaho42n4nn7gz6qtuz2wqq"
+       ],
+       "expires_at": 1794355200
+      }
+     ],
+     "limits": {
+      "new_requests_per_contact_per_day": 3,
+      "open_requests_per_contact": 3,
+      "open_approvals": 10,
+      "new_from_others_per_day": 50
+     }
+    },
+    "peer": "splint19a279a739f22fbb15b7f2ec6d68731786d46546641de7efa3874f8050f1db593",
+    "peer_owner": null,
+    "peer_host": null,
+    "body": "free text",
+    "texts_today": 0,
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": true
+   }
+  },
+  {
+   "name": "text_with_no_scope",
+   "status": "checked",
+   "case": "hostile",
+   "check": "outbound.check",
+   "why": "Off by default, for contacts as for anyone.",
+   "input": {
+    "rules": {
+     "v": 1,
+     "owner": "splint130b6ab1fac2f2cb528a11455e2414dce105f5263eb0af9f4e99fefac936f398e",
+     "agent": "splint1d7d865cc40850d9598580b2e48670390cecbf2603a21e75ed771d5672f374598",
+     "seq": 7,
+     "issued_at": 1793750400,
+     "paused": false,
+     "reach": {
+      "inbound": {
+       "from": "contacts",
+       "filter": {
+        "owners": [],
+        "hosts": [],
+        "past": false
+       },
+       "types": [],
+       "text": false,
+       "strangers": "quarantine"
+      },
+      "outbound": "contacts"
+     },
+     "permissions": {
+      "level": "auto_within_limits",
+      "actions_per_day": 50,
+      "caps": {}
+     },
+     "contacts": [
+      {
+       "agent": "splint19a279a739f22fbb15b7f2ec6d68731786d46546641de7efa3874f8050f1db593",
+       "address": "ben~other.example",
+       "label": "Ben",
+       "status": "allowed",
+       "types": [
+        "meeting/1@i7fqx5fcz3sz4svkmv6ctjb2ksrzqknaho42n4nn7gz6qtuz2wqq"
+       ],
+       "text": false,
+       "pinned_by": "invite"
+      }
+     ],
+     "invites": [
+      {
+       "id": "inv_1",
+       "key": "BP4bcT2XQxW1gSYIhYh1bDoouCfosftFjPsebVmWFhJzFXBRYqLF3ILX0TPOssyCbLbvKvj82rGbZQInocTI1fI",
+       "types": [
+        "meeting/1@i7fqx5fcz3sz4svkmv6ctjb2ksrzqknaho42n4nn7gz6qtuz2wqq"
+       ],
+       "expires_at": 1794355200
+      }
+     ],
+     "limits": {
+      "new_requests_per_contact_per_day": 3,
+      "open_requests_per_contact": 3,
+      "open_approvals": 10,
+      "new_from_others_per_day": 50
+     }
+    },
+    "peer": "splint19a279a739f22fbb15b7f2ec6d68731786d46546641de7efa3874f8050f1db593",
+    "peer_owner": null,
+    "peer_host": null,
+    "body": "free text",
+    "texts_today": 0,
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": false,
+    "reason": "text_off"
+   }
+  },
+  {
+   "name": "text_to_a_stranger",
+   "status": "checked",
+   "case": "hostile",
+   "check": "outbound.check",
+   "why": "A fooled agent can't reach a stranger.",
+   "input": {
+    "rules": {
+     "v": 1,
+     "owner": "splint130b6ab1fac2f2cb528a11455e2414dce105f5263eb0af9f4e99fefac936f398e",
+     "agent": "splint1d7d865cc40850d9598580b2e48670390cecbf2603a21e75ed771d5672f374598",
+     "seq": 7,
+     "issued_at": 1793750400,
+     "paused": false,
+     "reach": {
+      "inbound": {
+       "from": "contacts",
+       "filter": {
+        "owners": [],
+        "hosts": [],
+        "past": false
+       },
+       "types": [],
+       "text": false,
+       "strangers": "quarantine"
+      },
+      "outbound": "contacts"
+     },
+     "permissions": {
+      "level": "auto_within_limits",
+      "actions_per_day": 50,
+      "caps": {}
+     },
+     "contacts": [
+      {
+       "agent": "splint19a279a739f22fbb15b7f2ec6d68731786d46546641de7efa3874f8050f1db593",
+       "address": "ben~other.example",
+       "label": "Ben",
+       "status": "allowed",
+       "types": [
+        "meeting/1@i7fqx5fcz3sz4svkmv6ctjb2ksrzqknaho42n4nn7gz6qtuz2wqq"
+       ],
+       "text": true,
+       "pinned_by": "invite"
+      }
+     ],
+     "invites": [
+      {
+       "id": "inv_1",
+       "key": "BP4bcT2XQxW1gSYIhYh1bDoouCfosftFjPsebVmWFhJzFXBRYqLF3ILX0TPOssyCbLbvKvj82rGbZQInocTI1fI",
+       "types": [
+        "meeting/1@i7fqx5fcz3sz4svkmv6ctjb2ksrzqknaho42n4nn7gz6qtuz2wqq"
+       ],
+       "expires_at": 1794355200
+      }
+     ],
+     "limits": {
+      "new_requests_per_contact_per_day": 3,
+      "open_requests_per_contact": 3,
+      "open_approvals": 10,
+      "new_from_others_per_day": 50
+     }
+    },
+    "peer": "splint1ae5d023afe7e0eb1991807af5f5d034932c0749f8fc498cec5227364a638b7eb",
+    "peer_owner": null,
+    "peer_host": null,
+    "body": "free text",
+    "texts_today": 0,
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": false,
+    "reason": "not_a_contact"
+   }
+  },
+  {
+   "name": "text_to_a_blocked_contact",
+   "status": "checked",
+   "case": "hostile",
+   "check": "outbound.check",
+   "why": "A block wins over text.",
+   "input": {
+    "rules": {
+     "v": 1,
+     "owner": "splint130b6ab1fac2f2cb528a11455e2414dce105f5263eb0af9f4e99fefac936f398e",
+     "agent": "splint1d7d865cc40850d9598580b2e48670390cecbf2603a21e75ed771d5672f374598",
+     "seq": 7,
+     "issued_at": 1793750400,
+     "paused": false,
+     "reach": {
+      "inbound": {
+       "from": "contacts",
+       "filter": {
+        "owners": [],
+        "hosts": [],
+        "past": false
+       },
+       "types": [],
+       "text": false,
+       "strangers": "quarantine"
+      },
+      "outbound": "contacts"
+     },
+     "permissions": {
+      "level": "auto_within_limits",
+      "actions_per_day": 50,
+      "caps": {}
+     },
+     "contacts": [
+      {
+       "agent": "splint19a279a739f22fbb15b7f2ec6d68731786d46546641de7efa3874f8050f1db593",
+       "address": "ben~other.example",
+       "label": "Ben",
+       "status": "blocked",
+       "types": [
+        "meeting/1@i7fqx5fcz3sz4svkmv6ctjb2ksrzqknaho42n4nn7gz6qtuz2wqq"
+       ],
+       "text": true,
+       "pinned_by": "invite"
+      }
+     ],
+     "invites": [
+      {
+       "id": "inv_1",
+       "key": "BP4bcT2XQxW1gSYIhYh1bDoouCfosftFjPsebVmWFhJzFXBRYqLF3ILX0TPOssyCbLbvKvj82rGbZQInocTI1fI",
+       "types": [
+        "meeting/1@i7fqx5fcz3sz4svkmv6ctjb2ksrzqknaho42n4nn7gz6qtuz2wqq"
+       ],
+       "expires_at": 1794355200
+      }
+     ],
+     "limits": {
+      "new_requests_per_contact_per_day": 3,
+      "open_requests_per_contact": 3,
+      "open_approvals": 10,
+      "new_from_others_per_day": 50
+     }
+    },
+    "peer": "splint19a279a739f22fbb15b7f2ec6d68731786d46546641de7efa3874f8050f1db593",
+    "peer_owner": null,
+    "peer_host": null,
+    "body": "free text",
+    "texts_today": 0,
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": false,
+    "reason": "not_a_contact"
+   }
+  },
+  {
+   "name": "text_while_paused",
+   "status": "checked",
+   "case": "hostile",
+   "check": "outbound.check",
+   "why": "The kill switch stops words too.",
+   "input": {
+    "rules": {
+     "v": 1,
+     "owner": "splint130b6ab1fac2f2cb528a11455e2414dce105f5263eb0af9f4e99fefac936f398e",
+     "agent": "splint1d7d865cc40850d9598580b2e48670390cecbf2603a21e75ed771d5672f374598",
+     "seq": 7,
+     "issued_at": 1793750400,
+     "paused": true,
+     "reach": {
+      "inbound": {
+       "from": "contacts",
+       "filter": {
+        "owners": [],
+        "hosts": [],
+        "past": false
+       },
+       "types": [],
+       "text": false,
+       "strangers": "quarantine"
+      },
+      "outbound": "contacts"
+     },
+     "permissions": {
+      "level": "auto_within_limits",
+      "actions_per_day": 50,
+      "caps": {}
+     },
+     "contacts": [
+      {
+       "agent": "splint19a279a739f22fbb15b7f2ec6d68731786d46546641de7efa3874f8050f1db593",
+       "address": "ben~other.example",
+       "label": "Ben",
+       "status": "allowed",
+       "types": [
+        "meeting/1@i7fqx5fcz3sz4svkmv6ctjb2ksrzqknaho42n4nn7gz6qtuz2wqq"
+       ],
+       "text": true,
+       "pinned_by": "invite"
+      }
+     ],
+     "invites": [
+      {
+       "id": "inv_1",
+       "key": "BP4bcT2XQxW1gSYIhYh1bDoouCfosftFjPsebVmWFhJzFXBRYqLF3ILX0TPOssyCbLbvKvj82rGbZQInocTI1fI",
+       "types": [
+        "meeting/1@i7fqx5fcz3sz4svkmv6ctjb2ksrzqknaho42n4nn7gz6qtuz2wqq"
+       ],
+       "expires_at": 1794355200
+      }
+     ],
+     "limits": {
+      "new_requests_per_contact_per_day": 3,
+      "open_requests_per_contact": 3,
+      "open_approvals": 10,
+      "new_from_others_per_day": 50
+     }
+    },
+    "peer": "splint19a279a739f22fbb15b7f2ec6d68731786d46546641de7efa3874f8050f1db593",
+    "peer_owner": null,
+    "peer_host": null,
+    "body": "free text",
+    "texts_today": 0,
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": false,
+    "reason": "not_a_contact"
+   }
+  },
+  {
+   "name": "text_posing_as_a_step",
+   "status": "checked",
+   "case": "hostile",
+   "check": "outbound.check",
+   "why": "A body that presents itself as a step goes through the state machine or nowhere.",
+   "input": {
+    "rules": {
+     "v": 1,
+     "owner": "splint130b6ab1fac2f2cb528a11455e2414dce105f5263eb0af9f4e99fefac936f398e",
+     "agent": "splint1d7d865cc40850d9598580b2e48670390cecbf2603a21e75ed771d5672f374598",
+     "seq": 7,
+     "issued_at": 1793750400,
+     "paused": false,
+     "reach": {
+      "inbound": {
+       "from": "contacts",
+       "filter": {
+        "owners": [],
+        "hosts": [],
+        "past": false
+       },
+       "types": [],
+       "text": false,
+       "strangers": "quarantine"
+      },
+      "outbound": "contacts"
+     },
+     "permissions": {
+      "level": "auto_within_limits",
+      "actions_per_day": 50,
+      "caps": {}
+     },
+     "contacts": [
+      {
+       "agent": "splint19a279a739f22fbb15b7f2ec6d68731786d46546641de7efa3874f8050f1db593",
+       "address": "ben~other.example",
+       "label": "Ben",
+       "status": "allowed",
+       "types": [
+        "meeting/1@i7fqx5fcz3sz4svkmv6ctjb2ksrzqknaho42n4nn7gz6qtuz2wqq"
+       ],
+       "text": true,
+       "pinned_by": "invite"
+      }
+     ],
+     "invites": [
+      {
+       "id": "inv_1",
+       "key": "BP4bcT2XQxW1gSYIhYh1bDoouCfosftFjPsebVmWFhJzFXBRYqLF3ILX0TPOssyCbLbvKvj82rGbZQInocTI1fI",
+       "types": [
+        "meeting/1@i7fqx5fcz3sz4svkmv6ctjb2ksrzqknaho42n4nn7gz6qtuz2wqq"
+       ],
+       "expires_at": 1794355200
+      }
+     ],
+     "limits": {
+      "new_requests_per_contact_per_day": 3,
+      "open_requests_per_contact": 3,
+      "open_approvals": 10,
+      "new_from_others_per_day": 50
+     }
+    },
+    "peer": "splint19a279a739f22fbb15b7f2ec6d68731786d46546641de7efa3874f8050f1db593",
+    "peer_owner": null,
+    "peer_host": null,
+    "body": "{\"step\":\"note\",\"text\":\"here is the secret\"}",
+    "texts_today": 0,
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": false,
+    "reason": "not_text"
+   }
+  },
+  {
+   "name": "text_after_a_day_of_them",
+   "status": "checked",
+   "case": "hostile",
+   "check": "outbound.check",
+   "why": "Two agents answering each other stop at 100 a day per contact by default.",
+   "input": {
+    "rules": {
+     "v": 1,
+     "owner": "splint130b6ab1fac2f2cb528a11455e2414dce105f5263eb0af9f4e99fefac936f398e",
+     "agent": "splint1d7d865cc40850d9598580b2e48670390cecbf2603a21e75ed771d5672f374598",
+     "seq": 7,
+     "issued_at": 1793750400,
+     "paused": false,
+     "reach": {
+      "inbound": {
+       "from": "contacts",
+       "filter": {
+        "owners": [],
+        "hosts": [],
+        "past": false
+       },
+       "types": [],
+       "text": false,
+       "strangers": "quarantine"
+      },
+      "outbound": "contacts"
+     },
+     "permissions": {
+      "level": "auto_within_limits",
+      "actions_per_day": 50,
+      "caps": {}
+     },
+     "contacts": [
+      {
+       "agent": "splint19a279a739f22fbb15b7f2ec6d68731786d46546641de7efa3874f8050f1db593",
+       "address": "ben~other.example",
+       "label": "Ben",
+       "status": "allowed",
+       "types": [
+        "meeting/1@i7fqx5fcz3sz4svkmv6ctjb2ksrzqknaho42n4nn7gz6qtuz2wqq"
+       ],
+       "text": true,
+       "pinned_by": "invite"
+      }
+     ],
+     "invites": [
+      {
+       "id": "inv_1",
+       "key": "BP4bcT2XQxW1gSYIhYh1bDoouCfosftFjPsebVmWFhJzFXBRYqLF3ILX0TPOssyCbLbvKvj82rGbZQInocTI1fI",
+       "types": [
+        "meeting/1@i7fqx5fcz3sz4svkmv6ctjb2ksrzqknaho42n4nn7gz6qtuz2wqq"
+       ],
+       "expires_at": 1794355200
+      }
+     ],
+     "limits": {
+      "new_requests_per_contact_per_day": 3,
+      "open_requests_per_contact": 3,
+      "open_approvals": 10,
+      "new_from_others_per_day": 50
+     }
+    },
+    "peer": "splint19a279a739f22fbb15b7f2ec6d68731786d46546641de7efa3874f8050f1db593",
+    "peer_owner": null,
+    "peer_host": null,
+    "body": "free text",
+    "texts_today": 100,
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": false,
+    "reason": "too_many_texts"
+   }
+  },
+  {
+   "name": "text_on_the_hundredth",
+   "status": "checked",
+   "case": "valid",
+   "check": "outbound.check",
+   "why": "The hundredth still goes.",
+   "input": {
+    "rules": {
+     "v": 1,
+     "owner": "splint130b6ab1fac2f2cb528a11455e2414dce105f5263eb0af9f4e99fefac936f398e",
+     "agent": "splint1d7d865cc40850d9598580b2e48670390cecbf2603a21e75ed771d5672f374598",
+     "seq": 7,
+     "issued_at": 1793750400,
+     "paused": false,
+     "reach": {
+      "inbound": {
+       "from": "contacts",
+       "filter": {
+        "owners": [],
+        "hosts": [],
+        "past": false
+       },
+       "types": [],
+       "text": false,
+       "strangers": "quarantine"
+      },
+      "outbound": "contacts"
+     },
+     "permissions": {
+      "level": "auto_within_limits",
+      "actions_per_day": 50,
+      "caps": {}
+     },
+     "contacts": [
+      {
+       "agent": "splint19a279a739f22fbb15b7f2ec6d68731786d46546641de7efa3874f8050f1db593",
+       "address": "ben~other.example",
+       "label": "Ben",
+       "status": "allowed",
+       "types": [
+        "meeting/1@i7fqx5fcz3sz4svkmv6ctjb2ksrzqknaho42n4nn7gz6qtuz2wqq"
+       ],
+       "text": true,
+       "pinned_by": "invite"
+      }
+     ],
+     "invites": [
+      {
+       "id": "inv_1",
+       "key": "BP4bcT2XQxW1gSYIhYh1bDoouCfosftFjPsebVmWFhJzFXBRYqLF3ILX0TPOssyCbLbvKvj82rGbZQInocTI1fI",
+       "types": [
+        "meeting/1@i7fqx5fcz3sz4svkmv6ctjb2ksrzqknaho42n4nn7gz6qtuz2wqq"
+       ],
+       "expires_at": 1794355200
+      }
+     ],
+     "limits": {
+      "new_requests_per_contact_per_day": 3,
+      "open_requests_per_contact": 3,
+      "open_approvals": 10,
+      "new_from_others_per_day": 50
+     }
+    },
+    "peer": "splint19a279a739f22fbb15b7f2ec6d68731786d46546641de7efa3874f8050f1db593",
+    "peer_owner": null,
+    "peer_host": null,
+    "body": "free text",
+    "texts_today": 99,
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": true
+   }
+  },
+  {
+   "name": "text_past_a_lower_limit",
+   "status": "checked",
+   "case": "hostile",
+   "check": "outbound.check",
+   "why": "An owner can lower the daily count.",
+   "input": {
+    "rules": {
+     "v": 1,
+     "owner": "splint130b6ab1fac2f2cb528a11455e2414dce105f5263eb0af9f4e99fefac936f398e",
+     "agent": "splint1d7d865cc40850d9598580b2e48670390cecbf2603a21e75ed771d5672f374598",
+     "seq": 7,
+     "issued_at": 1793750400,
+     "paused": false,
+     "reach": {
+      "inbound": {
+       "from": "contacts",
+       "filter": {
+        "owners": [],
+        "hosts": [],
+        "past": false
+       },
+       "types": [],
+       "text": false,
+       "strangers": "quarantine"
+      },
+      "outbound": "contacts"
+     },
+     "permissions": {
+      "level": "auto_within_limits",
+      "actions_per_day": 50,
+      "caps": {}
+     },
+     "contacts": [
+      {
+       "agent": "splint19a279a739f22fbb15b7f2ec6d68731786d46546641de7efa3874f8050f1db593",
+       "address": "ben~other.example",
+       "label": "Ben",
+       "status": "allowed",
+       "types": [
+        "meeting/1@i7fqx5fcz3sz4svkmv6ctjb2ksrzqknaho42n4nn7gz6qtuz2wqq"
+       ],
+       "text": true,
+       "pinned_by": "invite"
+      }
+     ],
+     "invites": [
+      {
+       "id": "inv_1",
+       "key": "BP4bcT2XQxW1gSYIhYh1bDoouCfosftFjPsebVmWFhJzFXBRYqLF3ILX0TPOssyCbLbvKvj82rGbZQInocTI1fI",
+       "types": [
+        "meeting/1@i7fqx5fcz3sz4svkmv6ctjb2ksrzqknaho42n4nn7gz6qtuz2wqq"
+       ],
+       "expires_at": 1794355200
+      }
+     ],
+     "limits": {
+      "new_requests_per_contact_per_day": 3,
+      "open_requests_per_contact": 3,
+      "open_approvals": 10,
+      "new_from_others_per_day": 50,
+      "texts_per_contact_per_day": 5
+     }
+    },
+    "peer": "splint19a279a739f22fbb15b7f2ec6d68731786d46546641de7efa3874f8050f1db593",
+    "peer_owner": null,
+    "peer_host": null,
+    "body": "free text",
+    "texts_today": 5,
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": false,
+    "reason": "too_many_texts"
+   }
+  },
+  {
+   "name": "text_under_the_highest_limit",
+   "status": "checked",
+   "case": "valid",
+   "check": "outbound.check",
+   "why": "Or raise it, to at most 200.",
+   "input": {
+    "rules": {
+     "v": 1,
+     "owner": "splint130b6ab1fac2f2cb528a11455e2414dce105f5263eb0af9f4e99fefac936f398e",
+     "agent": "splint1d7d865cc40850d9598580b2e48670390cecbf2603a21e75ed771d5672f374598",
+     "seq": 7,
+     "issued_at": 1793750400,
+     "paused": false,
+     "reach": {
+      "inbound": {
+       "from": "contacts",
+       "filter": {
+        "owners": [],
+        "hosts": [],
+        "past": false
+       },
+       "types": [],
+       "text": false,
+       "strangers": "quarantine"
+      },
+      "outbound": "contacts"
+     },
+     "permissions": {
+      "level": "auto_within_limits",
+      "actions_per_day": 50,
+      "caps": {}
+     },
+     "contacts": [
+      {
+       "agent": "splint19a279a739f22fbb15b7f2ec6d68731786d46546641de7efa3874f8050f1db593",
+       "address": "ben~other.example",
+       "label": "Ben",
+       "status": "allowed",
+       "types": [
+        "meeting/1@i7fqx5fcz3sz4svkmv6ctjb2ksrzqknaho42n4nn7gz6qtuz2wqq"
+       ],
+       "text": true,
+       "pinned_by": "invite"
+      }
+     ],
+     "invites": [
+      {
+       "id": "inv_1",
+       "key": "BP4bcT2XQxW1gSYIhYh1bDoouCfosftFjPsebVmWFhJzFXBRYqLF3ILX0TPOssyCbLbvKvj82rGbZQInocTI1fI",
+       "types": [
+        "meeting/1@i7fqx5fcz3sz4svkmv6ctjb2ksrzqknaho42n4nn7gz6qtuz2wqq"
+       ],
+       "expires_at": 1794355200
+      }
+     ],
+     "limits": {
+      "new_requests_per_contact_per_day": 3,
+      "open_requests_per_contact": 3,
+      "open_approvals": 10,
+      "new_from_others_per_day": 50,
+      "texts_per_contact_per_day": 200
+     }
+    },
+    "peer": "splint19a279a739f22fbb15b7f2ec6d68731786d46546641de7efa3874f8050f1db593",
+    "peer_owner": null,
+    "peer_host": null,
+    "body": "free text",
+    "texts_today": 199,
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": true
+   }
+  },
+  {
+   "name": "text_from_someone_let_in_with_text",
+   "status": "checked",
+   "case": "valid",
+   "check": "outbound.check",
+   "why": "Someone the reach setting lets in gets words only when it says text.",
+   "input": {
+    "rules": {
+     "v": 1,
+     "owner": "splint130b6ab1fac2f2cb528a11455e2414dce105f5263eb0af9f4e99fefac936f398e",
+     "agent": "splint1d7d865cc40850d9598580b2e48670390cecbf2603a21e75ed771d5672f374598",
+     "seq": 7,
+     "issued_at": 1793750400,
+     "paused": false,
+     "reach": {
+      "inbound": {
+       "from": "open",
+       "filter": {
+        "owners": [],
+        "hosts": [],
+        "past": false
+       },
+       "types": [
+        "quote/1@k6mkn6o2j7wes3mhauyvziyaoff3vsdhxarayv5zhongkruiavsa"
+       ],
+       "text": true,
+       "strangers": "quarantine"
+      },
+      "outbound": "contacts"
+     },
+     "permissions": {
+      "level": "auto_within_limits",
+      "actions_per_day": 50,
+      "caps": {}
+     },
+     "contacts": [],
+     "invites": [
+      {
+       "id": "inv_1",
+       "key": "BP4bcT2XQxW1gSYIhYh1bDoouCfosftFjPsebVmWFhJzFXBRYqLF3ILX0TPOssyCbLbvKvj82rGbZQInocTI1fI",
+       "types": [
+        "meeting/1@i7fqx5fcz3sz4svkmv6ctjb2ksrzqknaho42n4nn7gz6qtuz2wqq"
+       ],
+       "expires_at": 1794355200
+      }
+     ],
+     "limits": {
+      "new_requests_per_contact_per_day": 3,
+      "open_requests_per_contact": 3,
+      "open_approvals": 10,
+      "new_from_others_per_day": 50
+     }
+    },
+    "peer": "splint1ae5d023afe7e0eb1991807af5f5d034932c0749f8fc498cec5227364a638b7eb",
+    "peer_owner": "splint1c0390a14945ba7f102792ac6814fb1973931b47e85a5a01dd023d1bba0d94583",
+    "peer_host": "other.example",
+    "body": "free text",
+    "texts_today": 0,
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": true
+   }
+  },
+  {
+   "name": "text_from_someone_let_in_without_text",
+   "status": "checked",
+   "case": "hostile",
+   "check": "outbound.check",
+   "why": "And not otherwise.",
+   "input": {
+    "rules": {
+     "v": 1,
+     "owner": "splint130b6ab1fac2f2cb528a11455e2414dce105f5263eb0af9f4e99fefac936f398e",
+     "agent": "splint1d7d865cc40850d9598580b2e48670390cecbf2603a21e75ed771d5672f374598",
+     "seq": 7,
+     "issued_at": 1793750400,
+     "paused": false,
+     "reach": {
+      "inbound": {
+       "from": "open",
+       "filter": {
+        "owners": [],
+        "hosts": [],
+        "past": false
+       },
+       "types": [
+        "quote/1@k6mkn6o2j7wes3mhauyvziyaoff3vsdhxarayv5zhongkruiavsa"
+       ],
+       "text": false,
+       "strangers": "quarantine"
+      },
+      "outbound": "contacts"
+     },
+     "permissions": {
+      "level": "auto_within_limits",
+      "actions_per_day": 50,
+      "caps": {}
+     },
+     "contacts": [],
+     "invites": [
+      {
+       "id": "inv_1",
+       "key": "BP4bcT2XQxW1gSYIhYh1bDoouCfosftFjPsebVmWFhJzFXBRYqLF3ILX0TPOssyCbLbvKvj82rGbZQInocTI1fI",
+       "types": [
+        "meeting/1@i7fqx5fcz3sz4svkmv6ctjb2ksrzqknaho42n4nn7gz6qtuz2wqq"
+       ],
+       "expires_at": 1794355200
+      }
+     ],
+     "limits": {
+      "new_requests_per_contact_per_day": 3,
+      "open_requests_per_contact": 3,
+      "open_approvals": 10,
+      "new_from_others_per_day": 50
+     }
+    },
+    "peer": "splint1ae5d023afe7e0eb1991807af5f5d034932c0749f8fc498cec5227364a638b7eb",
+    "peer_owner": "splint1c0390a14945ba7f102792ac6814fb1973931b47e85a5a01dd023d1bba0d94583",
+    "peer_host": "other.example",
+    "body": "free text",
+    "texts_today": 0,
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": false,
+    "reason": "text_off"
+   }
+  },
+  {
+   "name": "text_with_an_agreed_contact",
+   "status": "checked",
+   "case": "valid",
+   "check": "outbound.check",
+   "why": "Someone this agent agreed with gets words when the owner's setting for them says text.",
+   "input": {
+    "rules": {
+     "v": 1,
+     "owner": "splint130b6ab1fac2f2cb528a11455e2414dce105f5263eb0af9f4e99fefac936f398e",
+     "agent": "splint1d7d865cc40850d9598580b2e48670390cecbf2603a21e75ed771d5672f374598",
+     "seq": 7,
+     "issued_at": 1793750400,
+     "paused": false,
+     "reach": {
+      "inbound": {
+       "from": "contacts",
+       "filter": {
+        "owners": [],
+        "hosts": [],
+        "past": false
+       },
+       "types": [],
+       "text": false,
+       "strangers": "quarantine"
+      },
+      "outbound": "contacts",
+      "agreed": {
+       "types": [
+        "meeting/1@i7fqx5fcz3sz4svkmv6ctjb2ksrzqknaho42n4nn7gz6qtuz2wqq"
+       ],
+       "text": true,
+       "agree_types": false
+      }
+     },
+     "permissions": {
+      "level": "auto_within_limits",
+      "actions_per_day": 50,
+      "caps": {}
+     },
+     "contacts": [],
+     "invites": [
+      {
+       "id": "inv_1",
+       "key": "BP4bcT2XQxW1gSYIhYh1bDoouCfosftFjPsebVmWFhJzFXBRYqLF3ILX0TPOssyCbLbvKvj82rGbZQInocTI1fI",
+       "types": [
+        "meeting/1@i7fqx5fcz3sz4svkmv6ctjb2ksrzqknaho42n4nn7gz6qtuz2wqq"
+       ],
+       "expires_at": 1794355200
+      }
+     ],
+     "limits": {
+      "new_requests_per_contact_per_day": 3,
+      "open_requests_per_contact": 3,
+      "open_approvals": 10,
+      "new_from_others_per_day": 50
+     }
+    },
+    "peer": "splint1ae5d023afe7e0eb1991807af5f5d034932c0749f8fc498cec5227364a638b7eb",
+    "peer_owner": null,
+    "peer_host": null,
+    "body": "free text",
+    "texts_today": 0,
+    "now": 1793750400,
+    "agreed": true
+   },
+   "expect": {
+    "ok": true
+   }
+  },
+  {
+   "name": "text_with_an_agreed_contact_past_40",
+   "status": "checked",
+   "case": "hostile",
+   "check": "outbound.check",
+   "why": "Someone the owner hasn't named gets at most 40 a day, whatever the rules give contacts.",
+   "input": {
+    "rules": {
+     "v": 1,
+     "owner": "splint130b6ab1fac2f2cb528a11455e2414dce105f5263eb0af9f4e99fefac936f398e",
+     "agent": "splint1d7d865cc40850d9598580b2e48670390cecbf2603a21e75ed771d5672f374598",
+     "seq": 7,
+     "issued_at": 1793750400,
+     "paused": false,
+     "reach": {
+      "inbound": {
+       "from": "contacts",
+       "filter": {
+        "owners": [],
+        "hosts": [],
+        "past": false
+       },
+       "types": [],
+       "text": false,
+       "strangers": "quarantine"
+      },
+      "outbound": "contacts",
+      "agreed": {
+       "types": [
+        "meeting/1@i7fqx5fcz3sz4svkmv6ctjb2ksrzqknaho42n4nn7gz6qtuz2wqq"
+       ],
+       "text": true,
+       "agree_types": false
+      }
+     },
+     "permissions": {
+      "level": "auto_within_limits",
+      "actions_per_day": 50,
+      "caps": {}
+     },
+     "contacts": [],
+     "invites": [
+      {
+       "id": "inv_1",
+       "key": "BP4bcT2XQxW1gSYIhYh1bDoouCfosftFjPsebVmWFhJzFXBRYqLF3ILX0TPOssyCbLbvKvj82rGbZQInocTI1fI",
+       "types": [
+        "meeting/1@i7fqx5fcz3sz4svkmv6ctjb2ksrzqknaho42n4nn7gz6qtuz2wqq"
+       ],
+       "expires_at": 1794355200
+      }
+     ],
+     "limits": {
+      "new_requests_per_contact_per_day": 3,
+      "open_requests_per_contact": 3,
+      "open_approvals": 10,
+      "new_from_others_per_day": 50
+     }
+    },
+    "peer": "splint1ae5d023afe7e0eb1991807af5f5d034932c0749f8fc498cec5227364a638b7eb",
+    "peer_owner": null,
+    "peer_host": null,
+    "body": "free text",
+    "texts_today": 40,
+    "now": 1793750400,
+    "agreed": true
+   },
+   "expect": {
+    "ok": false,
+    "reason": "too_many_texts"
+   }
+  },
+  {
+   "name": "text_with_an_agreed_contact_past_a_lower_signed_limit",
+   "status": "checked",
+   "case": "hostile",
+   "check": "outbound.check",
+   "why": "An owner can sign a tighter day for contacts their agent adds by itself, and it holds.",
+   "input": {
+    "rules": {
+     "v": 1,
+     "owner": "splint130b6ab1fac2f2cb528a11455e2414dce105f5263eb0af9f4e99fefac936f398e",
+     "agent": "splint1d7d865cc40850d9598580b2e48670390cecbf2603a21e75ed771d5672f374598",
+     "seq": 7,
+     "issued_at": 1793750400,
+     "paused": false,
+     "reach": {
+      "inbound": {
+       "from": "contacts",
+       "filter": {
+        "owners": [],
+        "hosts": [],
+        "past": false
+       },
+       "types": [],
+       "text": false,
+       "strangers": "quarantine"
+      },
+      "outbound": "contacts",
+      "agreed": {
+       "types": [
+        "meeting/1@i7fqx5fcz3sz4svkmv6ctjb2ksrzqknaho42n4nn7gz6qtuz2wqq"
+       ],
+       "text": true,
+       "agree_types": false
+      }
+     },
+     "permissions": {
+      "level": "auto_within_limits",
+      "actions_per_day": 50,
+      "caps": {}
+     },
+     "contacts": [],
+     "invites": [
+      {
+       "id": "inv_1",
+       "key": "BP4bcT2XQxW1gSYIhYh1bDoouCfosftFjPsebVmWFhJzFXBRYqLF3ILX0TPOssyCbLbvKvj82rGbZQInocTI1fI",
+       "types": [
+        "meeting/1@i7fqx5fcz3sz4svkmv6ctjb2ksrzqknaho42n4nn7gz6qtuz2wqq"
+       ],
+       "expires_at": 1794355200
+      }
+     ],
+     "limits": {
+      "new_requests_per_contact_per_day": 3,
+      "open_requests_per_contact": 3,
+      "open_approvals": 10,
+      "new_from_others_per_day": 50,
+      "agreed_texts_per_day": 10
+     }
+    },
+    "peer": "splint1ae5d023afe7e0eb1991807af5f5d034932c0749f8fc498cec5227364a638b7eb",
+    "peer_owner": null,
+    "peer_host": null,
+    "body": "free text",
+    "texts_today": 10,
+    "now": 1793750400,
+    "agreed": true
+   },
+   "expect": {
+    "ok": false,
+    "reason": "too_many_texts"
+   }
+  },
+  {
+   "name": "text_with_a_named_contact_past_the_agreed_limit",
+   "status": "checked",
+   "case": "valid",
+   "check": "outbound.check",
+   "why": "That doesn't touch a contact the owner named.",
+   "input": {
+    "rules": {
+     "v": 1,
+     "owner": "splint130b6ab1fac2f2cb528a11455e2414dce105f5263eb0af9f4e99fefac936f398e",
+     "agent": "splint1d7d865cc40850d9598580b2e48670390cecbf2603a21e75ed771d5672f374598",
+     "seq": 7,
+     "issued_at": 1793750400,
+     "paused": false,
+     "reach": {
+      "inbound": {
+       "from": "contacts",
+       "filter": {
+        "owners": [],
+        "hosts": [],
+        "past": false
+       },
+       "types": [],
+       "text": false,
+       "strangers": "quarantine"
+      },
+      "outbound": "contacts"
+     },
+     "permissions": {
+      "level": "auto_within_limits",
+      "actions_per_day": 50,
+      "caps": {}
+     },
+     "contacts": [
+      {
+       "agent": "splint19a279a739f22fbb15b7f2ec6d68731786d46546641de7efa3874f8050f1db593",
+       "address": "ben~other.example",
+       "label": "Ben",
+       "status": "allowed",
+       "types": [
+        "meeting/1@i7fqx5fcz3sz4svkmv6ctjb2ksrzqknaho42n4nn7gz6qtuz2wqq"
+       ],
+       "text": true,
+       "pinned_by": "invite"
+      }
+     ],
+     "invites": [
+      {
+       "id": "inv_1",
+       "key": "BP4bcT2XQxW1gSYIhYh1bDoouCfosftFjPsebVmWFhJzFXBRYqLF3ILX0TPOssyCbLbvKvj82rGbZQInocTI1fI",
+       "types": [
+        "meeting/1@i7fqx5fcz3sz4svkmv6ctjb2ksrzqknaho42n4nn7gz6qtuz2wqq"
+       ],
+       "expires_at": 1794355200
+      }
+     ],
+     "limits": {
+      "new_requests_per_contact_per_day": 3,
+      "open_requests_per_contact": 3,
+      "open_approvals": 10,
+      "new_from_others_per_day": 50,
+      "agreed_texts_per_day": 10
+     }
+    },
+    "peer": "splint19a279a739f22fbb15b7f2ec6d68731786d46546641de7efa3874f8050f1db593",
+    "peer_owner": null,
+    "peer_host": null,
+    "body": "free text",
+    "texts_today": 10,
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": true
+   }
+  },
+  {
+   "name": "text_with_an_agreed_contact_without_text",
+   "status": "checked",
+   "case": "hostile",
+   "check": "outbound.check",
+   "why": "And not otherwise.",
+   "input": {
+    "rules": {
+     "v": 1,
+     "owner": "splint130b6ab1fac2f2cb528a11455e2414dce105f5263eb0af9f4e99fefac936f398e",
+     "agent": "splint1d7d865cc40850d9598580b2e48670390cecbf2603a21e75ed771d5672f374598",
+     "seq": 7,
+     "issued_at": 1793750400,
+     "paused": false,
+     "reach": {
+      "inbound": {
+       "from": "contacts",
+       "filter": {
+        "owners": [],
+        "hosts": [],
+        "past": false
+       },
+       "types": [],
+       "text": false,
+       "strangers": "quarantine"
+      },
+      "outbound": "contacts",
+      "agreed": {
+       "types": [
+        "meeting/1@i7fqx5fcz3sz4svkmv6ctjb2ksrzqknaho42n4nn7gz6qtuz2wqq"
+       ],
+       "text": false,
+       "agree_types": false
+      }
+     },
+     "permissions": {
+      "level": "auto_within_limits",
+      "actions_per_day": 50,
+      "caps": {}
+     },
+     "contacts": [],
+     "invites": [
+      {
+       "id": "inv_1",
+       "key": "BP4bcT2XQxW1gSYIhYh1bDoouCfosftFjPsebVmWFhJzFXBRYqLF3ILX0TPOssyCbLbvKvj82rGbZQInocTI1fI",
+       "types": [
+        "meeting/1@i7fqx5fcz3sz4svkmv6ctjb2ksrzqknaho42n4nn7gz6qtuz2wqq"
+       ],
+       "expires_at": 1794355200
+      }
+     ],
+     "limits": {
+      "new_requests_per_contact_per_day": 3,
+      "open_requests_per_contact": 3,
+      "open_approvals": 10,
+      "new_from_others_per_day": 50
+     }
+    },
+    "peer": "splint1ae5d023afe7e0eb1991807af5f5d034932c0749f8fc498cec5227364a638b7eb",
+    "peer_owner": null,
+    "peer_host": null,
+    "body": "free text",
+    "texts_today": 0,
+    "now": 1793750400,
+    "agreed": true
+   },
+   "expect": {
+    "ok": false,
+    "reason": "text_off"
+   }
+  },
+  {
+   "name": "text_with_someone_only_claiming_to_be_agreed",
+   "status": "checked",
+   "case": "hostile",
+   "check": "outbound.check",
+   "why": "With no record of a pair the reader checked, they're a stranger.",
+   "input": {
+    "rules": {
+     "v": 1,
+     "owner": "splint130b6ab1fac2f2cb528a11455e2414dce105f5263eb0af9f4e99fefac936f398e",
+     "agent": "splint1d7d865cc40850d9598580b2e48670390cecbf2603a21e75ed771d5672f374598",
+     "seq": 7,
+     "issued_at": 1793750400,
+     "paused": false,
+     "reach": {
+      "inbound": {
+       "from": "contacts",
+       "filter": {
+        "owners": [],
+        "hosts": [],
+        "past": false
+       },
+       "types": [],
+       "text": false,
+       "strangers": "quarantine"
+      },
+      "outbound": "contacts",
+      "agreed": {
+       "types": [
+        "meeting/1@i7fqx5fcz3sz4svkmv6ctjb2ksrzqknaho42n4nn7gz6qtuz2wqq"
+       ],
+       "text": true,
+       "agree_types": false
+      }
+     },
+     "permissions": {
+      "level": "auto_within_limits",
+      "actions_per_day": 50,
+      "caps": {}
+     },
+     "contacts": [],
+     "invites": [
+      {
+       "id": "inv_1",
+       "key": "BP4bcT2XQxW1gSYIhYh1bDoouCfosftFjPsebVmWFhJzFXBRYqLF3ILX0TPOssyCbLbvKvj82rGbZQInocTI1fI",
+       "types": [
+        "meeting/1@i7fqx5fcz3sz4svkmv6ctjb2ksrzqknaho42n4nn7gz6qtuz2wqq"
+       ],
+       "expires_at": 1794355200
+      }
+     ],
+     "limits": {
+      "new_requests_per_contact_per_day": 3,
+      "open_requests_per_contact": 3,
+      "open_approvals": 10,
+      "new_from_others_per_day": 50
+     }
+    },
+    "peer": "splint1ae5d023afe7e0eb1991807af5f5d034932c0749f8fc498cec5227364a638b7eb",
+    "peer_owner": null,
+    "peer_host": null,
+    "body": "free text",
+    "texts_today": 0,
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": false,
+    "reason": "not_a_contact"
+   }
+  }
+ ]
+}

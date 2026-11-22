@@ -1,0 +1,3 @@
+target
+# The image's own toolchain is the one this file names, and this file would add components to it.
+rust-toolchain.toml

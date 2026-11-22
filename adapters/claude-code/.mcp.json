@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "splint": {
+      "type": "stdio",
+      "command": "sh",
+      "args": ["-c", "exec node \"$HOME/.splint/adapters/mcp/src/main.ts\""]
+    }
+  }
+}

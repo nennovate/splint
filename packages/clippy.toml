@@ -1,0 +1,21 @@
+allow-dbg-in-tests = true
+allow-expect-in-tests = true
+allow-indexing-slicing-in-tests = true
+allow-panic-in-tests = true
+allow-print-in-tests = true
+allow-unwrap-in-tests = true
+
+# A dropped caller can interrupt any of these while `BEGIN` is on the wire, which leaves a connection
+# in the pool inside a transaction. The host opens every transaction with `database::begin`.
+disallowed-methods = [
+    { path = "sqlx::Pool::begin", reason = "use database::begin, which a caller hanging up can't interrupt", allow-invalid = true },
+    { path = "sqlx::Pool::begin_with", reason = "use database::begin, which a caller hanging up can't interrupt", allow-invalid = true },
+    { path = "sqlx::Pool::try_begin", reason = "use database::begin, which a caller hanging up can't interrupt", allow-invalid = true },
+    { path = "sqlx::Pool::try_begin_with", reason = "use database::begin, which a caller hanging up can't interrupt", allow-invalid = true },
+    { path = "sqlx::Acquire::begin", reason = "use database::begin, which a caller hanging up can't interrupt", allow-invalid = true },
+    { path = "sqlx::Connection::begin", reason = "use database::begin, which a caller hanging up can't interrupt", allow-invalid = true },
+    { path = "sqlx::Connection::begin_with", reason = "use database::begin, which a caller hanging up can't interrupt", allow-invalid = true },
+    { path = "sqlx::Connection::transaction", reason = "use database::begin, which a caller hanging up can't interrupt", allow-invalid = true },
+    { path = "sqlx::Transaction::begin", reason = "use database::begin, which a caller hanging up can't interrupt", allow-invalid = true },
+    { path = "sqlx::TransactionManager::begin", reason = "use database::begin, which a caller hanging up can't interrupt", allow-invalid = true },
+]

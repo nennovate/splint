@@ -1,0 +1,1839 @@
+{
+ "contract": "protocol.md#interaction-types",
+ "vectors": [
+  {
+   "name": "id_of_document_1",
+   "status": "checked",
+   "case": "valid",
+   "check": "type.id",
+   "why": "Each example's ID, from its one encoding.",
+   "input": {
+    "schema": {
+     "type": "document/1",
+     "kind": "request",
+     "offer": {
+      "format": {
+       "word": [
+        "pdf",
+        "text"
+       ]
+      },
+      "kind": {
+       "word": [
+        "invoice",
+        "contract",
+        "report"
+       ]
+      }
+     },
+     "fixed": [
+      "kind"
+     ],
+     "result": {
+      "pages": {
+       "range": {
+        "min": 1,
+        "max": 1000
+       }
+      },
+      "size_kb": {
+       "range": {
+        "min": 1,
+        "max": 1000000
+       }
+      }
+     },
+     "progress": [
+      "finding",
+      "redacting"
+     ],
+     "clarify": [
+      "which_one"
+     ],
+     "decline": [
+      "not_held",
+      "not_allowed"
+     ],
+     "sign": "none"
+    }
+   },
+   "expect": {
+    "ok": true,
+    "type": "document/1@6hc5sgqdzhu66j6si3tpp5lqkqbhbdccgditkmdotswxix3h6tpq",
+    "one_encoding": "{\"clarify\":[\"which_one\"],\"decline\":[\"not_allowed\",\"not_held\"],\"fixed\":[\"kind\"],\"kind\":\"request\",\"offer\":{\"format\":{\"word\":[\"pdf\",\"text\"]},\"kind\":{\"word\":[\"contract\",\"invoice\",\"report\"]}},\"progress\":[\"finding\",\"redacting\"],\"result\":{\"pages\":{\"range\":{\"max\":1000,\"min\":1}},\"size_kb\":{\"range\":{\"max\":1000000,\"min\":1}}},\"type\":\"document/1\"}"
+   }
+  },
+  {
+   "name": "id_of_meeting_1",
+   "status": "checked",
+   "case": "valid",
+   "check": "type.id",
+   "why": "Each example's ID, from its one encoding.",
+   "input": {
+    "schema": {
+     "type": "meeting/1",
+     "kind": "request",
+     "offer": {
+      "duration_min": {
+       "one_of": [
+        15,
+        30,
+        45,
+        60,
+        90
+       ]
+      },
+      "mode": {
+       "word": [
+        "video",
+        "phone",
+        "in_person"
+       ]
+      },
+      "purpose": {
+       "word": [
+        "intro",
+        "catch_up",
+        "follow_up",
+        "interview",
+        "review",
+        "other"
+       ]
+      },
+      "slots": {
+       "times": {
+        "grid_secs": 1800,
+        "max": 5
+       }
+      }
+     },
+     "fixed": [
+      "mode",
+      "purpose"
+     ],
+     "pick": {
+      "start": "slots"
+     },
+     "clarify": [
+      "other_times",
+      "shorter",
+      "longer",
+      "purpose_unclear",
+      "wrong_person"
+     ],
+     "decline": [
+      "no_times",
+      "not_interested",
+      "wrong_person"
+     ],
+     "sign": "both"
+    }
+   },
+   "expect": {
+    "ok": true,
+    "type": "meeting/1@i7fqx5fcz3sz4svkmv6ctjb2ksrzqknaho42n4nn7gz6qtuz2wqq",
+    "one_encoding": "{\"clarify\":[\"longer\",\"other_times\",\"purpose_unclear\",\"shorter\",\"wrong_person\"],\"decline\":[\"no_times\",\"not_interested\",\"wrong_person\"],\"fixed\":[\"mode\",\"purpose\"],\"kind\":\"request\",\"offer\":{\"duration_min\":{\"one_of\":[15,30,45,60,90]},\"mode\":{\"word\":[\"in_person\",\"phone\",\"video\"]},\"purpose\":{\"word\":[\"catch_up\",\"follow_up\",\"interview\",\"intro\",\"other\",\"review\"]},\"slots\":{\"times\":{\"grid_secs\":1800,\"max\":5}}},\"pick\":{\"start\":\"slots\"},\"sign\":\"both\",\"type\":\"meeting/1\"}"
+   }
+  },
+  {
+   "name": "id_of_quote_1",
+   "status": "checked",
+   "case": "valid",
+   "check": "type.id",
+   "why": "Each example's ID, from its one encoding.",
+   "input": {
+    "schema": {
+     "type": "quote/1",
+     "kind": "request",
+     "offer": {
+      "currency": {
+       "word": [
+        "usd",
+        "eur",
+        "gbp"
+       ]
+      },
+      "item": {
+       "word": [
+        "catering",
+        "venue",
+        "delivery",
+        "other"
+       ]
+      },
+      "quantity": {
+       "range": {
+        "min": 1,
+        "max": 100000
+       }
+      }
+     },
+     "fixed": [
+      "currency",
+      "item"
+     ],
+     "result": {
+      "amount_minor": {
+       "range": {
+        "min": 0,
+        "max": 100000000000
+       }
+      },
+      "valid_days": {
+       "one_of": [
+        7,
+        14,
+        30
+       ]
+      }
+     },
+     "progress": [
+      "pricing",
+      "checking_stock"
+     ],
+     "clarify": [
+      "quantity_unclear",
+      "item_unclear"
+     ],
+     "decline": [
+      "cannot_supply",
+      "too_small"
+     ],
+     "values": [
+      "amount_minor"
+     ],
+     "units": {
+      "amount_minor": "currency"
+     },
+     "paid": {
+      "amount_minor": "recipient"
+     },
+     "sign": "requester"
+    }
+   },
+   "expect": {
+    "ok": true,
+    "type": "quote/1@k6mkn6o2j7wes3mhauyvziyaoff3vsdhxarayv5zhongkruiavsa",
+    "one_encoding": "{\"clarify\":[\"item_unclear\",\"quantity_unclear\"],\"decline\":[\"cannot_supply\",\"too_small\"],\"fixed\":[\"currency\",\"item\"],\"kind\":\"request\",\"offer\":{\"currency\":{\"word\":[\"eur\",\"gbp\",\"usd\"]},\"item\":{\"word\":[\"catering\",\"delivery\",\"other\",\"venue\"]},\"quantity\":{\"range\":{\"max\":100000,\"min\":1}}},\"paid\":{\"amount_minor\":\"recipient\"},\"progress\":[\"checking_stock\",\"pricing\"],\"result\":{\"amount_minor\":{\"range\":{\"max\":100000000000,\"min\":0}},\"valid_days\":{\"one_of\":[7,14,30]}},\"sign\":\"requester\",\"type\":\"quote/1\",\"units\":{\"amount_minor\":\"currency\"},\"values\":[\"amount_minor\"]}"
+   }
+  },
+  {
+   "name": "id_of_rsvp_1",
+   "status": "checked",
+   "case": "valid",
+   "check": "type.id",
+   "why": "Each example's ID, from its one encoding.",
+   "input": {
+    "schema": {
+     "type": "rsvp/1",
+     "kind": "request",
+     "offer": {
+      "event": {
+       "word": [
+        "dinner",
+        "party",
+        "workshop",
+        "other"
+       ]
+      },
+      "seats": {
+       "range": {
+        "min": 1,
+        "max": 20
+       }
+      }
+     },
+     "fixed": [
+      "event"
+     ],
+     "clarify": [
+      "when",
+      "where"
+     ],
+     "decline": [
+      "cant_come"
+     ],
+     "sign": "requester"
+    }
+   },
+   "expect": {
+    "ok": true,
+    "type": "rsvp/1@z66jzod2xin67ozi6zz2s7x57qhnfzanlgb7ubeytajekmookbdq",
+    "one_encoding": "{\"clarify\":[\"when\",\"where\"],\"decline\":[\"cant_come\"],\"fixed\":[\"event\"],\"kind\":\"request\",\"offer\":{\"event\":{\"word\":[\"dinner\",\"other\",\"party\",\"workshop\"]},\"seats\":{\"range\":{\"max\":20,\"min\":1}}},\"sign\":\"requester\",\"type\":\"rsvp/1\"}"
+   }
+  },
+  {
+   "name": "id_of_time_1",
+   "status": "checked",
+   "case": "valid",
+   "check": "type.id",
+   "why": "Each example's ID, from its one encoding.",
+   "input": {
+    "schema": {
+     "type": "time/1",
+     "kind": "request",
+     "offer": {
+      "duration_min": {
+       "one_of": [
+        15,
+        30,
+        45,
+        60,
+        90
+       ]
+      },
+      "mode": {
+       "word": [
+        "video",
+        "phone",
+        "in_person"
+       ]
+      },
+      "slots": {
+       "times": {
+        "grid_secs": 1800,
+        "max": 5
+       }
+      }
+     },
+     "fixed": [
+      "mode"
+     ],
+     "pick": {
+      "start": "slots"
+     },
+     "result": {
+      "kept": {
+       "word": [
+        "calendar",
+        "noted"
+       ]
+      }
+     },
+     "clarify": [
+      "other_times",
+      "shorter",
+      "longer",
+      "wrong_person"
+     ],
+     "decline": [
+      "no_times",
+      "not_interested",
+      "wrong_person"
+     ],
+     "sign": "none"
+    }
+   },
+   "expect": {
+    "ok": true,
+    "type": "time/1@kywplefbukn3savbqlp7w7lkx2pvpjjnnrd4ocm72amdxhynqbrq",
+    "one_encoding": "{\"clarify\":[\"longer\",\"other_times\",\"shorter\",\"wrong_person\"],\"decline\":[\"no_times\",\"not_interested\",\"wrong_person\"],\"fixed\":[\"mode\"],\"kind\":\"request\",\"offer\":{\"duration_min\":{\"one_of\":[15,30,45,60,90]},\"mode\":{\"word\":[\"in_person\",\"phone\",\"video\"]},\"slots\":{\"times\":{\"grid_secs\":1800,\"max\":5}}},\"pick\":{\"start\":\"slots\"},\"result\":{\"kept\":{\"word\":[\"calendar\",\"noted\"]}},\"type\":\"time/1\"}"
+   }
+  },
+  {
+   "name": "id_whatever_the_spelling",
+   "status": "checked",
+   "case": "valid",
+   "check": "type.id",
+   "why": "The same rules written in another order are the same type.",
+   "input": {
+    "schema": {
+     "sign": "requester",
+     "paid": {
+      "amount_minor": "recipient"
+     },
+     "units": {
+      "amount_minor": "currency"
+     },
+     "values": [
+      "amount_minor"
+     ],
+     "decline": [
+      "cannot_supply",
+      "too_small"
+     ],
+     "clarify": [
+      "quantity_unclear",
+      "item_unclear"
+     ],
+     "progress": [
+      "pricing",
+      "checking_stock"
+     ],
+     "result": {
+      "amount_minor": {
+       "range": {
+        "min": 0,
+        "max": 100000000000
+       }
+      },
+      "valid_days": {
+       "one_of": [
+        7,
+        14,
+        30
+       ]
+      }
+     },
+     "fixed": [
+      "item",
+      "currency"
+     ],
+     "offer": {
+      "currency": {
+       "word": [
+        "usd",
+        "eur",
+        "gbp"
+       ]
+      },
+      "item": {
+       "word": [
+        "catering",
+        "venue",
+        "delivery",
+        "other"
+       ]
+      },
+      "quantity": {
+       "range": {
+        "min": 1,
+        "max": 100000
+       }
+      }
+     },
+     "kind": "request",
+     "type": "quote/1"
+    }
+   },
+   "expect": {
+    "ok": true,
+    "type": "quote/1@k6mkn6o2j7wes3mhauyvziyaoff3vsdhxarayv5zhongkruiavsa",
+    "one_encoding": "{\"clarify\":[\"item_unclear\",\"quantity_unclear\"],\"decline\":[\"cannot_supply\",\"too_small\"],\"fixed\":[\"currency\",\"item\"],\"kind\":\"request\",\"offer\":{\"currency\":{\"word\":[\"eur\",\"gbp\",\"usd\"]},\"item\":{\"word\":[\"catering\",\"delivery\",\"other\",\"venue\"]},\"quantity\":{\"range\":{\"max\":100000,\"min\":1}}},\"paid\":{\"amount_minor\":\"recipient\"},\"progress\":[\"checking_stock\",\"pricing\"],\"result\":{\"amount_minor\":{\"range\":{\"max\":100000000000,\"min\":0}},\"valid_days\":{\"one_of\":[7,14,30]}},\"sign\":\"requester\",\"type\":\"quote/1\",\"units\":{\"amount_minor\":\"currency\"},\"values\":[\"amount_minor\"]}"
+   }
+  },
+  {
+   "name": "id_with_what_goes_without_saying",
+   "status": "checked",
+   "case": "valid",
+   "check": "type.id",
+   "why": "An empty list and `sign` of `none` say nothing, so they're left out of the one encoding.",
+   "input": {
+    "schema": {
+     "type": "haircut/1",
+     "kind": "request",
+     "offer": {
+      "service": {
+       "word": [
+        "cut",
+        "trim"
+       ]
+      },
+      "slots": {
+       "times": {
+        "grid_secs": 1800,
+        "max": 3
+       }
+      }
+     },
+     "fixed": [
+      "service"
+     ],
+     "pick": {
+      "start": "slots"
+     },
+     "decline": [
+      "fully_booked"
+     ],
+     "sign": "none",
+     "result": {
+      "done": {
+       "one_of": [
+        1
+       ]
+      }
+     },
+     "progress": []
+    }
+   },
+   "expect": {
+    "ok": true,
+    "type": "haircut/1@j3awfudlftxgogbkwchzzqfcmzi3apmvc2c5bs3ztfc3ffx2rnga",
+    "one_encoding": "{\"decline\":[\"fully_booked\"],\"fixed\":[\"service\"],\"kind\":\"request\",\"offer\":{\"service\":{\"word\":[\"cut\",\"trim\"]},\"slots\":{\"times\":{\"grid_secs\":1800,\"max\":3}}},\"pick\":{\"start\":\"slots\"},\"result\":{\"done\":{\"one_of\":[1]}},\"type\":\"haircut/1\"}"
+   }
+  },
+  {
+   "name": "id_of_a_schema_nothing_could_follow",
+   "status": "checked",
+   "case": "hostile",
+   "check": "type.id",
+   "why": "A request nothing could finish isn't a type.",
+   "input": {
+    "schema": {
+     "type": "x/1",
+     "kind": "request"
+    }
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "id_of_cores_own_name",
+   "status": "checked",
+   "case": "hostile",
+   "check": "type.id",
+   "why": "`type` is core's own.",
+   "input": {
+    "schema": {
+     "type": "type/1",
+     "kind": "request",
+     "offer": {
+      "service": {
+       "word": [
+        "cut",
+        "trim"
+       ]
+      },
+      "slots": {
+       "times": {
+        "grid_secs": 1800,
+        "max": 3
+       }
+      }
+     },
+     "fixed": [
+      "service"
+     ],
+     "pick": {
+      "start": "slots"
+     },
+     "decline": [
+      "fully_booked"
+     ],
+     "sign": "both"
+    }
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "id_with_a_field_named_like_a_prototype",
+   "status": "checked",
+   "case": "valid",
+   "check": "type.id",
+   "why": "Every reader keeps every field, whatever it's called.",
+   "input": {
+    "schema": {
+     "type": "haircut/1",
+     "kind": "request",
+     "offer": {
+      "service": {
+       "word": [
+        "cut",
+        "trim"
+       ]
+      },
+      "slots": {
+       "times": {
+        "grid_secs": 1800,
+        "max": 3
+       }
+      },
+      "__proto__": {
+       "word": [
+        "a"
+       ]
+      }
+     },
+     "fixed": [
+      "service"
+     ],
+     "pick": {
+      "start": "slots"
+     },
+     "decline": [
+      "fully_booked"
+     ],
+     "sign": "both"
+    }
+   },
+   "expect": {
+    "ok": true,
+    "type": "haircut/1@b6vuw4jdhoq74ae5l5m3vm6lckwt76ukpvjthwiagpoegrhguyha",
+    "one_encoding": "{\"decline\":[\"fully_booked\"],\"fixed\":[\"service\"],\"kind\":\"request\",\"offer\":{\"__proto__\":{\"word\":[\"a\"]},\"service\":{\"word\":[\"cut\",\"trim\"]},\"slots\":{\"times\":{\"grid_secs\":1800,\"max\":3}}},\"pick\":{\"start\":\"slots\"},\"sign\":\"both\",\"type\":\"haircut/1\"}"
+   }
+  },
+  {
+   "name": "id_with_a_part_in_another_case",
+   "status": "checked",
+   "case": "hostile",
+   "check": "type.id",
+   "why": "Each part is spelled exactly as the protocol names it, so no reader can read it under another ID.",
+   "input": {
+    "schema": {
+     "Type": "x/1",
+     "Kind": "request",
+     "Sign": "both"
+    }
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "id_with_a_rule_in_another_case",
+   "status": "checked",
+   "case": "hostile",
+   "check": "type.id",
+   "why": "And each rule.",
+   "input": {
+    "schema": {
+     "type": "haircut/1",
+     "kind": "request",
+     "offer": {
+      "service": {
+       "Word": [
+        "cut",
+        "trim"
+       ]
+      },
+      "slots": {
+       "times": {
+        "grid_secs": 1800,
+        "max": 3
+       }
+      }
+     },
+     "fixed": [
+      "service"
+     ],
+     "pick": {
+      "start": "slots"
+     },
+     "decline": [
+      "fully_booked"
+     ],
+     "sign": "both"
+    }
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "id_with_minus_zero",
+   "status": "checked",
+   "case": "hostile",
+   "check": "type.id",
+   "why": "A number is a plain whole number, so -0 isn't 0 under another fingerprint.",
+   "input": {
+    "schema": {
+     "type": "x/1",
+     "kind": "request",
+     "sign": "both",
+     "result": {
+      "n": {
+       "range": {
+        "min": -0.0,
+        "max": 1
+       }
+      }
+     }
+    }
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "proposal_of_an_example",
+   "status": "checked",
+   "case": "valid",
+   "check": "type.propose",
+   "why": "Every example fits a proposal.",
+   "input": {
+    "schema": {
+     "type": "quote/1",
+     "kind": "request",
+     "offer": {
+      "currency": {
+       "word": [
+        "usd",
+        "eur",
+        "gbp"
+       ]
+      },
+      "item": {
+       "word": [
+        "catering",
+        "venue",
+        "delivery",
+        "other"
+       ]
+      },
+      "quantity": {
+       "range": {
+        "min": 1,
+        "max": 100000
+       }
+      }
+     },
+     "fixed": [
+      "currency",
+      "item"
+     ],
+     "result": {
+      "amount_minor": {
+       "range": {
+        "min": 0,
+        "max": 100000000000
+       }
+      },
+      "valid_days": {
+       "one_of": [
+        7,
+        14,
+        30
+       ]
+      }
+     },
+     "progress": [
+      "pricing",
+      "checking_stock"
+     ],
+     "clarify": [
+      "quantity_unclear",
+      "item_unclear"
+     ],
+     "decline": [
+      "cannot_supply",
+      "too_small"
+     ],
+     "values": [
+      "amount_minor"
+     ],
+     "units": {
+      "amount_minor": "currency"
+     },
+     "paid": {
+      "amount_minor": "recipient"
+     },
+     "sign": "requester"
+    }
+   },
+   "expect": {
+    "ok": true
+   }
+  },
+  {
+   "name": "proposal_past_2_kib",
+   "status": "checked",
+   "case": "hostile",
+   "check": "type.propose",
+   "why": "Under every count and the characters chosen, past 2 KiB in its one encoding.",
+   "input": {
+    "schema": {
+     "type": "x/1",
+     "kind": "request",
+     "sign": "both",
+     "offer": {
+      "f0": {
+       "word": [
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "f",
+        "g",
+        "h",
+        "i",
+        "j",
+        "k",
+        "l",
+        "m",
+        "n",
+        "o",
+        "p"
+       ]
+      },
+      "f1": {
+       "word": [
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "f",
+        "g",
+        "h",
+        "i",
+        "j",
+        "k",
+        "l",
+        "m",
+        "n",
+        "o",
+        "p"
+       ]
+      },
+      "f2": {
+       "word": [
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "f",
+        "g",
+        "h",
+        "i",
+        "j",
+        "k",
+        "l",
+        "m",
+        "n",
+        "o",
+        "p"
+       ]
+      },
+      "f3": {
+       "word": [
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "f",
+        "g",
+        "h",
+        "i",
+        "j",
+        "k",
+        "l",
+        "m",
+        "n",
+        "o",
+        "p"
+       ]
+      },
+      "f4": {
+       "word": [
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "f",
+        "g",
+        "h",
+        "i",
+        "j",
+        "k",
+        "l",
+        "m",
+        "n",
+        "o",
+        "p"
+       ]
+      },
+      "f5": {
+       "word": [
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "f",
+        "g",
+        "h",
+        "i",
+        "j",
+        "k",
+        "l",
+        "m",
+        "n",
+        "o",
+        "p"
+       ]
+      },
+      "f6": {
+       "word": [
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "f",
+        "g",
+        "h",
+        "i",
+        "j",
+        "k",
+        "l",
+        "m",
+        "n",
+        "o",
+        "p"
+       ]
+      },
+      "f7": {
+       "word": [
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "f",
+        "g",
+        "h",
+        "i",
+        "j",
+        "k",
+        "l",
+        "m",
+        "n",
+        "o",
+        "p"
+       ]
+      },
+      "f8": {
+       "word": [
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "f",
+        "g",
+        "h",
+        "i",
+        "j",
+        "k",
+        "l",
+        "m",
+        "n",
+        "o",
+        "p"
+       ]
+      },
+      "f9": {
+       "word": [
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "f",
+        "g",
+        "h",
+        "i",
+        "j",
+        "k",
+        "l",
+        "m",
+        "n",
+        "o",
+        "p"
+       ]
+      },
+      "f10": {
+       "word": [
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "f",
+        "g",
+        "h",
+        "i",
+        "j",
+        "k",
+        "l",
+        "m",
+        "n",
+        "o",
+        "p"
+       ]
+      },
+      "f11": {
+       "word": [
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "f",
+        "g",
+        "h",
+        "i",
+        "j",
+        "k",
+        "l",
+        "m",
+        "n",
+        "o",
+        "p"
+       ]
+      },
+      "f12": {
+       "word": [
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "f",
+        "g",
+        "h",
+        "i",
+        "j",
+        "k",
+        "l",
+        "m",
+        "n",
+        "o",
+        "p"
+       ]
+      },
+      "f13": {
+       "word": [
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "f",
+        "g",
+        "h",
+        "i",
+        "j",
+        "k",
+        "l",
+        "m",
+        "n",
+        "o",
+        "p"
+       ]
+      },
+      "f14": {
+       "word": [
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "f",
+        "g",
+        "h",
+        "i",
+        "j",
+        "k",
+        "l",
+        "m",
+        "n",
+        "o",
+        "p"
+       ]
+      },
+      "f15": {
+       "word": [
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "f",
+        "g",
+        "h",
+        "i",
+        "j",
+        "k",
+        "l",
+        "m",
+        "n",
+        "o",
+        "p"
+       ]
+      }
+     },
+     "result": {
+      "r0": {
+       "range": {
+        "min": 0,
+        "max": 9
+       }
+      },
+      "r1": {
+       "range": {
+        "min": 0,
+        "max": 9
+       }
+      },
+      "r2": {
+       "range": {
+        "min": 0,
+        "max": 9
+       }
+      },
+      "r3": {
+       "range": {
+        "min": 0,
+        "max": 9
+       }
+      },
+      "r4": {
+       "range": {
+        "min": 0,
+        "max": 9
+       }
+      },
+      "r5": {
+       "range": {
+        "min": 0,
+        "max": 9
+       }
+      },
+      "r6": {
+       "range": {
+        "min": 0,
+        "max": 9
+       }
+      },
+      "r7": {
+       "range": {
+        "min": 0,
+        "max": 9
+       }
+      },
+      "r8": {
+       "range": {
+        "min": 0,
+        "max": 9
+       }
+      },
+      "r9": {
+       "range": {
+        "min": 0,
+        "max": 9
+       }
+      },
+      "r10": {
+       "range": {
+        "min": 0,
+        "max": 9
+       }
+      },
+      "r11": {
+       "range": {
+        "min": 0,
+        "max": 9
+       }
+      },
+      "r12": {
+       "range": {
+        "min": 0,
+        "max": 9
+       }
+      },
+      "r13": {
+       "range": {
+        "min": 0,
+        "max": 9
+       }
+      },
+      "r14": {
+       "range": {
+        "min": 0,
+        "max": 9
+       }
+      },
+      "r15": {
+       "range": {
+        "min": 0,
+        "max": 9
+       }
+      }
+     },
+     "progress": [
+      "a",
+      "b",
+      "c",
+      "d",
+      "e",
+      "f",
+      "g",
+      "h",
+      "i",
+      "j",
+      "k",
+      "l",
+      "m",
+      "n",
+      "o",
+      "p"
+     ],
+     "clarify": [
+      "a",
+      "b",
+      "c",
+      "d",
+      "e",
+      "f",
+      "g",
+      "h",
+      "i",
+      "j",
+      "k",
+      "l",
+      "m",
+      "n",
+      "o",
+      "p"
+     ],
+     "decline": [
+      "a",
+      "b",
+      "c",
+      "d",
+      "e",
+      "f",
+      "g",
+      "h",
+      "i",
+      "j",
+      "k",
+      "l",
+      "m",
+      "n",
+      "o",
+      "p"
+     ],
+     "values": [
+      "r0",
+      "r1",
+      "r2",
+      "r3",
+      "r4",
+      "r5",
+      "r6",
+      "r7",
+      "r8",
+      "r9",
+      "r10",
+      "r11",
+      "r12",
+      "r13",
+      "r14",
+      "r15"
+     ]
+    }
+   },
+   "expect": {
+    "ok": false,
+    "reason": "type_too_big"
+   }
+  },
+  {
+   "name": "proposal_with_17_words_in_a_list",
+   "status": "checked",
+   "case": "hostile",
+   "check": "type.propose",
+   "why": "At most 16 entries in any list.",
+   "input": {
+    "schema": {
+     "type": "haircut/1",
+     "kind": "request",
+     "offer": {
+      "service": {
+       "word": [
+        "cut",
+        "trim"
+       ]
+      },
+      "slots": {
+       "times": {
+        "grid_secs": 1800,
+        "max": 3
+       }
+      }
+     },
+     "fixed": [
+      "service"
+     ],
+     "pick": {
+      "start": "slots"
+     },
+     "decline": [
+      "w0",
+      "w1",
+      "w2",
+      "w3",
+      "w4",
+      "w5",
+      "w6",
+      "w7",
+      "w8",
+      "w9",
+      "w10",
+      "w11",
+      "w12",
+      "w13",
+      "w14",
+      "w15",
+      "w16"
+     ],
+     "sign": "both"
+    }
+   },
+   "expect": {
+    "ok": false,
+    "reason": "type_too_big"
+   }
+  },
+  {
+   "name": "proposal_past_512_characters",
+   "status": "checked",
+   "case": "hostile",
+   "check": "type.propose",
+   "why": "At most 512 characters of names, words and numbers.",
+   "input": {
+    "schema": {
+     "type": "haircut/1",
+     "kind": "request",
+     "offer": {
+      "service": {
+       "word": [
+        "cut",
+        "trim"
+       ]
+      },
+      "slots": {
+       "times": {
+        "grid_secs": 1800,
+        "max": 3
+       }
+      },
+      "f0": {
+       "word": [
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       ]
+      },
+      "f1": {
+       "word": [
+        "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+       ]
+      },
+      "f2": {
+       "word": [
+        "cccccccccccccccccccccccccccccccc"
+       ]
+      },
+      "f3": {
+       "word": [
+        "dddddddddddddddddddddddddddddddd"
+       ]
+      },
+      "f4": {
+       "word": [
+        "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+       ]
+      },
+      "f5": {
+       "word": [
+        "ffffffffffffffffffffffffffffffff"
+       ]
+      },
+      "f6": {
+       "word": [
+        "gggggggggggggggggggggggggggggggg"
+       ]
+      },
+      "f7": {
+       "word": [
+        "hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh"
+       ]
+      },
+      "f8": {
+       "word": [
+        "iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii"
+       ]
+      },
+      "f9": {
+       "word": [
+        "jjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjj"
+       ]
+      },
+      "f10": {
+       "word": [
+        "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
+       ]
+      },
+      "f11": {
+       "word": [
+        "llllllllllllllllllllllllllllllll"
+       ]
+      },
+      "f12": {
+       "word": [
+        "mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm"
+       ]
+      },
+      "f13": {
+       "word": [
+        "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn"
+       ]
+      }
+     },
+     "fixed": [
+      "service"
+     ],
+     "pick": {
+      "start": "slots"
+     },
+     "decline": [
+      "fully_booked"
+     ],
+     "sign": "both"
+    }
+   },
+   "expect": {
+    "ok": false,
+    "reason": "type_too_big"
+   }
+  },
+  {
+   "name": "proposal_of_a_price_in_no_unit",
+   "status": "checked",
+   "case": "hostile",
+   "check": "type.propose",
+   "why": "A price whose currency nobody can tell is no price anyone can pay or cap.",
+   "input": {
+    "schema": {
+     "type": "price/1",
+     "kind": "request",
+     "result": {
+      "amount": {
+       "range": {
+        "min": 0,
+        "max": 9
+       }
+      }
+     },
+     "values": [
+      "amount"
+     ],
+     "paid": {
+      "amount": "recipient"
+     },
+     "sign": "requester"
+    }
+   },
+   "expect": {
+    "ok": false,
+    "reason": "type_unsafe"
+   }
+  },
+  {
+   "name": "proposal_of_a_number_past_2_53",
+   "status": "checked",
+   "case": "hostile",
+   "check": "type.propose",
+   "why": "A number every reader holds exactly.",
+   "input": {
+    "schema": {
+     "type": "big/1",
+     "kind": "request",
+     "result": {
+      "n": {
+       "range": {
+        "min": 0,
+        "max": 9007199254740992
+       }
+      }
+     },
+     "sign": "requester"
+    }
+   },
+   "expect": {
+    "ok": false,
+    "reason": "type_unsafe"
+   }
+  },
+  {
+   "name": "proposal_of_a_long_text_field",
+   "status": "checked",
+   "case": "hostile",
+   "check": "type.propose",
+   "why": "Words of at most a conversation's line.",
+   "input": {
+    "schema": {
+     "type": "note/1",
+     "kind": "conversation",
+     "say": {
+      "text": {
+       "text": {
+        "max_chars": 501
+       }
+      }
+     }
+    }
+   },
+   "expect": {
+    "ok": false,
+    "reason": "type_unsafe"
+   }
+  },
+  {
+   "name": "proposal_with_17_words_in_a_field",
+   "status": "checked",
+   "case": "hostile",
+   "check": "type.propose",
+   "why": "At most 16 entries in a field's list too.",
+   "input": {
+    "schema": {
+     "type": "haircut/1",
+     "kind": "request",
+     "offer": {
+      "service": {
+       "word": [
+        "cut",
+        "trim"
+       ]
+      },
+      "slots": {
+       "times": {
+        "grid_secs": 1800,
+        "max": 3
+       }
+      },
+      "size": {
+       "word": [
+        "w1",
+        "w2",
+        "w3",
+        "w4",
+        "w5",
+        "w6",
+        "w7",
+        "w8",
+        "w9",
+        "w10",
+        "w11",
+        "w12",
+        "w13",
+        "w14",
+        "w15",
+        "w16",
+        "w17"
+       ]
+      }
+     },
+     "fixed": [
+      "service"
+     ],
+     "pick": {
+      "start": "slots"
+     },
+     "decline": [
+      "fully_booked"
+     ],
+     "sign": "both"
+    }
+   },
+   "expect": {
+    "ok": false,
+    "reason": "type_too_big"
+   }
+  },
+  {
+   "name": "proposal_with_17_numbers_in_a_field",
+   "status": "checked",
+   "case": "hostile",
+   "check": "type.propose",
+   "why": "And in a list of numbers.",
+   "input": {
+    "schema": {
+     "type": "haircut/1",
+     "kind": "request",
+     "offer": {
+      "service": {
+       "word": [
+        "cut",
+        "trim"
+       ]
+      },
+      "slots": {
+       "times": {
+        "grid_secs": 1800,
+        "max": 3
+       }
+      },
+      "size": {
+       "one_of": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17
+       ]
+      }
+     },
+     "fixed": [
+      "service"
+     ],
+     "pick": {
+      "start": "slots"
+     },
+     "decline": [
+      "fully_booked"
+     ],
+     "sign": "both"
+    }
+   },
+   "expect": {
+    "ok": false,
+    "reason": "type_too_big"
+   }
+  },
+  {
+   "name": "proposal_of_17_times",
+   "status": "checked",
+   "case": "hostile",
+   "check": "type.propose",
+   "why": "And in times to choose from.",
+   "input": {
+    "schema": {
+     "type": "haircut/1",
+     "kind": "request",
+     "offer": {
+      "service": {
+       "word": [
+        "cut",
+        "trim"
+       ]
+      },
+      "slots": {
+       "times": {
+        "grid_secs": 1800,
+        "max": 17
+       }
+      }
+     },
+     "fixed": [
+      "service"
+     ],
+     "pick": {
+      "start": "slots"
+     },
+     "decline": [
+      "fully_booked"
+     ],
+     "sign": "both"
+    }
+   },
+   "expect": {
+    "ok": false,
+    "reason": "type_too_big"
+   }
+  },
+  {
+   "name": "proposal_with_17_picks",
+   "status": "checked",
+   "case": "hostile",
+   "check": "type.propose",
+   "why": "And in what an accept picks.",
+   "input": {
+    "schema": {
+     "type": "haircut/1",
+     "kind": "request",
+     "offer": {
+      "service": {
+       "word": [
+        "cut",
+        "trim"
+       ]
+      },
+      "slots": {
+       "times": {
+        "grid_secs": 1800,
+        "max": 3
+       }
+      }
+     },
+     "fixed": [
+      "service"
+     ],
+     "pick": {
+      "p1": "slots",
+      "p2": "slots",
+      "p3": "slots",
+      "p4": "slots",
+      "p5": "slots",
+      "p6": "slots",
+      "p7": "slots",
+      "p8": "slots",
+      "p9": "slots",
+      "p10": "slots",
+      "p11": "slots",
+      "p12": "slots",
+      "p13": "slots",
+      "p14": "slots",
+      "p15": "slots",
+      "p16": "slots",
+      "p17": "slots"
+     },
+     "decline": [
+      "fully_booked"
+     ],
+     "sign": "both"
+    }
+   },
+   "expect": {
+    "ok": false,
+    "reason": "type_too_big"
+   }
+  },
+  {
+   "name": "proposal_past_512_characters_in_its_picks",
+   "status": "checked",
+   "case": "hostile",
+   "check": "type.propose",
+   "why": "What an accept picks is named by whoever wrote it, so it counts.",
+   "input": {
+    "schema": {
+     "type": "haircut/1",
+     "kind": "request",
+     "offer": {
+      "service": {
+       "word": [
+        "cut",
+        "trim"
+       ]
+      },
+      "slots": {
+       "times": {
+        "grid_secs": 1800,
+        "max": 3
+       }
+      }
+     },
+     "fixed": [
+      "service"
+     ],
+     "pick": {
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "slots",
+      "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb": "slots",
+      "cccccccccccccccccccccccccccccccc": "slots",
+      "dddddddddddddddddddddddddddddddd": "slots",
+      "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee": "slots",
+      "ffffffffffffffffffffffffffffffff": "slots",
+      "gggggggggggggggggggggggggggggggg": "slots",
+      "hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh": "slots",
+      "iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii": "slots",
+      "jjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjj": "slots",
+      "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk": "slots",
+      "llllllllllllllllllllllllllllllll": "slots",
+      "mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm": "slots",
+      "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn": "slots",
+      "oooooooooooooooooooooooooooooooo": "slots"
+     },
+     "decline": [
+      "fully_booked"
+     ],
+     "sign": "both"
+    }
+   },
+   "expect": {
+    "ok": false,
+    "reason": "type_too_big"
+   }
+  },
+  {
+   "name": "proposal_of_a_number_of_2_53_in_a_list",
+   "status": "checked",
+   "case": "hostile",
+   "check": "type.propose",
+   "why": "A number every reader holds exactly, in a list too.",
+   "input": {
+    "schema": {
+     "type": "big/1",
+     "kind": "request",
+     "result": {
+      "n": {
+       "one_of": [
+        9007199254740992
+       ]
+      }
+     },
+     "sign": "requester"
+    }
+   },
+   "expect": {
+    "ok": false,
+    "reason": "type_unsafe"
+   }
+  },
+  {
+   "name": "proposal_of_a_grid_of_2_53",
+   "status": "checked",
+   "case": "hostile",
+   "check": "type.propose",
+   "why": "And a grid.",
+   "input": {
+    "schema": {
+     "type": "haircut/1",
+     "kind": "request",
+     "offer": {
+      "service": {
+       "word": [
+        "cut",
+        "trim"
+       ]
+      },
+      "slots": {
+       "times": {
+        "grid_secs": 9007199254740992,
+        "max": 3
+       }
+      }
+     },
+     "fixed": [
+      "service"
+     ],
+     "pick": {
+      "start": "slots"
+     },
+     "decline": [
+      "fully_booked"
+     ],
+     "sign": "both"
+    }
+   },
+   "expect": {
+    "ok": false,
+    "reason": "type_unsafe"
+   }
+  }
+ ]
+}

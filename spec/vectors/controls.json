@@ -1,0 +1,427 @@
+{
+ "contract": "protocol.md#setting-up-your-controls",
+ "vectors": [
+  {
+   "name": "controls_by_a_passkey",
+   "status": "checked",
+   "case": "valid",
+   "check": "controls.prepare",
+   "why": "The binding, the rules naming the delegation by its signing input's hash, and the delegation, WA256, for one touch over the batch's challenge. The backup's vouch is ES256.",
+   "input": {
+    "owner_identity": "eyJ2Ijo1LCJhbGciOiJ3ZWJhdXRobi1lczI1NiIsImtleSI6IkJQUmtkdDFvREI5VmRXdlBsTjQ4M3FLV1BYS29rdE1sUVJqMXJMZTZmbW1Hek9JeVJVNjF4LW9Db2Q5ZE9PTHFlVXd5UWZGWE1aSzVzai16WnEzdERRdyIsInJwIjoiaG9zdC5leGFtcGxlIiwic2VhbCI6IkJNMU5rZ0ZUNWxDVjN0cGZtWDVnNTg3b2tDOTBjMlhHTHJCOE9HUm4yRzlJQXREM2pmaTlveDhoWlctLW1YZFdKUVNZYkNTbVZINlBVQ1JaUjJCOWQzayIsInJlY292ZXJ5Ijp7InJ1bGUiOiJiYWNrdXBfa2V5IiwiY29tbWl0bWVudCI6IjE1NjZhYjJiYzk2OTI4ZDNiYTY5YjFjMzI5OWQ2NzhhMjNiMTA1MmFiNTQ3NmU1M2JhNzQ3M2QzYzU3NTEzYjAifX0",
+    "agent_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJQWmlGMXhLWHVpMFFMZWprTFZRY1RXRHVKOFFVYnZ1ZmxjTHNlTnNFUlI5Szh4UFRPVWhQbGo1Qlg4TnBpQjUxYzlLcFZkeWRiZ2JKTEJmd3Y2NVVmUSIsInNlYWwiOiJCTzNlSnduZFNSSE9YTklPVUtVT2NSMmxfT0NjUFFhZ0dWZVJHLWNieEFpZmhpRGxsRW9iZHdyUVN1ZXZtZ19Sd2RBWTFYTU9BMm9LZXNqUmJLN1NpbkEiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiIyNDVmMGI4YThkY2ZlYWYxYWM0MTg1ZGNhMjIzOWVkZGRkMTdlMGExNWUxYTNjOWJlYjlkZmMyYzEwNWFiNzI2In19",
+    "address": "ana~host.example",
+    "backup": "BFXi976tpDLfqt8gUIKLM8wtbYxy38R2B0AkF6XZmSgh_oQj6nyKxgGpUkjymzPhaMyFFVxDfNFr7WNXacLOaQA",
+    "rules": {
+     "paused": false,
+     "reach": {
+      "inbound": {
+       "from": "contacts",
+       "filter": {
+        "owners": [],
+        "hosts": [],
+        "past": false
+       },
+       "types": [],
+       "text": false,
+       "strangers": "quarantine"
+      },
+      "outbound": "contacts"
+     },
+     "permissions": {
+      "level": "auto_within_limits",
+      "actions_per_day": 50,
+      "caps": {}
+     },
+     "changes": {
+      "owner": "ask",
+      "key": "ask",
+      "signet": "continue",
+      "host": "continue",
+      "revocation": "hold",
+      "declared": "continue"
+     },
+     "sealing": "sealed",
+     "contacts": [],
+     "invites": [],
+     "limits": {
+      "new_requests_per_contact_per_day": 3,
+      "open_requests_per_contact": 3,
+      "open_approvals": 10,
+      "new_from_others_per_day": 50,
+      "texts_per_contact_per_day": 20
+     }
+    },
+    "delegation": {
+     "delegate": "BP1iIEKxetCgWyGj2n-X4w6YgOpfsYuPKt4JVP5_55UHbqNRqd50aem5Ry5d2Ysx1brnGeBOjX0hb-Gj6ERBxOI",
+     "may": [
+      "approve_within_caps"
+     ],
+     "level": "auto_within_limits",
+     "caps": {
+      "meeting/1@i7fqx5fcz3sz4svkmv6ctjb2ksrzqknaho42n4nn7gz6qtuz2wqq": {},
+      "rsvp/1@z66jzod2xin67ozi6zz2s7x57qhnfzanlgb7ubeytajekmookbdq": {}
+     },
+     "actions_per_day": 50,
+     "lasts_secs": 31536000
+    },
+    "seq": 1793750400000,
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": true,
+    "inputs": [
+     "eyJhbGciOiJXQTI1NiIsInR5cCI6InNwbGludC1iaW5kaW5nIn0.eyJ2IjoyLCJvd25lciI6InNwbGludDE5YTZhN2M0MzNiOWNjYzU3NTBlYWFkMzlmMjAzMTU0MTM5NGY0ODk1MmM2NzM1MjI5NTg3MDY1MDhiNDFiMDllIiwiYWdlbnQiOiJzcGxpbnQxZDdkODY1Y2M0MDg1MGQ5NTk4NTgwYjJlNDg2NzAzOTBjZWNiZjI2MDNhMjFlNzVlZDc3MWQ1NjcyZjM3NDU5OCIsImFkZHJlc3MiOiJhbmF-aG9zdC5leGFtcGxlIiwic2VxIjoxNzkzNzUwNDAwMDAwLCJpc3N1ZWRfYXQiOjE3OTM3NTA0MDB9",
+     "eyJhbGciOiJXQTI1NiIsInR5cCI6InNwbGludC1ydWxlcyJ9.eyJ2IjoxLCJvd25lciI6InNwbGludDE5YTZhN2M0MzNiOWNjYzU3NTBlYWFkMzlmMjAzMTU0MTM5NGY0ODk1MmM2NzM1MjI5NTg3MDY1MDhiNDFiMDllIiwiYWdlbnQiOiJzcGxpbnQxZDdkODY1Y2M0MDg1MGQ5NTk4NTgwYjJlNDg2NzAzOTBjZWNiZjI2MDNhMjFlNzVlZDc3MWQ1NjcyZjM3NDU5OCIsInNlcSI6MTc5Mzc1MDQwMDAwMCwiaXNzdWVkX2F0IjoxNzkzNzUwNDAwLCJwYXVzZWQiOmZhbHNlLCJyZWFjaCI6eyJpbmJvdW5kIjp7ImZyb20iOiJjb250YWN0cyIsImZpbHRlciI6eyJvd25lcnMiOltdLCJob3N0cyI6W10sInBhc3QiOmZhbHNlfSwidHlwZXMiOltdLCJ0ZXh0IjpmYWxzZSwic3RyYW5nZXJzIjoicXVhcmFudGluZSJ9LCJvdXRib3VuZCI6ImNvbnRhY3RzIn0sInBlcm1pc3Npb25zIjp7ImxldmVsIjoiYXV0b193aXRoaW5fbGltaXRzIiwiYWN0aW9uc19wZXJfZGF5Ijo1MCwiY2FwcyI6e319LCJjaGFuZ2VzIjp7Im93bmVyIjoiYXNrIiwia2V5IjoiYXNrIiwic2lnbmV0IjoiY29udGludWUiLCJob3N0IjoiY29udGludWUiLCJyZXZvY2F0aW9uIjoiaG9sZCIsImRlY2xhcmVkIjoiY29udGludWUifSwic2VhbGluZyI6InNlYWxlZCIsImRlbGVnYXRpb24iOiJmYzNkYzJhY2E2NzY3OGQ4MWZiYTA2MzA0Mzg2MjgwZTFhMTRmZDU2ZjFkMGE0M2YxMjEyZTFmY2ZlNDhkZjg1IiwiY29udGFjdHMiOltdLCJpbnZpdGVzIjpbXSwibGltaXRzIjp7Im5ld19yZXF1ZXN0c19wZXJfY29udGFjdF9wZXJfZGF5IjozLCJvcGVuX3JlcXVlc3RzX3Blcl9jb250YWN0IjozLCJvcGVuX2FwcHJvdmFscyI6MTAsIm5ld19mcm9tX290aGVyc19wZXJfZGF5Ijo1MCwidGV4dHNfcGVyX2NvbnRhY3RfcGVyX2RheSI6MjB9fQ",
+     "eyJhbGciOiJXQTI1NiIsInR5cCI6InNwbGludC1kZWxlZ2F0aW9uIn0.eyJ2IjoxLCJvd25lciI6InNwbGludDE5YTZhN2M0MzNiOWNjYzU3NTBlYWFkMzlmMjAzMTU0MTM5NGY0ODk1MmM2NzM1MjI5NTg3MDY1MDhiNDFiMDllIiwiYWdlbnQiOiJzcGxpbnQxZDdkODY1Y2M0MDg1MGQ5NTk4NTgwYjJlNDg2NzAzOTBjZWNiZjI2MDNhMjFlNzVlZDc3MWQ1NjcyZjM3NDU5OCIsImRlbGVnYXRlIjoiQlAxaUlFS3hldENnV3lHajJuLVg0dzZZZ09wZnNZdVBLdDRKVlA1XzU1VUhicU5ScWQ1MGFlbTVSeTVkMllzeDFicm5HZUJPalgwaGItR2o2RVJCeE9JIiwibWF5IjpbImFwcHJvdmVfd2l0aGluX2NhcHMiXSwibGV2ZWwiOiJhdXRvX3dpdGhpbl9saW1pdHMiLCJjYXBzIjp7Im1lZXRpbmcvMUBpN2ZxeDVmY3ozc3o0c3ZrbXY2Y3RqYjJrc3J6cWtuYWhvNDJuNG5uN2d6NnF0dXoyd3FxIjp7fSwicnN2cC8xQHo2Nmp6b2QyeGluNjdvemk2enoyczd4NTdxaG5memFubGdiN3ViZXl0YWpla21vb2tiZHEiOnt9fSwiYWN0aW9uc19wZXJfZGF5Ijo1MCwic2VxIjoxNzkzNzUwNDAwMDAwLCJpc3N1ZWRfYXQiOjE3OTM3NTA0MDAsImV4cGlyZXNfYXQiOjE4MjUyODY0MDB9"
+    ],
+    "vouch": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1iaW5kaW5nLXZvdWNoIn0.eyJ2IjoyLCJhZ2VudCI6InNwbGludDFkN2Q4NjVjYzQwODUwZDk1OTg1ODBiMmU0ODY3MDM5MGNlY2JmMjYwM2EyMWU3NWVkNzcxZDU2NzJmMzc0NTk4Iiwib3duZXIiOiJzcGxpbnQxOWE2YTdjNDMzYjljY2M1NzUwZWFhZDM5ZjIwMzE1NDEzOTRmNDg5NTJjNjczNTIyOTU4NzA2NTA4YjQxYjA5ZSIsImJhY2t1cCI6IkJGWGk5NzZ0cERMZnF0OGdVSUtMTTh3dGJZeHkzOFIyQjBBa0Y2WFptU2doX29RajZueUt4Z0dwVWtqeW16UGhhTXlGRlZ4RGZORnI3V05YYWNMT2FRQSIsImtleXMiOiJCUFppRjF4S1h1aTBRTGVqa0xWUWNUV0R1SjhRVWJ2dWZsY0xzZU5zRVJSOUs4eFBUT1VoUGxqNUJYOE5waUI1MWM5S3BWZHlkYmdiSkxCZnd2NjVVZlEuQk8zZUp3bmRTUkhPWE5JT1VLVU9jUjJsX09DY1BRYWdHVmVSRy1jYnhBaWZoaURsbEVvYmR3clFTdWV2bWdfUndkQVkxWE1PQTJvS2VzalJiSzdTaW5BIn0",
+    "commitment": "9e863a3b09e72ef8b77ca1b42b6eeea84eba37200cb2811d168bdc968e9c0737",
+    "challenge": "RMXMh48aq2ziKIwBDVskOfCTcc8QAvSV7AO6hlLk384"
+   }
+  },
+  {
+   "name": "controls_by_a_file_key",
+   "status": "checked",
+   "case": "valid",
+   "check": "controls.prepare",
+   "why": "The same with ES256 headers, each signed alone, here with no delegation, so the rules name none.",
+   "input": {
+    "owner_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJLSjQ2NXRQTVFMVDJ3bGdkSjhXLTM4ckxjZHVORVhXaElSQkJqQmpmSXFmYmpJY2NjSW5RRVZDb3M2a3VpSzZsd3dld3ZFMnFPRzhWQjJMZEVVc2wySSIsInNlYWwiOiJCTEZ5bkx3WEhla04zamxRR2NfNnAtLUhlaTdhV1hMUjJySVl5NXBVbFdEMzFUVUlieWlWTzNZOXlDamN5dHVxTHRSQzdSNHptNzZCT0VFbExobjNhM28iLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiI5ODYwNTNmMDI1NDY5ZTQ3ODY3ODcxNGNjNmEyOGMzNzhhZWM4OWIxZjE2N2NjMjM4OGM3Yjk0MDg4MDc3Yjc3In19",
+    "agent_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJQWmlGMXhLWHVpMFFMZWprTFZRY1RXRHVKOFFVYnZ1ZmxjTHNlTnNFUlI5Szh4UFRPVWhQbGo1Qlg4TnBpQjUxYzlLcFZkeWRiZ2JKTEJmd3Y2NVVmUSIsInNlYWwiOiJCTzNlSnduZFNSSE9YTklPVUtVT2NSMmxfT0NjUFFhZ0dWZVJHLWNieEFpZmhpRGxsRW9iZHdyUVN1ZXZtZ19Sd2RBWTFYTU9BMm9LZXNqUmJLN1NpbkEiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiIyNDVmMGI4YThkY2ZlYWYxYWM0MTg1ZGNhMjIzOWVkZGRkMTdlMGExNWUxYTNjOWJlYjlkZmMyYzEwNWFiNzI2In19",
+    "address": "ana~host.example",
+    "backup": "BFXi976tpDLfqt8gUIKLM8wtbYxy38R2B0AkF6XZmSgh_oQj6nyKxgGpUkjymzPhaMyFFVxDfNFr7WNXacLOaQA",
+    "rules": {
+     "paused": false,
+     "reach": {
+      "inbound": {
+       "from": "contacts",
+       "filter": {
+        "owners": [],
+        "hosts": [],
+        "past": false
+       },
+       "types": [],
+       "text": false,
+       "strangers": "quarantine"
+      },
+      "outbound": "contacts"
+     },
+     "permissions": {
+      "level": "auto_within_limits",
+      "actions_per_day": 50,
+      "caps": {}
+     },
+     "changes": {
+      "owner": "ask",
+      "key": "ask",
+      "signet": "continue",
+      "host": "continue",
+      "revocation": "hold",
+      "declared": "continue"
+     },
+     "sealing": "sealed",
+     "contacts": [],
+     "invites": [],
+     "limits": {
+      "new_requests_per_contact_per_day": 3,
+      "open_requests_per_contact": 3,
+      "open_approvals": 10,
+      "new_from_others_per_day": 50,
+      "texts_per_contact_per_day": 20
+     }
+    },
+    "delegation": null,
+    "seq": 1793750400000,
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": true,
+    "inputs": [
+     "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1iaW5kaW5nIn0.eyJ2IjoyLCJvd25lciI6InNwbGludDEzMGI2YWIxZmFjMmYyY2I1MjhhMTE0NTVlMjQxNGRjZTEwNWY1MjYzZWIwYWY5ZjRlOTlmZWZhYzkzNmYzOThlIiwiYWdlbnQiOiJzcGxpbnQxZDdkODY1Y2M0MDg1MGQ5NTk4NTgwYjJlNDg2NzAzOTBjZWNiZjI2MDNhMjFlNzVlZDc3MWQ1NjcyZjM3NDU5OCIsImFkZHJlc3MiOiJhbmF-aG9zdC5leGFtcGxlIiwic2VxIjoxNzkzNzUwNDAwMDAwLCJpc3N1ZWRfYXQiOjE3OTM3NTA0MDB9",
+     "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1ydWxlcyJ9.eyJ2IjoxLCJvd25lciI6InNwbGludDEzMGI2YWIxZmFjMmYyY2I1MjhhMTE0NTVlMjQxNGRjZTEwNWY1MjYzZWIwYWY5ZjRlOTlmZWZhYzkzNmYzOThlIiwiYWdlbnQiOiJzcGxpbnQxZDdkODY1Y2M0MDg1MGQ5NTk4NTgwYjJlNDg2NzAzOTBjZWNiZjI2MDNhMjFlNzVlZDc3MWQ1NjcyZjM3NDU5OCIsInNlcSI6MTc5Mzc1MDQwMDAwMCwiaXNzdWVkX2F0IjoxNzkzNzUwNDAwLCJwYXVzZWQiOmZhbHNlLCJyZWFjaCI6eyJpbmJvdW5kIjp7ImZyb20iOiJjb250YWN0cyIsImZpbHRlciI6eyJvd25lcnMiOltdLCJob3N0cyI6W10sInBhc3QiOmZhbHNlfSwidHlwZXMiOltdLCJ0ZXh0IjpmYWxzZSwic3RyYW5nZXJzIjoicXVhcmFudGluZSJ9LCJvdXRib3VuZCI6ImNvbnRhY3RzIn0sInBlcm1pc3Npb25zIjp7ImxldmVsIjoiYXV0b193aXRoaW5fbGltaXRzIiwiYWN0aW9uc19wZXJfZGF5Ijo1MCwiY2FwcyI6e319LCJjaGFuZ2VzIjp7Im93bmVyIjoiYXNrIiwia2V5IjoiYXNrIiwic2lnbmV0IjoiY29udGludWUiLCJob3N0IjoiY29udGludWUiLCJyZXZvY2F0aW9uIjoiaG9sZCIsImRlY2xhcmVkIjoiY29udGludWUifSwic2VhbGluZyI6InNlYWxlZCIsImNvbnRhY3RzIjpbXSwiaW52aXRlcyI6W10sImxpbWl0cyI6eyJuZXdfcmVxdWVzdHNfcGVyX2NvbnRhY3RfcGVyX2RheSI6Mywib3Blbl9yZXF1ZXN0c19wZXJfY29udGFjdCI6Mywib3Blbl9hcHByb3ZhbHMiOjEwLCJuZXdfZnJvbV9vdGhlcnNfcGVyX2RheSI6NTAsInRleHRzX3Blcl9jb250YWN0X3Blcl9kYXkiOjIwfX0"
+    ],
+    "vouch": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1iaW5kaW5nLXZvdWNoIn0.eyJ2IjoyLCJhZ2VudCI6InNwbGludDFkN2Q4NjVjYzQwODUwZDk1OTg1ODBiMmU0ODY3MDM5MGNlY2JmMjYwM2EyMWU3NWVkNzcxZDU2NzJmMzc0NTk4Iiwib3duZXIiOiJzcGxpbnQxMzBiNmFiMWZhYzJmMmNiNTI4YTExNDU1ZTI0MTRkY2UxMDVmNTI2M2ViMGFmOWY0ZTk5ZmVmYWM5MzZmMzk4ZSIsImJhY2t1cCI6IkJGWGk5NzZ0cERMZnF0OGdVSUtMTTh3dGJZeHkzOFIyQjBBa0Y2WFptU2doX29RajZueUt4Z0dwVWtqeW16UGhhTXlGRlZ4RGZORnI3V05YYWNMT2FRQSIsImtleXMiOiJCUFppRjF4S1h1aTBRTGVqa0xWUWNUV0R1SjhRVWJ2dWZsY0xzZU5zRVJSOUs4eFBUT1VoUGxqNUJYOE5waUI1MWM5S3BWZHlkYmdiSkxCZnd2NjVVZlEuQk8zZUp3bmRTUkhPWE5JT1VLVU9jUjJsX09DY1BRYWdHVmVSRy1jYnhBaWZoaURsbEVvYmR3clFTdWV2bWdfUndkQVkxWE1PQTJvS2VzalJiSzdTaW5BIn0",
+    "commitment": "9e863a3b09e72ef8b77ca1b42b6eeea84eba37200cb2811d168bdc968e9c0737",
+    "challenge": null
+   }
+  },
+  {
+   "name": "controls_letting_quoted_prices_go",
+   "status": "checked",
+   "case": "valid",
+   "check": "controls.prepare",
+   "why": "The owner's choice that a price their agent quotes goes within their limits is signed after the caps, as the rules' field order has it.",
+   "input": {
+    "owner_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJLSjQ2NXRQTVFMVDJ3bGdkSjhXLTM4ckxjZHVORVhXaElSQkJqQmpmSXFmYmpJY2NjSW5RRVZDb3M2a3VpSzZsd3dld3ZFMnFPRzhWQjJMZEVVc2wySSIsInNlYWwiOiJCTEZ5bkx3WEhla04zamxRR2NfNnAtLUhlaTdhV1hMUjJySVl5NXBVbFdEMzFUVUlieWlWTzNZOXlDamN5dHVxTHRSQzdSNHptNzZCT0VFbExobjNhM28iLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiI5ODYwNTNmMDI1NDY5ZTQ3ODY3ODcxNGNjNmEyOGMzNzhhZWM4OWIxZjE2N2NjMjM4OGM3Yjk0MDg4MDc3Yjc3In19",
+    "agent_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJQWmlGMXhLWHVpMFFMZWprTFZRY1RXRHVKOFFVYnZ1ZmxjTHNlTnNFUlI5Szh4UFRPVWhQbGo1Qlg4TnBpQjUxYzlLcFZkeWRiZ2JKTEJmd3Y2NVVmUSIsInNlYWwiOiJCTzNlSnduZFNSSE9YTklPVUtVT2NSMmxfT0NjUFFhZ0dWZVJHLWNieEFpZmhpRGxsRW9iZHdyUVN1ZXZtZ19Sd2RBWTFYTU9BMm9LZXNqUmJLN1NpbkEiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiIyNDVmMGI4YThkY2ZlYWYxYWM0MTg1ZGNhMjIzOWVkZGRkMTdlMGExNWUxYTNjOWJlYjlkZmMyYzEwNWFiNzI2In19",
+    "address": "ana~host.example",
+    "backup": "BFXi976tpDLfqt8gUIKLM8wtbYxy38R2B0AkF6XZmSgh_oQj6nyKxgGpUkjymzPhaMyFFVxDfNFr7WNXacLOaQA",
+    "rules": {
+     "paused": false,
+     "reach": {
+      "inbound": {
+       "from": "contacts",
+       "filter": {
+        "owners": [],
+        "hosts": [],
+        "past": false
+       },
+       "types": [],
+       "text": false,
+       "strangers": "quarantine"
+      },
+      "outbound": "contacts"
+     },
+     "permissions": {
+      "level": "auto_within_limits",
+      "actions_per_day": 50,
+      "caps": {},
+      "quoted_prices": "within_limits"
+     },
+     "changes": {
+      "owner": "ask",
+      "key": "ask",
+      "signet": "continue",
+      "host": "continue",
+      "revocation": "hold",
+      "declared": "continue"
+     },
+     "sealing": "sealed",
+     "contacts": [],
+     "invites": [],
+     "limits": {
+      "new_requests_per_contact_per_day": 3,
+      "open_requests_per_contact": 3,
+      "open_approvals": 10,
+      "new_from_others_per_day": 50,
+      "texts_per_contact_per_day": 20
+     }
+    },
+    "delegation": null,
+    "seq": 1793750400000,
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": true,
+    "inputs": [
+     "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1iaW5kaW5nIn0.eyJ2IjoyLCJvd25lciI6InNwbGludDEzMGI2YWIxZmFjMmYyY2I1MjhhMTE0NTVlMjQxNGRjZTEwNWY1MjYzZWIwYWY5ZjRlOTlmZWZhYzkzNmYzOThlIiwiYWdlbnQiOiJzcGxpbnQxZDdkODY1Y2M0MDg1MGQ5NTk4NTgwYjJlNDg2NzAzOTBjZWNiZjI2MDNhMjFlNzVlZDc3MWQ1NjcyZjM3NDU5OCIsImFkZHJlc3MiOiJhbmF-aG9zdC5leGFtcGxlIiwic2VxIjoxNzkzNzUwNDAwMDAwLCJpc3N1ZWRfYXQiOjE3OTM3NTA0MDB9",
+     "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1ydWxlcyJ9.eyJ2IjoxLCJvd25lciI6InNwbGludDEzMGI2YWIxZmFjMmYyY2I1MjhhMTE0NTVlMjQxNGRjZTEwNWY1MjYzZWIwYWY5ZjRlOTlmZWZhYzkzNmYzOThlIiwiYWdlbnQiOiJzcGxpbnQxZDdkODY1Y2M0MDg1MGQ5NTk4NTgwYjJlNDg2NzAzOTBjZWNiZjI2MDNhMjFlNzVlZDc3MWQ1NjcyZjM3NDU5OCIsInNlcSI6MTc5Mzc1MDQwMDAwMCwiaXNzdWVkX2F0IjoxNzkzNzUwNDAwLCJwYXVzZWQiOmZhbHNlLCJyZWFjaCI6eyJpbmJvdW5kIjp7ImZyb20iOiJjb250YWN0cyIsImZpbHRlciI6eyJvd25lcnMiOltdLCJob3N0cyI6W10sInBhc3QiOmZhbHNlfSwidHlwZXMiOltdLCJ0ZXh0IjpmYWxzZSwic3RyYW5nZXJzIjoicXVhcmFudGluZSJ9LCJvdXRib3VuZCI6ImNvbnRhY3RzIn0sInBlcm1pc3Npb25zIjp7ImxldmVsIjoiYXV0b193aXRoaW5fbGltaXRzIiwiYWN0aW9uc19wZXJfZGF5Ijo1MCwiY2FwcyI6e30sInF1b3RlZF9wcmljZXMiOiJ3aXRoaW5fbGltaXRzIn0sImNoYW5nZXMiOnsib3duZXIiOiJhc2siLCJrZXkiOiJhc2siLCJzaWduZXQiOiJjb250aW51ZSIsImhvc3QiOiJjb250aW51ZSIsInJldm9jYXRpb24iOiJob2xkIiwiZGVjbGFyZWQiOiJjb250aW51ZSJ9LCJzZWFsaW5nIjoic2VhbGVkIiwiY29udGFjdHMiOltdLCJpbnZpdGVzIjpbXSwibGltaXRzIjp7Im5ld19yZXF1ZXN0c19wZXJfY29udGFjdF9wZXJfZGF5IjozLCJvcGVuX3JlcXVlc3RzX3Blcl9jb250YWN0IjozLCJvcGVuX2FwcHJvdmFscyI6MTAsIm5ld19mcm9tX290aGVyc19wZXJfZGF5Ijo1MCwidGV4dHNfcGVyX2NvbnRhY3RfcGVyX2RheSI6MjB9fQ"
+    ],
+    "vouch": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1iaW5kaW5nLXZvdWNoIn0.eyJ2IjoyLCJhZ2VudCI6InNwbGludDFkN2Q4NjVjYzQwODUwZDk1OTg1ODBiMmU0ODY3MDM5MGNlY2JmMjYwM2EyMWU3NWVkNzcxZDU2NzJmMzc0NTk4Iiwib3duZXIiOiJzcGxpbnQxMzBiNmFiMWZhYzJmMmNiNTI4YTExNDU1ZTI0MTRkY2UxMDVmNTI2M2ViMGFmOWY0ZTk5ZmVmYWM5MzZmMzk4ZSIsImJhY2t1cCI6IkJGWGk5NzZ0cERMZnF0OGdVSUtMTTh3dGJZeHkzOFIyQjBBa0Y2WFptU2doX29RajZueUt4Z0dwVWtqeW16UGhhTXlGRlZ4RGZORnI3V05YYWNMT2FRQSIsImtleXMiOiJCUFppRjF4S1h1aTBRTGVqa0xWUWNUV0R1SjhRVWJ2dWZsY0xzZU5zRVJSOUs4eFBUT1VoUGxqNUJYOE5waUI1MWM5S3BWZHlkYmdiSkxCZnd2NjVVZlEuQk8zZUp3bmRTUkhPWE5JT1VLVU9jUjJsX09DY1BRYWdHVmVSRy1jYnhBaWZoaURsbEVvYmR3clFTdWV2bWdfUndkQVkxWE1PQTJvS2VzalJiSzdTaW5BIn0",
+    "commitment": "9e863a3b09e72ef8b77ca1b42b6eeea84eba37200cb2811d168bdc968e9c0737",
+    "challenge": null
+   }
+  },
+  {
+   "name": "controls_once_the_passkey_was_removed",
+   "status": "checked",
+   "case": "valid",
+   "check": "controls.prepare",
+   "why": "Headed for the first key that counts now, so an owner left with a file key isn't handed inputs only a passkey signs.",
+   "input": {
+    "owner_identity": "eyJ2Ijo1LCJhbGciOiJ3ZWJhdXRobi1lczI1NiIsImtleSI6IkJQUmtkdDFvREI5VmRXdlBsTjQ4M3FLV1BYS29rdE1sUVJqMXJMZTZmbW1Hek9JeVJVNjF4LW9Db2Q5ZE9PTHFlVXd5UWZGWE1aSzVzai16WnEzdERRdyIsInJwIjoiby5leGFtcGxlIiwic2VhbCI6IkJNMU5rZ0ZUNWxDVjN0cGZtWDVnNTg3b2tDOTBjMlhHTHJCOE9HUm4yRzlJQXREM2pmaTlveDhoWlctLW1YZFdKUVNZYkNTbVZINlBVQ1JaUjJCOWQzayIsInJlY292ZXJ5Ijp7InJ1bGUiOiJiYWNrdXBfa2V5IiwiY29tbWl0bWVudCI6IjE1NjZhYjJiYzk2OTI4ZDNiYTY5YjFjMzI5OWQ2NzhhMjNiMTA1MmFiNTQ3NmU1M2JhNzQ3M2QzYzU3NTEzYjAifX0~eyJhbGciOiJXQTI1NiIsInR5cCI6InNwbGludC1rZXktYWRkIn0.eyJ2Ijo0LCJpZCI6InNwbGludDEzMWJjODVmYzZlNDRhOTkzMGU1OWRkNzFlZWM2ODA5YzllMjg0M2M5NjQxMDkyODI0NDYzMjgxZDQyNzUzMzA2Iiwic2VxIjoxLCJwcmV2IjoiMzFiYzg1ZmM2ZTQ0YTk5MzBlNTlkZDcxZWVjNjgwOWM5ZTI4NDNjOTY0MTA5MjgyNDQ2MzI4MWQ0Mjc1MzMwNiIsImJ5IjoiNGVkNDdhZTEwODkxY2ZjMDY0OGQ4OGNkMzZhMTk1Yjc3NjNmOTU5ZTRlZGQ1MmI5OGFlMzc3MGM3NTMyZDg0MCIsImtleSI6IkJLSjQ2NXRQTVFMVDJ3bGdkSjhXLTM4ckxjZHVORVhXaElSQkJqQmpmSXFmYmpJY2NjSW5RRVZDb3M2a3VpSzZsd3dld3ZFMnFPRzhWQjJMZEVVc2wySSIsImlzc3VlZF9hdCI6MTc5Mzc1MDQwMH0.eyJhIjoibkdoVml3OVJTUzR3alBaQlFHMjFBTWpNaGE1NmR6QlZzaTNwa1FPOXpOVUZBQUFBQUEiLCJjIjoiZXlKMGVYQmxJam9pZDJWaVlYVjBhRzR1WjJWMElpd2lZMmhoYkd4bGJtZGxJam9pY25aS2NFSnNRV05zYjNaVWJHUnFTMnBQUW01TVl6Y3lkRGxVZEROa01WQnBVa014UmpCRVRVTkhZeUlzSW05eWFXZHBiaUk2SW1oMGRIQnpPaTh2Ynk1bGVHRnRjR3hsSWl3aVkzSnZjM05QY21sbmFXNGlPbVpoYkhObGZRIiwicyI6Ik1FVUNJQ2gxbUh5X1ZOdUNyRmhwV21COGNnQ01vZHlxU0pQZ0Nua2hCTHdzamxybkFpRUFuY0ZuY3FQc0Izd1ExVlRVQlRQUk53bHZjOTJERm9sa1p3cTdGZHhnN05ZIn0.qR5FHoUEQY5aDI7IJIZ7Xu4znzdyAFns9-opciXmjiJ6Y0Y4KmSPGsDa9hN9zPYEA9NAefYnpYJNuPS6O-nnMg~eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1rZXktcmVtb3ZlIn0.eyJ2Ijo2LCJpZCI6InNwbGludDEzMWJjODVmYzZlNDRhOTkzMGU1OWRkNzFlZWM2ODA5YzllMjg0M2M5NjQxMDkyODI0NDYzMjgxZDQyNzUzMzA2Iiwic2VxIjoyLCJwcmV2IjoiYWVmMjY5MDY1MDFjOTY4YmQzOTVkOGNhOGNlMDY3MmRjZWY2YjdkNGVkZGRkZDRmODkxMGI1MTc0MGNjMDg2NyIsImJ5IjoiMGIwNDk3ODZjODZmMzE4YTBhZGNjZDlkMmY1MWFjMThmNmYxNTg5YmEyZWZjYTI4ZmFjN2RmMWNjY2QyMzRlOCIsImtleSI6IjRlZDQ3YWUxMDg5MWNmYzA2NDhkODhjZDM2YTE5NWI3NzYzZjk1OWU0ZWRkNTJiOThhZTM3NzBjNzUzMmQ4NDAiLCJpc3N1ZWRfYXQiOjE3OTM3NTA0MDB9.Am5jPAhPeF4ady9LEJnvgMPDd3aQHe0GPqdilPKNXN-8VnyOeCkJWPGNncjKG1ZtbkIPXyXShMmVKWDAI3BhmQ",
+    "agent_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJQWmlGMXhLWHVpMFFMZWprTFZRY1RXRHVKOFFVYnZ1ZmxjTHNlTnNFUlI5Szh4UFRPVWhQbGo1Qlg4TnBpQjUxYzlLcFZkeWRiZ2JKTEJmd3Y2NVVmUSIsInNlYWwiOiJCTzNlSnduZFNSSE9YTklPVUtVT2NSMmxfT0NjUFFhZ0dWZVJHLWNieEFpZmhpRGxsRW9iZHdyUVN1ZXZtZ19Sd2RBWTFYTU9BMm9LZXNqUmJLN1NpbkEiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiIyNDVmMGI4YThkY2ZlYWYxYWM0MTg1ZGNhMjIzOWVkZGRkMTdlMGExNWUxYTNjOWJlYjlkZmMyYzEwNWFiNzI2In19",
+    "address": "ana~host.example",
+    "backup": "BFXi976tpDLfqt8gUIKLM8wtbYxy38R2B0AkF6XZmSgh_oQj6nyKxgGpUkjymzPhaMyFFVxDfNFr7WNXacLOaQA",
+    "rules": {
+     "paused": false,
+     "reach": {
+      "inbound": {
+       "from": "contacts",
+       "filter": {
+        "owners": [],
+        "hosts": [],
+        "past": false
+       },
+       "types": [],
+       "text": false,
+       "strangers": "quarantine"
+      },
+      "outbound": "contacts"
+     },
+     "permissions": {
+      "level": "auto_within_limits",
+      "actions_per_day": 50,
+      "caps": {}
+     },
+     "changes": {
+      "owner": "ask",
+      "key": "ask",
+      "signet": "continue",
+      "host": "continue",
+      "revocation": "hold",
+      "declared": "continue"
+     },
+     "sealing": "sealed",
+     "contacts": [],
+     "invites": [],
+     "limits": {
+      "new_requests_per_contact_per_day": 3,
+      "open_requests_per_contact": 3,
+      "open_approvals": 10,
+      "new_from_others_per_day": 50,
+      "texts_per_contact_per_day": 20
+     }
+    },
+    "delegation": null,
+    "seq": 1793750400000,
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": true,
+    "inputs": [
+     "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1iaW5kaW5nIn0.eyJ2IjoyLCJvd25lciI6InNwbGludDEzMWJjODVmYzZlNDRhOTkzMGU1OWRkNzFlZWM2ODA5YzllMjg0M2M5NjQxMDkyODI0NDYzMjgxZDQyNzUzMzA2IiwiYWdlbnQiOiJzcGxpbnQxZDdkODY1Y2M0MDg1MGQ5NTk4NTgwYjJlNDg2NzAzOTBjZWNiZjI2MDNhMjFlNzVlZDc3MWQ1NjcyZjM3NDU5OCIsImFkZHJlc3MiOiJhbmF-aG9zdC5leGFtcGxlIiwic2VxIjoxNzkzNzUwNDAwMDAwLCJpc3N1ZWRfYXQiOjE3OTM3NTA0MDB9",
+     "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1ydWxlcyJ9.eyJ2IjoxLCJvd25lciI6InNwbGludDEzMWJjODVmYzZlNDRhOTkzMGU1OWRkNzFlZWM2ODA5YzllMjg0M2M5NjQxMDkyODI0NDYzMjgxZDQyNzUzMzA2IiwiYWdlbnQiOiJzcGxpbnQxZDdkODY1Y2M0MDg1MGQ5NTk4NTgwYjJlNDg2NzAzOTBjZWNiZjI2MDNhMjFlNzVlZDc3MWQ1NjcyZjM3NDU5OCIsInNlcSI6MTc5Mzc1MDQwMDAwMCwiaXNzdWVkX2F0IjoxNzkzNzUwNDAwLCJwYXVzZWQiOmZhbHNlLCJyZWFjaCI6eyJpbmJvdW5kIjp7ImZyb20iOiJjb250YWN0cyIsImZpbHRlciI6eyJvd25lcnMiOltdLCJob3N0cyI6W10sInBhc3QiOmZhbHNlfSwidHlwZXMiOltdLCJ0ZXh0IjpmYWxzZSwic3RyYW5nZXJzIjoicXVhcmFudGluZSJ9LCJvdXRib3VuZCI6ImNvbnRhY3RzIn0sInBlcm1pc3Npb25zIjp7ImxldmVsIjoiYXV0b193aXRoaW5fbGltaXRzIiwiYWN0aW9uc19wZXJfZGF5Ijo1MCwiY2FwcyI6e319LCJjaGFuZ2VzIjp7Im93bmVyIjoiYXNrIiwia2V5IjoiYXNrIiwic2lnbmV0IjoiY29udGludWUiLCJob3N0IjoiY29udGludWUiLCJyZXZvY2F0aW9uIjoiaG9sZCIsImRlY2xhcmVkIjoiY29udGludWUifSwic2VhbGluZyI6InNlYWxlZCIsImNvbnRhY3RzIjpbXSwiaW52aXRlcyI6W10sImxpbWl0cyI6eyJuZXdfcmVxdWVzdHNfcGVyX2NvbnRhY3RfcGVyX2RheSI6Mywib3Blbl9yZXF1ZXN0c19wZXJfY29udGFjdCI6Mywib3Blbl9hcHByb3ZhbHMiOjEwLCJuZXdfZnJvbV9vdGhlcnNfcGVyX2RheSI6NTAsInRleHRzX3Blcl9jb250YWN0X3Blcl9kYXkiOjIwfX0"
+    ],
+    "vouch": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1iaW5kaW5nLXZvdWNoIn0.eyJ2IjoyLCJhZ2VudCI6InNwbGludDFkN2Q4NjVjYzQwODUwZDk1OTg1ODBiMmU0ODY3MDM5MGNlY2JmMjYwM2EyMWU3NWVkNzcxZDU2NzJmMzc0NTk4Iiwib3duZXIiOiJzcGxpbnQxMzFiYzg1ZmM2ZTQ0YTk5MzBlNTlkZDcxZWVjNjgwOWM5ZTI4NDNjOTY0MTA5MjgyNDQ2MzI4MWQ0Mjc1MzMwNiIsImJhY2t1cCI6IkJGWGk5NzZ0cERMZnF0OGdVSUtMTTh3dGJZeHkzOFIyQjBBa0Y2WFptU2doX29RajZueUt4Z0dwVWtqeW16UGhhTXlGRlZ4RGZORnI3V05YYWNMT2FRQSIsImtleXMiOiJCUFppRjF4S1h1aTBRTGVqa0xWUWNUV0R1SjhRVWJ2dWZsY0xzZU5zRVJSOUs4eFBUT1VoUGxqNUJYOE5waUI1MWM5S3BWZHlkYmdiSkxCZnd2NjVVZlEuQk8zZUp3bmRTUkhPWE5JT1VLVU9jUjJsX09DY1BRYWdHVmVSRy1jYnhBaWZoaURsbEVvYmR3clFTdWV2bWdfUndkQVkxWE1PQTJvS2VzalJiSzdTaW5BIn0",
+    "commitment": "9e863a3b09e72ef8b77ca1b42b6eeea84eba37200cb2811d168bdc968e9c0737",
+    "challenge": null
+   }
+  },
+  {
+   "name": "controls_delegating_full_auto",
+   "status": "checked",
+   "case": "hostile",
+   "check": "controls.prepare",
+   "why": "A delegation is never full auto, so nothing is made to sign.",
+   "input": {
+    "owner_identity": "eyJ2Ijo1LCJhbGciOiJ3ZWJhdXRobi1lczI1NiIsImtleSI6IkJQUmtkdDFvREI5VmRXdlBsTjQ4M3FLV1BYS29rdE1sUVJqMXJMZTZmbW1Hek9JeVJVNjF4LW9Db2Q5ZE9PTHFlVXd5UWZGWE1aSzVzai16WnEzdERRdyIsInJwIjoiaG9zdC5leGFtcGxlIiwic2VhbCI6IkJNMU5rZ0ZUNWxDVjN0cGZtWDVnNTg3b2tDOTBjMlhHTHJCOE9HUm4yRzlJQXREM2pmaTlveDhoWlctLW1YZFdKUVNZYkNTbVZINlBVQ1JaUjJCOWQzayIsInJlY292ZXJ5Ijp7InJ1bGUiOiJiYWNrdXBfa2V5IiwiY29tbWl0bWVudCI6IjE1NjZhYjJiYzk2OTI4ZDNiYTY5YjFjMzI5OWQ2NzhhMjNiMTA1MmFiNTQ3NmU1M2JhNzQ3M2QzYzU3NTEzYjAifX0",
+    "agent_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJQWmlGMXhLWHVpMFFMZWprTFZRY1RXRHVKOFFVYnZ1ZmxjTHNlTnNFUlI5Szh4UFRPVWhQbGo1Qlg4TnBpQjUxYzlLcFZkeWRiZ2JKTEJmd3Y2NVVmUSIsInNlYWwiOiJCTzNlSnduZFNSSE9YTklPVUtVT2NSMmxfT0NjUFFhZ0dWZVJHLWNieEFpZmhpRGxsRW9iZHdyUVN1ZXZtZ19Sd2RBWTFYTU9BMm9LZXNqUmJLN1NpbkEiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiIyNDVmMGI4YThkY2ZlYWYxYWM0MTg1ZGNhMjIzOWVkZGRkMTdlMGExNWUxYTNjOWJlYjlkZmMyYzEwNWFiNzI2In19",
+    "address": "ana~host.example",
+    "backup": "BFXi976tpDLfqt8gUIKLM8wtbYxy38R2B0AkF6XZmSgh_oQj6nyKxgGpUkjymzPhaMyFFVxDfNFr7WNXacLOaQA",
+    "rules": {
+     "paused": false,
+     "reach": {
+      "inbound": {
+       "from": "contacts",
+       "filter": {
+        "owners": [],
+        "hosts": [],
+        "past": false
+       },
+       "types": [],
+       "text": false,
+       "strangers": "quarantine"
+      },
+      "outbound": "contacts"
+     },
+     "permissions": {
+      "level": "auto_within_limits",
+      "actions_per_day": 50,
+      "caps": {}
+     },
+     "changes": {
+      "owner": "ask",
+      "key": "ask",
+      "signet": "continue",
+      "host": "continue",
+      "revocation": "hold",
+      "declared": "continue"
+     },
+     "sealing": "sealed",
+     "contacts": [],
+     "invites": [],
+     "limits": {
+      "new_requests_per_contact_per_day": 3,
+      "open_requests_per_contact": 3,
+      "open_approvals": 10,
+      "new_from_others_per_day": 50,
+      "texts_per_contact_per_day": 20
+     }
+    },
+    "delegation": {
+     "delegate": "BP1iIEKxetCgWyGj2n-X4w6YgOpfsYuPKt4JVP5_55UHbqNRqd50aem5Ry5d2Ysx1brnGeBOjX0hb-Gj6ERBxOI",
+     "may": [
+      "approve_within_caps"
+     ],
+     "level": "full_auto",
+     "caps": {
+      "meeting/1@i7fqx5fcz3sz4svkmv6ctjb2ksrzqknaho42n4nn7gz6qtuz2wqq": {},
+      "rsvp/1@z66jzod2xin67ozi6zz2s7x57qhnfzanlgb7ubeytajekmookbdq": {}
+     },
+     "actions_per_day": 50,
+     "lasts_secs": 31536000
+    },
+    "seq": 1793750400000,
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "controls_binding_something_that_isnt_an_address",
+   "status": "checked",
+   "case": "hostile",
+   "check": "controls.prepare",
+   "why": "The binding names an address.",
+   "input": {
+    "owner_identity": "eyJ2Ijo1LCJhbGciOiJ3ZWJhdXRobi1lczI1NiIsImtleSI6IkJQUmtkdDFvREI5VmRXdlBsTjQ4M3FLV1BYS29rdE1sUVJqMXJMZTZmbW1Hek9JeVJVNjF4LW9Db2Q5ZE9PTHFlVXd5UWZGWE1aSzVzai16WnEzdERRdyIsInJwIjoiaG9zdC5leGFtcGxlIiwic2VhbCI6IkJNMU5rZ0ZUNWxDVjN0cGZtWDVnNTg3b2tDOTBjMlhHTHJCOE9HUm4yRzlJQXREM2pmaTlveDhoWlctLW1YZFdKUVNZYkNTbVZINlBVQ1JaUjJCOWQzayIsInJlY292ZXJ5Ijp7InJ1bGUiOiJiYWNrdXBfa2V5IiwiY29tbWl0bWVudCI6IjE1NjZhYjJiYzk2OTI4ZDNiYTY5YjFjMzI5OWQ2NzhhMjNiMTA1MmFiNTQ3NmU1M2JhNzQ3M2QzYzU3NTEzYjAifX0",
+    "agent_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJQWmlGMXhLWHVpMFFMZWprTFZRY1RXRHVKOFFVYnZ1ZmxjTHNlTnNFUlI5Szh4UFRPVWhQbGo1Qlg4TnBpQjUxYzlLcFZkeWRiZ2JKTEJmd3Y2NVVmUSIsInNlYWwiOiJCTzNlSnduZFNSSE9YTklPVUtVT2NSMmxfT0NjUFFhZ0dWZVJHLWNieEFpZmhpRGxsRW9iZHdyUVN1ZXZtZ19Sd2RBWTFYTU9BMm9LZXNqUmJLN1NpbkEiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiIyNDVmMGI4YThkY2ZlYWYxYWM0MTg1ZGNhMjIzOWVkZGRkMTdlMGExNWUxYTNjOWJlYjlkZmMyYzEwNWFiNzI2In19",
+    "address": "ana at host.example",
+    "backup": "BFXi976tpDLfqt8gUIKLM8wtbYxy38R2B0AkF6XZmSgh_oQj6nyKxgGpUkjymzPhaMyFFVxDfNFr7WNXacLOaQA",
+    "rules": {
+     "paused": false,
+     "reach": {
+      "inbound": {
+       "from": "contacts",
+       "filter": {
+        "owners": [],
+        "hosts": [],
+        "past": false
+       },
+       "types": [],
+       "text": false,
+       "strangers": "quarantine"
+      },
+      "outbound": "contacts"
+     },
+     "permissions": {
+      "level": "auto_within_limits",
+      "actions_per_day": 50,
+      "caps": {}
+     },
+     "changes": {
+      "owner": "ask",
+      "key": "ask",
+      "signet": "continue",
+      "host": "continue",
+      "revocation": "hold",
+      "declared": "continue"
+     },
+     "sealing": "sealed",
+     "contacts": [],
+     "invites": [],
+     "limits": {
+      "new_requests_per_contact_per_day": 3,
+      "open_requests_per_contact": 3,
+      "open_approvals": 10,
+      "new_from_others_per_day": 50,
+      "texts_per_contact_per_day": 20
+     }
+    },
+    "delegation": {
+     "delegate": "BP1iIEKxetCgWyGj2n-X4w6YgOpfsYuPKt4JVP5_55UHbqNRqd50aem5Ry5d2Ysx1brnGeBOjX0hb-Gj6ERBxOI",
+     "may": [
+      "approve_within_caps"
+     ],
+     "level": "auto_within_limits",
+     "caps": {
+      "meeting/1@i7fqx5fcz3sz4svkmv6ctjb2ksrzqknaho42n4nn7gz6qtuz2wqq": {},
+      "rsvp/1@z66jzod2xin67ozi6zz2s7x57qhnfzanlgb7ubeytajekmookbdq": {}
+     },
+     "actions_per_day": 50,
+     "lasts_secs": 31536000
+    },
+    "seq": 1793750400000,
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  }
+ ]
+}

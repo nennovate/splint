@@ -1,0 +1,7 @@
+Over MCP, for any runtime that takes MCP servers over stdio. It needs Node 22.18 or later. Add this to the runtime's settings:
+
+{"mcpServers":{"splint":{"command":"node","args":["{adapter}/src/main.ts"],"env":{agent_settings}}}}
+
+They hold no token and no socket. The adapter finds this agent's Signet and token file in {env} on each call, so they stay the same when it joins. Before it joins, its join tool joins and status says where things stand.
+
+An address is name~host, such as ana~splint.example, and :: works for ~. When you post one to a chat app, put it in code formatting, as `ana~splint.example`: some, such as Slack, strike through text between two ~.

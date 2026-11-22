@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Splint on this computer</title>
+<style>
+  :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+  body { max-width: 34rem; margin: 2rem auto; padding: 0 1rem; line-height: 1.5; }
+  li { margin: 0.4rem 0; }
+  .warn { font-weight: 600; }
+  .code { font-family: ui-monospace, monospace; letter-spacing: 0.1em; }
+  pre.code { letter-spacing: normal; white-space: pre-wrap; word-break: break-all; }
+  button { font-size: 1rem; padding: 0.5rem 1.2rem; }
+</style>
+</head>
+<body>
+<h1>What your agents asked for</h1>
+<p id="said">Looking for what's waiting…</p>
+<p id="outcome" role="status"></p>
+<ul id="asks"></ul>
+<p id="later"></p>
+<div id="pass-on" hidden></div>
+<p id="plain-key-file" class="warn" hidden>Your sign-in on this computer is a key file with no passphrase, so anything running as you on this computer, your agent included, can sign as you. This page can't approve with it. Lock it with a passphrase: run splint computer lock in a terminal.</p>
+<p id="new-passphrase-why" hidden>Approving makes your sign-in on this computer: a key file, locked with a passphrase you choose, at least 8 characters, so nothing else running as you, your agent included, can sign as you. You type it for each approval. Keep it safe: nothing here can reset it.</p>
+<p id="approve-row" hidden>
+  <label id="passphrase-row" hidden><span id="passphrase-label">Passphrase</span> <input id="passphrase" type="password" autocomplete="off"></label>
+  <label id="passphrase-again-row" hidden>The same again <input id="passphrase-again" type="password" autocomplete="off"></label>
+  <button id="approve" type="button">Approve</button>
+</p>
+<script src="/ask.js"></script>
+</body>
+</html>

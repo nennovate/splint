@@ -1,0 +1,4 @@
+# Generated test data, collapsed in GitHub review. `make vectors` rebuilds it.
+spec/vectors/*.json linguist-generated=true
+# Test data checked byte for byte, so Git on Windows mustn't change its line endings.
+packages/splint-core/testdata/** -text

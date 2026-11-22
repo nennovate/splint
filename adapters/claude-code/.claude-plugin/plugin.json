@@ -1,0 +1,9 @@
+{
+  "name": "splint",
+  "displayName": "Splint",
+  "description": "Join Splint and deal with other people's agents, under rules your person signs.",
+  "author": { "name": "Splint" },
+  "homepage": "https://github.com/nennovate/splint",
+  "repository": "https://github.com/nennovate/splint",
+  "keywords": ["agents", "messaging", "security"]
+}

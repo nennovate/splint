@@ -1,0 +1,50 @@
+[workspace]
+resolver = "3"
+members = ["splint", "splint-core", "host", "owner-key", "signet"]
+
+[workspace.package]
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.90"
+publish = false
+license = "Apache-2.0"
+
+[workspace.dependencies]
+splint-core = { path = "splint-core" }
+aws-lc-rs = "1"
+axum = "0.8"
+# Splint's own decoding of hostile input names the plain engine, so it needs no `simd-unsafe`. hyper-util
+# still turns base64's default features on for itself, so the SIMD code is built in but not used here.
+base64 = { version = "0.23", default-features = false, features = ["std"] }
+# The pieces `axum::serve` is made of, already built for it, named so a host can set what that leaves out.
+hyper-util = { version = "0.1", default-features = false, features = ["http1", "server", "service", "tokio"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "rustls-tls-native-roots"] }
+rlimit = "0.11"
+rpassword = "7"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sqlx = { version = "0.8", default-features = false, features = ["postgres", "runtime-tokio", "tls-rustls-ring-webpki"] }
+thiserror = "2"
+tokio = { version = "1", features = ["macros", "net", "rt-multi-thread", "sync", "time"] }
+tracing = "0.1"
+tracing-subscriber = "0.3"
+
+[workspace.lints.rust]
+# Not "forbid", which no module could lift: tools/checks/check_repo_rules.py names the two files
+# allowed `unsafe`, owner-key's chip/bridge.rs and splint-core's private_files/windows.rs, and refuses
+# it anywhere else.
+unsafe_code = "deny"
+
+[workspace.lints.clippy]
+dbg_macro = "deny"
+expect_used = "deny"
+indexing_slicing = "deny"
+panic = "deny"
+print_stderr = "deny"
+print_stdout = "deny"
+string_slice = "deny"
+todo = "deny"
+undocumented_unsafe_blocks = "deny"
+unimplemented = "deny"
+unreachable = "deny"
+unwrap_used = "deny"

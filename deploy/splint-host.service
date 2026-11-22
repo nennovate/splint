@@ -1,0 +1,44 @@
+[Unit]
+Description=Splint host
+# Ordered after Postgres and not tied to it. Requires= would stop the host with Postgres and leave it
+# stopped, and Wants= would start a Postgres someone stopped by hand. The host waits for it instead.
+After=network-online.target postgresql.service
+Wants=network-online.target
+# Never gives up, so a host that can't start yet, say with Postgres down, starts once it can.
+StartLimitIntervalSec=0
+
+[Service]
+User=splint
+Group=splint
+EnvironmentFile=/etc/splint/host.env
+Environment=NO_COLOR=1
+# Says which setting is wrong and why, before a host that can't start is tried.
+ExecStartPre=/usr/local/bin/splint-host check
+ExecStart=/usr/local/bin/splint-host
+Restart=always
+# One second, rising to ten, so a crash loop costs the machine little. Ten is also what a rare crash
+# can cost, as systemd only forgets earlier crashes when the service is next started by hand.
+RestartSec=1
+RestartSteps=3
+RestartMaxDelaySec=10
+LimitNOFILE=65536
+
+# Nothing here needs more than its own key and the Postgres socket.
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/var/lib/splint
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+CapabilityBoundingSet=
+SystemCallFilter=@system-service
+
+[Install]
+WantedBy=multi-user.target

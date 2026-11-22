@@ -1,0 +1,17 @@
+{
+ "type": "time/1",
+ "kind": "request",
+ "offer": {
+  "duration_min": {"one_of": [15, 30, 45, 60, 90]},
+  "mode": {"word": ["video", "phone", "in_person"]},
+  "slots": {"times": {"grid_secs": 1800, "max": 5}}
+ },
+ "fixed": ["mode"],
+ "pick": {"start": "slots"},
+ "result": {
+  "kept": {"word": ["calendar", "noted"]}
+ },
+ "clarify": ["other_times", "shorter", "longer", "wrong_person"],
+ "decline": ["no_times", "not_interested", "wrong_person"],
+ "sign": "none"
+}

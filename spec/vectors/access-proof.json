@@ -1,0 +1,285 @@
+{
+ "contract": "protocol.md#host-api",
+ "vectors": [
+  {
+   "name": "valid",
+   "status": "checked",
+   "case": "valid",
+   "check": "access_proof.verify",
+   "why": "A proof fits exactly one call.",
+   "input": {
+    "compact": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1hY2Nlc3MifQ.eyJzaWduZXIiOiJzcGxpbnQxZDdkODY1Y2M0MDg1MGQ5NTk4NTgwYjJlNDg2NzAzOTBjZWNiZjI2MDNhMjFlNzVlZDc3MWQ1NjcyZjM3NDU5OCIsImhvc3QiOiJob3N0LmV4YW1wbGUiLCJtZXRob2QiOiJQT1NUIiwicGF0aCI6Ii92MC9pbmJveC9hY2siLCJib2R5X3NoYTI1NiI6ImJkMDEzOWY1NTljZTY1OTEzZTUyNjhjMjFjNzY2MDkxMTgyZTY1ZTBiYzFmMGVlNGEyMWJlYWI4MThkYTIwNWUiLCJpc3N1ZWRfYXQiOjE3OTM3NTA0MDB9.ahPj1cA4F40Gxwlp4O8P2SoTbQ_uI5pNiP1jZnnNSwlJShiv_GO-UCaYjugbgXLa_Av6YvSGw5CW9qzXQ-ajeg",
+    "identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJQWmlGMXhLWHVpMFFMZWprTFZRY1RXRHVKOFFVYnZ1ZmxjTHNlTnNFUlI5Szh4UFRPVWhQbGo1Qlg4TnBpQjUxYzlLcFZkeWRiZ2JKTEJmd3Y2NVVmUSIsInNlYWwiOiJCTzNlSnduZFNSSE9YTklPVUtVT2NSMmxfT0NjUFFhZ0dWZVJHLWNieEFpZmhpRGxsRW9iZHdyUVN1ZXZtZ19Sd2RBWTFYTU9BMm9LZXNqUmJLN1NpbkEiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiIyNDVmMGI4YThkY2ZlYWYxYWM0MTg1ZGNhMjIzOWVkZGRkMTdlMGExNWUxYTNjOWJlYjlkZmMyYzEwNWFiNzI2In19",
+    "host": "host.example",
+    "method": "POST",
+    "path": "/v0/inbox/ack",
+    "body": "eyJzZXFzIjpbMV19",
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": true,
+    "agent": "splint1d7d865cc40850d9598580b2e48670390cecbf2603a21e75ed771d5672f374598"
+   }
+  },
+  {
+   "name": "replayed_inside_the_window",
+   "status": "checked",
+   "case": "valid",
+   "check": "access_proof.verify",
+   "why": "Known gap, issue 97: a captured proof works again for 120 seconds. Replaced by a refusal when that closes.",
+   "input": {
+    "compact": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1hY2Nlc3MifQ.eyJzaWduZXIiOiJzcGxpbnQxZDdkODY1Y2M0MDg1MGQ5NTk4NTgwYjJlNDg2NzAzOTBjZWNiZjI2MDNhMjFlNzVlZDc3MWQ1NjcyZjM3NDU5OCIsImhvc3QiOiJob3N0LmV4YW1wbGUiLCJtZXRob2QiOiJQT1NUIiwicGF0aCI6Ii92MC9pbmJveC9hY2siLCJib2R5X3NoYTI1NiI6ImJkMDEzOWY1NTljZTY1OTEzZTUyNjhjMjFjNzY2MDkxMTgyZTY1ZTBiYzFmMGVlNGEyMWJlYWI4MThkYTIwNWUiLCJpc3N1ZWRfYXQiOjE3OTM3NTA0MDB9.ahPj1cA4F40Gxwlp4O8P2SoTbQ_uI5pNiP1jZnnNSwlJShiv_GO-UCaYjugbgXLa_Av6YvSGw5CW9qzXQ-ajeg",
+    "identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJQWmlGMXhLWHVpMFFMZWprTFZRY1RXRHVKOFFVYnZ1ZmxjTHNlTnNFUlI5Szh4UFRPVWhQbGo1Qlg4TnBpQjUxYzlLcFZkeWRiZ2JKTEJmd3Y2NVVmUSIsInNlYWwiOiJCTzNlSnduZFNSSE9YTklPVUtVT2NSMmxfT0NjUFFhZ0dWZVJHLWNieEFpZmhpRGxsRW9iZHdyUVN1ZXZtZ19Sd2RBWTFYTU9BMm9LZXNqUmJLN1NpbkEiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiIyNDVmMGI4YThkY2ZlYWYxYWM0MTg1ZGNhMjIzOWVkZGRkMTdlMGExNWUxYTNjOWJlYjlkZmMyYzEwNWFiNzI2In19",
+    "host": "host.example",
+    "method": "POST",
+    "path": "/v0/inbox/ack",
+    "body": "eyJzZXFzIjpbMV19",
+    "now": 1793750520
+   },
+   "expect": {
+    "ok": true,
+    "agent": "splint1d7d865cc40850d9598580b2e48670390cecbf2603a21e75ed771d5672f374598"
+   }
+  },
+  {
+   "name": "other_host",
+   "status": "checked",
+   "case": "hostile",
+   "check": "access_proof.verify",
+   "why": "A proof for one host can't be used at another.",
+   "input": {
+    "compact": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1hY2Nlc3MifQ.eyJzaWduZXIiOiJzcGxpbnQxZDdkODY1Y2M0MDg1MGQ5NTk4NTgwYjJlNDg2NzAzOTBjZWNiZjI2MDNhMjFlNzVlZDc3MWQ1NjcyZjM3NDU5OCIsImhvc3QiOiJob3N0LmV4YW1wbGUiLCJtZXRob2QiOiJQT1NUIiwicGF0aCI6Ii92MC9pbmJveC9hY2siLCJib2R5X3NoYTI1NiI6ImJkMDEzOWY1NTljZTY1OTEzZTUyNjhjMjFjNzY2MDkxMTgyZTY1ZTBiYzFmMGVlNGEyMWJlYWI4MThkYTIwNWUiLCJpc3N1ZWRfYXQiOjE3OTM3NTA0MDB9.ahPj1cA4F40Gxwlp4O8P2SoTbQ_uI5pNiP1jZnnNSwlJShiv_GO-UCaYjugbgXLa_Av6YvSGw5CW9qzXQ-ajeg",
+    "identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJQWmlGMXhLWHVpMFFMZWprTFZRY1RXRHVKOFFVYnZ1ZmxjTHNlTnNFUlI5Szh4UFRPVWhQbGo1Qlg4TnBpQjUxYzlLcFZkeWRiZ2JKTEJmd3Y2NVVmUSIsInNlYWwiOiJCTzNlSnduZFNSSE9YTklPVUtVT2NSMmxfT0NjUFFhZ0dWZVJHLWNieEFpZmhpRGxsRW9iZHdyUVN1ZXZtZ19Sd2RBWTFYTU9BMm9LZXNqUmJLN1NpbkEiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiIyNDVmMGI4YThkY2ZlYWYxYWM0MTg1ZGNhMjIzOWVkZGRkMTdlMGExNWUxYTNjOWJlYjlkZmMyYzEwNWFiNzI2In19",
+    "host": "other.example",
+    "method": "POST",
+    "path": "/v0/inbox/ack",
+    "body": "eyJzZXFzIjpbMV19",
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": false,
+    "reason": "proof_mismatch"
+   }
+  },
+  {
+   "name": "other_method",
+   "status": "checked",
+   "case": "hostile",
+   "check": "access_proof.verify",
+   "why": "Or with another method.",
+   "input": {
+    "compact": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1hY2Nlc3MifQ.eyJzaWduZXIiOiJzcGxpbnQxZDdkODY1Y2M0MDg1MGQ5NTk4NTgwYjJlNDg2NzAzOTBjZWNiZjI2MDNhMjFlNzVlZDc3MWQ1NjcyZjM3NDU5OCIsImhvc3QiOiJob3N0LmV4YW1wbGUiLCJtZXRob2QiOiJQT1NUIiwicGF0aCI6Ii92MC9pbmJveC9hY2siLCJib2R5X3NoYTI1NiI6ImJkMDEzOWY1NTljZTY1OTEzZTUyNjhjMjFjNzY2MDkxMTgyZTY1ZTBiYzFmMGVlNGEyMWJlYWI4MThkYTIwNWUiLCJpc3N1ZWRfYXQiOjE3OTM3NTA0MDB9.ahPj1cA4F40Gxwlp4O8P2SoTbQ_uI5pNiP1jZnnNSwlJShiv_GO-UCaYjugbgXLa_Av6YvSGw5CW9qzXQ-ajeg",
+    "identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJQWmlGMXhLWHVpMFFMZWprTFZRY1RXRHVKOFFVYnZ1ZmxjTHNlTnNFUlI5Szh4UFRPVWhQbGo1Qlg4TnBpQjUxYzlLcFZkeWRiZ2JKTEJmd3Y2NVVmUSIsInNlYWwiOiJCTzNlSnduZFNSSE9YTklPVUtVT2NSMmxfT0NjUFFhZ0dWZVJHLWNieEFpZmhpRGxsRW9iZHdyUVN1ZXZtZ19Sd2RBWTFYTU9BMm9LZXNqUmJLN1NpbkEiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiIyNDVmMGI4YThkY2ZlYWYxYWM0MTg1ZGNhMjIzOWVkZGRkMTdlMGExNWUxYTNjOWJlYjlkZmMyYzEwNWFiNzI2In19",
+    "host": "host.example",
+    "method": "GET",
+    "path": "/v0/inbox/ack",
+    "body": "eyJzZXFzIjpbMV19",
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": false,
+    "reason": "proof_mismatch"
+   }
+  },
+  {
+   "name": "other_path",
+   "status": "checked",
+   "case": "hostile",
+   "check": "access_proof.verify",
+   "why": "Or on another path.",
+   "input": {
+    "compact": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1hY2Nlc3MifQ.eyJzaWduZXIiOiJzcGxpbnQxZDdkODY1Y2M0MDg1MGQ5NTk4NTgwYjJlNDg2NzAzOTBjZWNiZjI2MDNhMjFlNzVlZDc3MWQ1NjcyZjM3NDU5OCIsImhvc3QiOiJob3N0LmV4YW1wbGUiLCJtZXRob2QiOiJQT1NUIiwicGF0aCI6Ii92MC9pbmJveC9hY2siLCJib2R5X3NoYTI1NiI6ImJkMDEzOWY1NTljZTY1OTEzZTUyNjhjMjFjNzY2MDkxMTgyZTY1ZTBiYzFmMGVlNGEyMWJlYWI4MThkYTIwNWUiLCJpc3N1ZWRfYXQiOjE3OTM3NTA0MDB9.ahPj1cA4F40Gxwlp4O8P2SoTbQ_uI5pNiP1jZnnNSwlJShiv_GO-UCaYjugbgXLa_Av6YvSGw5CW9qzXQ-ajeg",
+    "identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJQWmlGMXhLWHVpMFFMZWprTFZRY1RXRHVKOFFVYnZ1ZmxjTHNlTnNFUlI5Szh4UFRPVWhQbGo1Qlg4TnBpQjUxYzlLcFZkeWRiZ2JKTEJmd3Y2NVVmUSIsInNlYWwiOiJCTzNlSnduZFNSSE9YTklPVUtVT2NSMmxfT0NjUFFhZ0dWZVJHLWNieEFpZmhpRGxsRW9iZHdyUVN1ZXZtZ19Sd2RBWTFYTU9BMm9LZXNqUmJLN1NpbkEiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiIyNDVmMGI4YThkY2ZlYWYxYWM0MTg1ZGNhMjIzOWVkZGRkMTdlMGExNWUxYTNjOWJlYjlkZmMyYzEwNWFiNzI2In19",
+    "host": "host.example",
+    "method": "POST",
+    "path": "/v0/agents",
+    "body": "eyJzZXFzIjpbMV19",
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": false,
+    "reason": "proof_mismatch"
+   }
+  },
+  {
+   "name": "other_body",
+   "status": "checked",
+   "case": "hostile",
+   "check": "access_proof.verify",
+   "why": "Or with another body.",
+   "input": {
+    "compact": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1hY2Nlc3MifQ.eyJzaWduZXIiOiJzcGxpbnQxZDdkODY1Y2M0MDg1MGQ5NTk4NTgwYjJlNDg2NzAzOTBjZWNiZjI2MDNhMjFlNzVlZDc3MWQ1NjcyZjM3NDU5OCIsImhvc3QiOiJob3N0LmV4YW1wbGUiLCJtZXRob2QiOiJQT1NUIiwicGF0aCI6Ii92MC9pbmJveC9hY2siLCJib2R5X3NoYTI1NiI6ImJkMDEzOWY1NTljZTY1OTEzZTUyNjhjMjFjNzY2MDkxMTgyZTY1ZTBiYzFmMGVlNGEyMWJlYWI4MThkYTIwNWUiLCJpc3N1ZWRfYXQiOjE3OTM3NTA0MDB9.ahPj1cA4F40Gxwlp4O8P2SoTbQ_uI5pNiP1jZnnNSwlJShiv_GO-UCaYjugbgXLa_Av6YvSGw5CW9qzXQ-ajeg",
+    "identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJQWmlGMXhLWHVpMFFMZWprTFZRY1RXRHVKOFFVYnZ1ZmxjTHNlTnNFUlI5Szh4UFRPVWhQbGo1Qlg4TnBpQjUxYzlLcFZkeWRiZ2JKTEJmd3Y2NVVmUSIsInNlYWwiOiJCTzNlSnduZFNSSE9YTklPVUtVT2NSMmxfT0NjUFFhZ0dWZVJHLWNieEFpZmhpRGxsRW9iZHdyUVN1ZXZtZ19Sd2RBWTFYTU9BMm9LZXNqUmJLN1NpbkEiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiIyNDVmMGI4YThkY2ZlYWYxYWM0MTg1ZGNhMjIzOWVkZGRkMTdlMGExNWUxYTNjOWJlYjlkZmMyYzEwNWFiNzI2In19",
+    "host": "host.example",
+    "method": "POST",
+    "path": "/v0/inbox/ack",
+    "body": "eyJzZXFzIjpbMl19",
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": false,
+    "reason": "proof_mismatch"
+   }
+  },
+  {
+   "name": "stale",
+   "status": "checked",
+   "case": "hostile",
+   "check": "access_proof.verify",
+   "why": "Older than the 120 second window.",
+   "input": {
+    "compact": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1hY2Nlc3MifQ.eyJzaWduZXIiOiJzcGxpbnQxZDdkODY1Y2M0MDg1MGQ5NTk4NTgwYjJlNDg2NzAzOTBjZWNiZjI2MDNhMjFlNzVlZDc3MWQ1NjcyZjM3NDU5OCIsImhvc3QiOiJob3N0LmV4YW1wbGUiLCJtZXRob2QiOiJQT1NUIiwicGF0aCI6Ii92MC9pbmJveC9hY2siLCJib2R5X3NoYTI1NiI6ImJkMDEzOWY1NTljZTY1OTEzZTUyNjhjMjFjNzY2MDkxMTgyZTY1ZTBiYzFmMGVlNGEyMWJlYWI4MThkYTIwNWUiLCJpc3N1ZWRfYXQiOjE3OTM3NTA0MDB9.ahPj1cA4F40Gxwlp4O8P2SoTbQ_uI5pNiP1jZnnNSwlJShiv_GO-UCaYjugbgXLa_Av6YvSGw5CW9qzXQ-ajeg",
+    "identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJQWmlGMXhLWHVpMFFMZWprTFZRY1RXRHVKOFFVYnZ1ZmxjTHNlTnNFUlI5Szh4UFRPVWhQbGo1Qlg4TnBpQjUxYzlLcFZkeWRiZ2JKTEJmd3Y2NVVmUSIsInNlYWwiOiJCTzNlSnduZFNSSE9YTklPVUtVT2NSMmxfT0NjUFFhZ0dWZVJHLWNieEFpZmhpRGxsRW9iZHdyUVN1ZXZtZ19Sd2RBWTFYTU9BMm9LZXNqUmJLN1NpbkEiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiIyNDVmMGI4YThkY2ZlYWYxYWM0MTg1ZGNhMjIzOWVkZGRkMTdlMGExNWUxYTNjOWJlYjlkZmMyYzEwNWFiNzI2In19",
+    "host": "host.example",
+    "method": "POST",
+    "path": "/v0/inbox/ack",
+    "body": "eyJzZXFzIjpbMV19",
+    "now": 1793750521
+   },
+   "expect": {
+    "ok": false,
+    "reason": "expired"
+   }
+  },
+  {
+   "name": "from_the_future",
+   "status": "checked",
+   "case": "hostile",
+   "check": "access_proof.verify",
+   "why": "Dated past the clock tolerance.",
+   "input": {
+    "compact": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1hY2Nlc3MifQ.eyJzaWduZXIiOiJzcGxpbnQxZDdkODY1Y2M0MDg1MGQ5NTk4NTgwYjJlNDg2NzAzOTBjZWNiZjI2MDNhMjFlNzVlZDc3MWQ1NjcyZjM3NDU5OCIsImhvc3QiOiJob3N0LmV4YW1wbGUiLCJtZXRob2QiOiJQT1NUIiwicGF0aCI6Ii92MC9pbmJveC9hY2siLCJib2R5X3NoYTI1NiI6ImJkMDEzOWY1NTljZTY1OTEzZTUyNjhjMjFjNzY2MDkxMTgyZTY1ZTBiYzFmMGVlNGEyMWJlYWI4MThkYTIwNWUiLCJpc3N1ZWRfYXQiOjE3OTM3NTA0MDB9.ahPj1cA4F40Gxwlp4O8P2SoTbQ_uI5pNiP1jZnnNSwlJShiv_GO-UCaYjugbgXLa_Av6YvSGw5CW9qzXQ-ajeg",
+    "identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJQWmlGMXhLWHVpMFFMZWprTFZRY1RXRHVKOFFVYnZ1ZmxjTHNlTnNFUlI5Szh4UFRPVWhQbGo1Qlg4TnBpQjUxYzlLcFZkeWRiZ2JKTEJmd3Y2NVVmUSIsInNlYWwiOiJCTzNlSnduZFNSSE9YTklPVUtVT2NSMmxfT0NjUFFhZ0dWZVJHLWNieEFpZmhpRGxsRW9iZHdyUVN1ZXZtZ19Sd2RBWTFYTU9BMm9LZXNqUmJLN1NpbkEiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiIyNDVmMGI4YThkY2ZlYWYxYWM0MTg1ZGNhMjIzOWVkZGRkMTdlMGExNWUxYTNjOWJlYjlkZmMyYzEwNWFiNzI2In19",
+    "host": "host.example",
+    "method": "POST",
+    "path": "/v0/inbox/ack",
+    "body": "eyJzZXFzIjpbMV19",
+    "now": 1793750279
+   },
+   "expect": {
+    "ok": false,
+    "reason": "from_the_future"
+   }
+  },
+  {
+   "name": "signed_by_another_key",
+   "status": "checked",
+   "case": "hostile",
+   "check": "access_proof.verify",
+   "why": "Mallory signs as Ana.",
+   "input": {
+    "compact": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1hY2Nlc3MifQ.eyJzaWduZXIiOiJzcGxpbnQxZDdkODY1Y2M0MDg1MGQ5NTk4NTgwYjJlNDg2NzAzOTBjZWNiZjI2MDNhMjFlNzVlZDc3MWQ1NjcyZjM3NDU5OCIsImhvc3QiOiJob3N0LmV4YW1wbGUiLCJtZXRob2QiOiJQT1NUIiwicGF0aCI6Ii92MC9pbmJveC9hY2siLCJib2R5X3NoYTI1NiI6ImJkMDEzOWY1NTljZTY1OTEzZTUyNjhjMjFjNzY2MDkxMTgyZTY1ZTBiYzFmMGVlNGEyMWJlYWI4MThkYTIwNWUiLCJpc3N1ZWRfYXQiOjE3OTM3NTA0MDB9.l3GkukrzSeaEyWr_UYY41TtuXx3m9v02ztTal8I4N03YcmrJPTL4YVM3jQkS4wFZ9MTWeoMRD_kWeoOow3rzHg",
+    "identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJQWmlGMXhLWHVpMFFMZWprTFZRY1RXRHVKOFFVYnZ1ZmxjTHNlTnNFUlI5Szh4UFRPVWhQbGo1Qlg4TnBpQjUxYzlLcFZkeWRiZ2JKTEJmd3Y2NVVmUSIsInNlYWwiOiJCTzNlSnduZFNSSE9YTklPVUtVT2NSMmxfT0NjUFFhZ0dWZVJHLWNieEFpZmhpRGxsRW9iZHdyUVN1ZXZtZ19Sd2RBWTFYTU9BMm9LZXNqUmJLN1NpbkEiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiIyNDVmMGI4YThkY2ZlYWYxYWM0MTg1ZGNhMjIzOWVkZGRkMTdlMGExNWUxYTNjOWJlYjlkZmMyYzEwNWFiNzI2In19",
+    "host": "host.example",
+    "method": "POST",
+    "path": "/v0/inbox/ack",
+    "body": "eyJzZXFzIjpbMV19",
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": false,
+    "reason": "bad_signature"
+   }
+  },
+  {
+   "name": "other_agent_field",
+   "status": "checked",
+   "case": "hostile",
+   "check": "access_proof.verify",
+   "why": "Signed by Ana but naming Ben.",
+   "input": {
+    "compact": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1hY2Nlc3MifQ.eyJzaWduZXIiOiJzcGxpbnQxOWEyNzlhNzM5ZjIyZmJiMTViN2YyZWM2ZDY4NzMxNzg2ZDQ2NTQ2NjQxZGU3ZWZhMzg3NGY4MDUwZjFkYjU5MyIsImhvc3QiOiJob3N0LmV4YW1wbGUiLCJtZXRob2QiOiJQT1NUIiwicGF0aCI6Ii92MC9pbmJveC9hY2siLCJib2R5X3NoYTI1NiI6ImJkMDEzOWY1NTljZTY1OTEzZTUyNjhjMjFjNzY2MDkxMTgyZTY1ZTBiYzFmMGVlNGEyMWJlYWI4MThkYTIwNWUiLCJpc3N1ZWRfYXQiOjE3OTM3NTA0MDB9.vfRLuWgMkEaefGrnYA7EPX6JQimXwNDetNI-sR53ABf2ubebSB3X6Zmha5rnFF7JJ7bl1VlDU2_DE8T45glKLw",
+    "identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJQWmlGMXhLWHVpMFFMZWprTFZRY1RXRHVKOFFVYnZ1ZmxjTHNlTnNFUlI5Szh4UFRPVWhQbGo1Qlg4TnBpQjUxYzlLcFZkeWRiZ2JKTEJmd3Y2NVVmUSIsInNlYWwiOiJCTzNlSnduZFNSSE9YTklPVUtVT2NSMmxfT0NjUFFhZ0dWZVJHLWNieEFpZmhpRGxsRW9iZHdyUVN1ZXZtZ19Sd2RBWTFYTU9BMm9LZXNqUmJLN1NpbkEiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiIyNDVmMGI4YThkY2ZlYWYxYWM0MTg1ZGNhMjIzOWVkZGRkMTdlMGExNWUxYTNjOWJlYjlkZmMyYzEwNWFiNzI2In19",
+    "host": "host.example",
+    "method": "POST",
+    "path": "/v0/inbox/ack",
+    "body": "eyJzZXFzIjpbMV19",
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": false,
+    "reason": "proof_mismatch"
+   }
+  },
+  {
+   "name": "by_a_key_an_owner_added",
+   "status": "checked",
+   "case": "valid",
+   "check": "access_proof.verify",
+   "why": "An owner reads with a proof any key of theirs that counts signs, as owner-key does.",
+   "input": {
+    "compact": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1hY2Nlc3MifQ.eyJzaWduZXIiOiJzcGxpbnQxMzBiNmFiMWZhYzJmMmNiNTI4YTExNDU1ZTI0MTRkY2UxMDVmNTI2M2ViMGFmOWY0ZTk5ZmVmYWM5MzZmMzk4ZSIsImhvc3QiOiJob3N0LmV4YW1wbGUiLCJtZXRob2QiOiJHRVQiLCJwYXRoIjoiL3YwL293bmVyLXZpZXcvc3BsaW50MWQ3ZDg2NWNjNDA4NTBkOTU5ODU4MGIyZTQ4NjcwMzkwY2VjYmYyNjAzYTIxZTc1ZWQ3NzFkNTY3MmYzNzQ1OTgiLCJib2R5X3NoYTI1NiI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJpc3N1ZWRfYXQiOjE3OTM3NTA0MDB9.aKiw2OiNtHDmwtqVJqmIY_6zYNAWbJyaDlMXljiyyTwd5WRFJwXKC1W0_LAWkZ93teKfW4WFLCEjDTj6T78KNA",
+    "identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJLSjQ2NXRQTVFMVDJ3bGdkSjhXLTM4ckxjZHVORVhXaElSQkJqQmpmSXFmYmpJY2NjSW5RRVZDb3M2a3VpSzZsd3dld3ZFMnFPRzhWQjJMZEVVc2wySSIsInNlYWwiOiJCTEZ5bkx3WEhla04zamxRR2NfNnAtLUhlaTdhV1hMUjJySVl5NXBVbFdEMzFUVUlieWlWTzNZOXlDamN5dHVxTHRSQzdSNHptNzZCT0VFbExobjNhM28iLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiI5ODYwNTNmMDI1NDY5ZTQ3ODY3ODcxNGNjNmEyOGMzNzhhZWM4OWIxZjE2N2NjMjM4OGM3Yjk0MDg4MDc3Yjc3In19~eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1rZXktYWRkIn0.eyJ2Ijo0LCJpZCI6InNwbGludDEzMGI2YWIxZmFjMmYyY2I1MjhhMTE0NTVlMjQxNGRjZTEwNWY1MjYzZWIwYWY5ZjRlOTlmZWZhYzkzNmYzOThlIiwic2VxIjoxLCJwcmV2IjoiMzBiNmFiMWZhYzJmMmNiNTI4YTExNDU1ZTI0MTRkY2UxMDVmNTI2M2ViMGFmOWY0ZTk5ZmVmYWM5MzZmMzk4ZSIsImJ5IjoiMGIwNDk3ODZjODZmMzE4YTBhZGNjZDlkMmY1MWFjMThmNmYxNTg5YmEyZWZjYTI4ZmFjN2RmMWNjY2QyMzRlOCIsImtleSI6IkJPeGxOdUpHRElMdGVWOEdWVzItU3YtYkpxX0dvODFLdWkzSUl0bGdOd3V3MzRvRGxSX0RRYThLbzlfNFJIMFgxWFBLYVRjQ201MS1zSkRCOHhKYS15YyIsImlzc3VlZF9hdCI6MTc5Mzc1MDQwMH0.4NFknccd3vwlfgP6lJgcB-2I1ujUjYkv0NdXn88HWvTWC5TpVqv5Z180qpbLW-p92dM2doXiirrF930Jo6n9lA.osWGPaxMtk0YZDI4HhVq_0tU7FuF5co_WMcCys0M3asCjCTeZW3IMmPX_dmFeUdBxojrdpIEmxGhk9AGf2KAgQ",
+    "host": "host.example",
+    "method": "GET",
+    "path": "/v0/owner-view/splint1d7d865cc40850d9598580b2e48670390cecbf2603a21e75ed771d5672f374598",
+    "body": "",
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": true,
+    "agent": "splint130b6ab1fac2f2cb528a11455e2414dce105f5263eb0af9f4e99fefac936f398e"
+   }
+  },
+  {
+   "name": "by_a_key_an_owner_removed",
+   "status": "checked",
+   "case": "hostile",
+   "check": "access_proof.verify",
+   "why": "A removed key reads nothing more.",
+   "input": {
+    "compact": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1hY2Nlc3MifQ.eyJzaWduZXIiOiJzcGxpbnQxMzBiNmFiMWZhYzJmMmNiNTI4YTExNDU1ZTI0MTRkY2UxMDVmNTI2M2ViMGFmOWY0ZTk5ZmVmYWM5MzZmMzk4ZSIsImhvc3QiOiJob3N0LmV4YW1wbGUiLCJtZXRob2QiOiJHRVQiLCJwYXRoIjoiL3YwL293bmVyLXZpZXcvc3BsaW50MWQ3ZDg2NWNjNDA4NTBkOTU5ODU4MGIyZTQ4NjcwMzkwY2VjYmYyNjAzYTIxZTc1ZWQ3NzFkNTY3MmYzNzQ1OTgiLCJib2R5X3NoYTI1NiI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJpc3N1ZWRfYXQiOjE3OTM3NTA0MDB9.el4TZcZvdk6-nVCkgmmEovPMmhFXsMzc78m7rMIyk357AXGxiwNJ57f4ilYNI9UQK1xRhKxliYyarqjF2XRGYA",
+    "identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJLSjQ2NXRQTVFMVDJ3bGdkSjhXLTM4ckxjZHVORVhXaElSQkJqQmpmSXFmYmpJY2NjSW5RRVZDb3M2a3VpSzZsd3dld3ZFMnFPRzhWQjJMZEVVc2wySSIsInNlYWwiOiJCTEZ5bkx3WEhla04zamxRR2NfNnAtLUhlaTdhV1hMUjJySVl5NXBVbFdEMzFUVUlieWlWTzNZOXlDamN5dHVxTHRSQzdSNHptNzZCT0VFbExobjNhM28iLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiI5ODYwNTNmMDI1NDY5ZTQ3ODY3ODcxNGNjNmEyOGMzNzhhZWM4OWIxZjE2N2NjMjM4OGM3Yjk0MDg4MDc3Yjc3In19~eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1rZXktYWRkIn0.eyJ2Ijo0LCJpZCI6InNwbGludDEzMGI2YWIxZmFjMmYyY2I1MjhhMTE0NTVlMjQxNGRjZTEwNWY1MjYzZWIwYWY5ZjRlOTlmZWZhYzkzNmYzOThlIiwic2VxIjoxLCJwcmV2IjoiMzBiNmFiMWZhYzJmMmNiNTI4YTExNDU1ZTI0MTRkY2UxMDVmNTI2M2ViMGFmOWY0ZTk5ZmVmYWM5MzZmMzk4ZSIsImJ5IjoiMGIwNDk3ODZjODZmMzE4YTBhZGNjZDlkMmY1MWFjMThmNmYxNTg5YmEyZWZjYTI4ZmFjN2RmMWNjY2QyMzRlOCIsImtleSI6IkJPeGxOdUpHRElMdGVWOEdWVzItU3YtYkpxX0dvODFLdWkzSUl0bGdOd3V3MzRvRGxSX0RRYThLbzlfNFJIMFgxWFBLYVRjQ201MS1zSkRCOHhKYS15YyIsImlzc3VlZF9hdCI6MTc5Mzc1MDQwMH0.4NFknccd3vwlfgP6lJgcB-2I1ujUjYkv0NdXn88HWvTWC5TpVqv5Z180qpbLW-p92dM2doXiirrF930Jo6n9lA.osWGPaxMtk0YZDI4HhVq_0tU7FuF5co_WMcCys0M3asCjCTeZW3IMmPX_dmFeUdBxojrdpIEmxGhk9AGf2KAgQ~eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1rZXktcmVtb3ZlIn0.eyJ2Ijo2LCJpZCI6InNwbGludDEzMGI2YWIxZmFjMmYyY2I1MjhhMTE0NTVlMjQxNGRjZTEwNWY1MjYzZWIwYWY5ZjRlOTlmZWZhYzkzNmYzOThlIiwic2VxIjoyLCJwcmV2IjoiOWMxZmQ0YmQwZTU4ZDg0NDIyMjc1MzU4ZWU3ZTY4MjQwZjU4OTZiNTFhYjRjMTM0MTQ3ZjE3Y2Q1ZWM3YTRmOSIsImJ5IjoiNGM0YjJmOTNiZWM4ZmQwMjM1ZDY4MTExYmQ5NzM3OTUwMWNjMmQ0NzZhNjM5YzhiNDg0ZjhhYWE3Mzk5MGQzZiIsImtleSI6IjBiMDQ5Nzg2Yzg2ZjMxOGEwYWRjY2Q5ZDJmNTFhYzE4ZjZmMTU4OWJhMmVmY2EyOGZhYzdkZjFjY2NkMjM0ZTgiLCJpc3N1ZWRfYXQiOjE3OTM3NTA0MDB9.DsHpQrMw2QTjoauzNWFj08Dq0eSncwDdYFkiJkwlZsqqDab3Z371bOvdpPSaW5p1Klj-DNLYs41DEnanMqFwFQ",
+    "host": "host.example",
+    "method": "GET",
+    "path": "/v0/owner-view/splint1d7d865cc40850d9598580b2e48670390cecbf2603a21e75ed771d5672f374598",
+    "body": "",
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": false,
+    "reason": "bad_signature"
+   }
+  },
+  {
+   "name": "typ_of_another_object",
+   "status": "checked",
+   "case": "hostile",
+   "check": "access_proof.verify",
+   "why": "An envelope signature can't pass as a proof.",
+   "input": {
+    "compact": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1lbnZlbG9wZSJ9.eyJzaWduZXIiOiJzcGxpbnQxZDdkODY1Y2M0MDg1MGQ5NTk4NTgwYjJlNDg2NzAzOTBjZWNiZjI2MDNhMjFlNzVlZDc3MWQ1NjcyZjM3NDU5OCIsImhvc3QiOiJob3N0LmV4YW1wbGUiLCJtZXRob2QiOiJQT1NUIiwicGF0aCI6Ii92MC9pbmJveC9hY2siLCJib2R5X3NoYTI1NiI6ImJkMDEzOWY1NTljZTY1OTEzZTUyNjhjMjFjNzY2MDkxMTgyZTY1ZTBiYzFmMGVlNGEyMWJlYWI4MThkYTIwNWUiLCJpc3N1ZWRfYXQiOjE3OTM3NTA0MDB9.9-9f7iRQsNrNmtDiYUiW0_XWOGdaCkgY7hhkWjUU9TtofhYxhCLs-Qgeterk9Lt4B7owDUefwbT1VaPZ1LgI0A",
+    "identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJQWmlGMXhLWHVpMFFMZWprTFZRY1RXRHVKOFFVYnZ1ZmxjTHNlTnNFUlI5Szh4UFRPVWhQbGo1Qlg4TnBpQjUxYzlLcFZkeWRiZ2JKTEJmd3Y2NVVmUSIsInNlYWwiOiJCTzNlSnduZFNSSE9YTklPVUtVT2NSMmxfT0NjUFFhZ0dWZVJHLWNieEFpZmhpRGxsRW9iZHdyUVN1ZXZtZ19Sd2RBWTFYTU9BMm9LZXNqUmJLN1NpbkEiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiIyNDVmMGI4YThkY2ZlYWYxYWM0MTg1ZGNhMjIzOWVkZGRkMTdlMGExNWUxYTNjOWJlYjlkZmMyYzEwNWFiNzI2In19",
+    "host": "host.example",
+    "method": "POST",
+    "path": "/v0/inbox/ack",
+    "body": "eyJzZXFzIjpbMV19",
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "unknown_field",
+   "status": "checked",
+   "case": "hostile",
+   "check": "access_proof.verify",
+   "why": "Unknown fields are refused.",
+   "input": {
+    "compact": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1hY2Nlc3MifQ.eyJzaWduZXIiOiJzcGxpbnQxZDdkODY1Y2M0MDg1MGQ5NTk4NTgwYjJlNDg2NzAzOTBjZWNiZjI2MDNhMjFlNzVlZDc3MWQ1NjcyZjM3NDU5OCIsImhvc3QiOiJob3N0LmV4YW1wbGUiLCJtZXRob2QiOiJQT1NUIiwicGF0aCI6Ii92MC9pbmJveC9hY2siLCJib2R5X3NoYTI1NiI6ImJkMDEzOWY1NTljZTY1OTEzZTUyNjhjMjFjNzY2MDkxMTgyZTY1ZTBiYzFmMGVlNGEyMWJlYWI4MThkYTIwNWUiLCJpc3N1ZWRfYXQiOjE3OTM3NTA0MDAsImV4dHJhIjoxfQ._CpAeWRsYVr1AnERPu9yH0uwnEmgmOr3wTtUGw4Uld6w-MUjY3DqlhCogarTi4-7_Rk-0-dRLE2kYod8jBFWGA",
+    "identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJQWmlGMXhLWHVpMFFMZWprTFZRY1RXRHVKOFFVYnZ1ZmxjTHNlTnNFUlI5Szh4UFRPVWhQbGo1Qlg4TnBpQjUxYzlLcFZkeWRiZ2JKTEJmd3Y2NVVmUSIsInNlYWwiOiJCTzNlSnduZFNSSE9YTklPVUtVT2NSMmxfT0NjUFFhZ0dWZVJHLWNieEFpZmhpRGxsRW9iZHdyUVN1ZXZtZ19Sd2RBWTFYTU9BMm9LZXNqUmJLN1NpbkEiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiIyNDVmMGI4YThkY2ZlYWYxYWM0MTg1ZGNhMjIzOWVkZGRkMTdlMGExNWUxYTNjOWJlYjlkZmMyYzEwNWFiNzI2In19",
+    "host": "host.example",
+    "method": "POST",
+    "path": "/v0/inbox/ack",
+    "body": "eyJzZXFzIjpbMV19",
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  }
+ ]
+}

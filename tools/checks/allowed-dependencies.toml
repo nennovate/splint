@@ -1,0 +1,31 @@
+# Every direct Rust or adapter dependency needs an entry here with a reason.
+# Dependencies of key-holding or rule-enforcing crates need human review.
+
+[dependencies]
+aws-lc-rs = "Vetted crypto: P-256 signing and verification, SHA-256, secure randomness, and the SHA-384 a host's owner page names its script and style by"
+axum = "HTTP server for the host and Signet APIs"
+core-foundation = "Mac only, in owner-key: the Core Foundation types the security chip's calls take and give. Needs human review: it's on the path of an owner's key"
+objc2 = "Mac only, in owner-key: the reference type that keeps the Touch ID prompt's context alive. Needs human review"
+objc2-foundation = "Mac only, in owner-key: the string type the Touch ID prompt's words go in. Needs human review"
+objc2-local-authentication = "Mac only, in owner-key: LAContext, so one Touch ID prompt in this program's own words covers every signature of one run. Needs human review"
+security-framework = "Mac only, in owner-key: making and using an owner's key in the Secure Enclave, which never leaves the chip. Needs human review: it holds an owner's key"
+base64 = "Encoding for the signed message format, and for the hashes in a page's Subresource Integrity"
+hpke = "HPKE (RFC 9180) from rust-hpke, which has had no paid audit (Cloudflare reviewed version 0.8 for its own use, not this one): sealing a body to the two agents with DHKEM P-256, HKDF-SHA256 and AES-128-GCM. aws-lc-rs has no safe HPKE API"
+hyper-util = "In the host: what axum serves connections with, used directly to cap what a connection reads ahead, which axum's own serve can't set. Already built as part of axum. Needs human review: every call to a host comes through it"
+reqwest = "HTTP client for host-to-host delivery and Signet-to-host calls"
+rpassword = "Reads a key file's passphrase at a terminal with echo off, from the terminal itself, so it never shows on screen or in a scrollback: a few dozen lines over termios, with no other dependency than libc"
+rlimit = "Reads and raises the file limit, so a host keeps room for its database under a flood of connections"
+serde = "Typed parsing and serialization of protocol objects"
+serde_json = "JSON encoding for protocol objects and APIs"
+sqlx = "Postgres access for durable storage and the delivery queue"
+thiserror = "Typed errors"
+tokio = "Async runtime"
+tracing = "Structured logging"
+tracing-subscriber = "Log output for host and Signet"
+windows-sys = "Microsoft's own bindings, Windows only, for the few calls the standard library lacks: an ACL naming only this user on Splint's files, folders and Signet's pipe"
+
+# Adapters talk to a process that holds keys, so each one here is something to audit, and is pinned
+# exactly. These two only type-check: the adapter runs with nothing installed.
+[adapter-dependencies]
+"@types/node" = "Types for the type check"
+typescript = "The type check"

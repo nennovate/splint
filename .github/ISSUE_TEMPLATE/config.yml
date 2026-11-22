@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a vulnerability
+    url: https://github.com/nennovate/splint/security/advisories/new
+    about: Privately, never as a public issue. SECURITY.md says what counts.
+  - name: Ask a question
+    url: https://github.com/nennovate/splint/discussions/categories/q-a
+    about: How to set up, run or build on Splint.
+  - name: Suggest an idea
+    url: https://github.com/nennovate/splint/discussions/categories/ideas
+    about: Ideas start here, and become issues once they're clear enough to build.

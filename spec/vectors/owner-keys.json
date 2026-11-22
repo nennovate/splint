@@ -1,0 +1,232 @@
+{
+ "contract": "protocol.md#keys-an-owners-page-derives",
+ "vectors": [
+  {
+   "name": "recovery_code_ana",
+   "status": "checked",
+   "case": "valid",
+   "check": "recovery_code.backup",
+   "why": "128 bits shown once in groups of 4, and the backup key derived from them with HKDF-SHA256 under the salt `splint backup v1`. `scalar` is the private key it comes to, for code that wants to check its working.",
+   "input": {
+    "bytes": "6894a8b14fd7ad3828cef4c3eb9ecce5",
+    "code": "nckk-rmkp-26wt-qkgo-6tb6-xhwm-4u",
+    "scalar": "ecc6a781cc96b5e55ea0c0eff2ca4bb63d3c72ffaacf460dcf55d8327ff085ec"
+   },
+   "expect": {
+    "ok": true,
+    "backup": "BCrKXMTnKIVQDVvnjWpn7mnUvnD7X3b3cfwSDA4UN7OgUKbgrbeA3pIyFItxcYe2GEOf9G0wc98Zia0TXWjy0L0",
+    "commitment": "cbfdc09dd6aab2d133c460ac4cb32ccaa2aee2d670e61d2cdb076fabc60d3c93"
+   }
+  },
+  {
+   "name": "recovery_code_ben",
+   "status": "checked",
+   "case": "valid",
+   "check": "recovery_code.backup",
+   "why": "128 bits shown once in groups of 4, and the backup key derived from them with HKDF-SHA256 under the salt `splint backup v1`. `scalar` is the private key it comes to, for code that wants to check its working.",
+   "input": {
+    "bytes": "8c3c27babdb5dc656cad570478285f88",
+    "code": "rq6c-pov5-wxog-k3fn-k4ch-qkc7-ra",
+    "scalar": "d84eb87ea998fd1f31072b69ab9d441fa31beeda5ea67564c5035fc2b5a7c28b"
+   },
+   "expect": {
+    "ok": true,
+    "backup": "BL25FuyyyUzZk6aNEr6WAfFOqTy2f9LBBz_pUAothccFpKi3UyynL6On90SmNf54HwS5FJ88ma1MWPuqvSkerCY",
+    "commitment": "953ba735940458e3e79591ab5a5cc7f7ee08cc4fde1f1bea0ad4aac5f62dd180"
+   }
+  },
+  {
+   "name": "recovery_code_typed_by_hand",
+   "status": "checked",
+   "case": "valid",
+   "check": "recovery_code.backup",
+   "why": "A person may type it in capitals, with spaces or dashes anywhere, and it's the same code.",
+   "input": {
+    "code": " NCKK RMKP 26WT QKGO 6TB6 XHWM 4U\n"
+   },
+   "expect": {
+    "ok": true,
+    "backup": "BCrKXMTnKIVQDVvnjWpn7mnUvnD7X3b3cfwSDA4UN7OgUKbgrbeA3pIyFItxcYe2GEOf9G0wc98Zia0TXWjy0L0",
+    "commitment": "cbfdc09dd6aab2d133c460ac4cb32ccaa2aee2d670e61d2cdb076fabc60d3c93"
+   }
+  },
+  {
+   "name": "recovery_code_too_short",
+   "status": "checked",
+   "case": "hostile",
+   "check": "recovery_code.backup",
+   "why": "It's 26 characters, no fewer.",
+   "input": {
+    "code": "nckkrmkp26wtqkgo6tb6xhwm4"
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "recovery_code_too_long",
+   "status": "checked",
+   "case": "hostile",
+   "check": "recovery_code.backup",
+   "why": "Nor more.",
+   "input": {
+    "code": "nckkrmkp26wtqkgo6tb6xhwm4ua"
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "recovery_code_with_a_one",
+   "status": "checked",
+   "case": "hostile",
+   "check": "recovery_code.backup",
+   "why": "Only base32's letters and digits 2 to 7, so a 1 or a 0 is a typo, not an l or an o.",
+   "input": {
+    "code": "1ckkrmkp26wtqkgo6tb6xhwm4u"
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "recovery_code_with_spare_bits_set",
+   "status": "checked",
+   "case": "hostile",
+   "check": "recovery_code.backup",
+   "why": "The last character's 2 spare bits are zero, so a code has one spelling.",
+   "input": {
+    "code": "nckkrmkp26wtqkgo6tb6xhwm4v"
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "sealing_from_prf_ana",
+   "status": "checked",
+   "case": "valid",
+   "check": "prf.sealing_key",
+   "why": "What a passkey's PRF gives for the salt `splint owner sealing v1`, through HKDF-SHA256 under that salt, is the owner's sealing key.",
+   "input": {
+    "prf": "d867e9ceb5c59d1cd49baa613c0a6d3bd2c985c0236d9598978bf259d9d7324d",
+    "scalar": "a9fb4b90f3633d2c8640c0101ded39840bf52bad6af5d0fde9ae304f229a0154"
+   },
+   "expect": {
+    "ok": true,
+    "seal": "BBbmm9l0B02gNmRPsOUB6EyjwUNwN6UdAwnmJQcRLg84mkolJ-wMX9S_sjJPH5b6NKoWkVuP-dy7LViwqk2jkxs"
+   }
+  },
+  {
+   "name": "sealing_from_prf_ben",
+   "status": "checked",
+   "case": "valid",
+   "check": "prf.sealing_key",
+   "why": "What a passkey's PRF gives for the salt `splint owner sealing v1`, through HKDF-SHA256 under that salt, is the owner's sealing key.",
+   "input": {
+    "prf": "7093f50d3989bb1ca4b980e5ab7d08c8f5caa254bdb65da8aa8d4ca3c30e9d07",
+    "scalar": "e9070ea587fc16cec16456cd3b7bc6011162bcceda9afc7f22e80f95676dde15"
+   },
+   "expect": {
+    "ok": true,
+    "seal": "BMwGTIVR_JxEcgJudJFvps2m8pREgXP60MarhZmLZUrHM_dSwjYgIvNEpjU3ClgIpXktOYP-CDtkq2FbNcOGbio"
+   }
+  },
+  {
+   "name": "sealing_from_a_short_prf",
+   "status": "checked",
+   "case": "hostile",
+   "check": "prf.sealing_key",
+   "why": "A PRF gives 32 bytes, and anything else isn't one.",
+   "input": {
+    "prf": "f9b0078b5df596d2ea19010c001bbd00"
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "lock_from_prf",
+   "status": "checked",
+   "case": "valid",
+   "check": "prf.lock_key",
+   "why": "A sign-in's lock is what its passkey's PRF gives, through HKDF-SHA256 under the salt `splint sign-in lock v1`, so a page anywhere opens that sign-in's copy of the reading key.",
+   "input": {
+    "prf": "d867e9ceb5c59d1cd49baa613c0a6d3bd2c985c0236d9598978bf259d9d7324d"
+   },
+   "expect": {
+    "ok": true,
+    "lock": "BLnF2Pau81DdPEA_pGJKUnGxLE98tWzFuUnMpUMtYYQX9T6rLdlGfQbrbUrAmiF-m9q6puas3WkSAaDiJ43uBKI"
+   }
+  },
+  {
+   "name": "lock_from_a_short_prf",
+   "status": "checked",
+   "case": "hostile",
+   "check": "prf.lock_key",
+   "why": "A PRF gives 32 bytes, and anything else isn't one.",
+   "input": {
+    "prf": "f9b0078b5df596d2ea19010c001bbd00"
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "touch_code_of_one_object",
+   "status": "checked",
+   "case": "valid",
+   "check": "touch.code",
+   "why": "The code a device's prompt and the page that prepared it both show, over one object.",
+   "input": {
+    "inputs": [
+     "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1ydWxlcyJ9.eyJ2IjoxLCJvd25lciI6InNwbGludDEzMGI2YWIxZmFjMmYyY2I1MjhhMTE0NTVlMjQxNGRjZTEwNWY1MjYzZWIwYWY5ZjRlOTlmZWZhYzkzNmYzOThlIiwiYWdlbnQiOiJzcGxpbnQxZDdkODY1Y2M0MDg1MGQ5NTk4NTgwYjJlNDg2NzAzOTBjZWNiZjI2MDNhMjFlNzVlZDc3MWQ1NjcyZjM3NDU5OCIsInNlcSI6N30"
+    ]
+   },
+   "expect": {
+    "ok": true,
+    "code": "E5DC EABE"
+   }
+  },
+  {
+   "name": "touch_code_of_two_objects",
+   "status": "checked",
+   "case": "valid",
+   "check": "touch.code",
+   "why": "Over every object one touch signs, in order, so a second object behind the first gives another code than the first alone.",
+   "input": {
+    "inputs": [
+     "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1ydWxlcyJ9.eyJ2IjoxLCJvd25lciI6InNwbGludDEzMGI2YWIxZmFjMmYyY2I1MjhhMTE0NTVlMjQxNGRjZTEwNWY1MjYzZWIwYWY5ZjRlOTlmZWZhYzkzNmYzOThlIiwiYWdlbnQiOiJzcGxpbnQxZDdkODY1Y2M0MDg1MGQ5NTk4NTgwYjJlNDg2NzAzOTBjZWNiZjI2MDNhMjFlNzVlZDc3MWQ1NjcyZjM3NDU5OCIsInNlcSI6N30",
+     "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC13aGVyZS1wYWlkIn0.eyJ2IjoxLCJvd25lciI6InNwbGludDEzMGI2YWIxZmFjMmYyY2I1MjhhMTE0NTVlMjQxNGRjZTEwNWY1MjYzZWIwYWY5ZjRlOTlmZWZhYzkzNmYzOThlIiwicGxhY2VzIjpbeyJraW5kIjoicGF5bWVudF9wYWdlIiwidXJsIjoiaHR0cHM6Ly9wYXkuZXhhbXBsZS5jb20vYW5hIn1dLCJpc3N1ZWRfYXQiOjE3OTM3NTA0MDB9"
+    ]
+   },
+   "expect": {
+    "ok": true,
+    "code": "27D6 BF0F"
+   }
+  },
+  {
+   "name": "touch_code_of_two_objects_reordered",
+   "status": "checked",
+   "case": "hostile",
+   "check": "touch.code",
+   "why": "The same two the other way round give another code again, so a prompt can't show one order and sign another.",
+   "input": {
+    "inputs": [
+     "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC13aGVyZS1wYWlkIn0.eyJ2IjoxLCJvd25lciI6InNwbGludDEzMGI2YWIxZmFjMmYyY2I1MjhhMTE0NTVlMjQxNGRjZTEwNWY1MjYzZWIwYWY5ZjRlOTlmZWZhYzkzNmYzOThlIiwicGxhY2VzIjpbeyJraW5kIjoicGF5bWVudF9wYWdlIiwidXJsIjoiaHR0cHM6Ly9wYXkuZXhhbXBsZS5jb20vYW5hIn1dLCJpc3N1ZWRfYXQiOjE3OTM3NTA0MDB9",
+     "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1ydWxlcyJ9.eyJ2IjoxLCJvd25lciI6InNwbGludDEzMGI2YWIxZmFjMmYyY2I1MjhhMTE0NTVlMjQxNGRjZTEwNWY1MjYzZWIwYWY5ZjRlOTlmZWZhYzkzNmYzOThlIiwiYWdlbnQiOiJzcGxpbnQxZDdkODY1Y2M0MDg1MGQ5NTk4NTgwYjJlNDg2NzAzOTBjZWNiZjI2MDNhMjFlNzVlZDc3MWQ1NjcyZjM3NDU5OCIsInNlcSI6N30"
+    ]
+   },
+   "expect": {
+    "ok": true,
+    "code": "7879 3E88"
+   }
+  }
+ ]
+}

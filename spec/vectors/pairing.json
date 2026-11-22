@@ -1,0 +1,785 @@
+{
+ "contract": "protocol.md#pairing-by-code",
+ "vectors": [
+  {
+   "name": "code",
+   "status": "checked",
+   "case": "valid",
+   "check": "pairing.code",
+   "why": "The host holding the mailbox, the secret, and the first half of the hash of the ID of the owner who made it, each in lower-case base32, 26 characters.",
+   "input": {
+    "code": "splint-pair:host.example/ksisepy3tanomsgtjm2mfmbykm/gc3kwh5mf4wlkkfbcrk6eqknzy"
+   },
+   "expect": {
+    "ok": true,
+    "host": "host.example",
+    "id": "b431119e4a813ce6b190b016692bd7d8",
+    "owner": "30b6ab1fac2f2cb528a11455e2414dce"
+   }
+  },
+  {
+   "name": "code_with_spaces_around_it",
+   "status": "checked",
+   "case": "valid",
+   "check": "pairing.code",
+   "why": "A chat window may add whitespace around what's pasted.",
+   "input": {
+    "code": "  splint-pair:host.example/ksisepy3tanomsgtjm2mfmbykm/gc3kwh5mf4wlkkfbcrk6eqknzy\n"
+   },
+   "expect": {
+    "ok": true,
+    "host": "host.example",
+    "id": "b431119e4a813ce6b190b016692bd7d8",
+    "owner": "30b6ab1fac2f2cb528a11455e2414dce"
+   }
+  },
+  {
+   "name": "code_at_a_port",
+   "status": "checked",
+   "case": "valid",
+   "check": "pairing.code",
+   "why": "A host is written as in an address.",
+   "input": {
+    "code": "splint-pair:host.example:8443/ksisepy3tanomsgtjm2mfmbykm/gc3kwh5mf4wlkkfbcrk6eqknzy"
+   },
+   "expect": {
+    "ok": true,
+    "host": "host.example:8443",
+    "id": "b431119e4a813ce6b190b016692bd7d8",
+    "owner": "30b6ab1fac2f2cb528a11455e2414dce"
+   }
+  },
+  {
+   "name": "code_in_capitals",
+   "status": "checked",
+   "case": "hostile",
+   "check": "pairing.code",
+   "why": "A code has one spelling.",
+   "input": {
+    "code": "splint-pair:host.example/KSISEPY3TANOMSGTJM2MFMBYKM/gc3kwh5mf4wlkkfbcrk6eqknzy"
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "code_without_its_prefix",
+   "status": "checked",
+   "case": "hostile",
+   "check": "pairing.code",
+   "why": "It says what it is.",
+   "input": {
+    "code": "host.example/ksisepy3tanomsgtjm2mfmbykm/gc3kwh5mf4wlkkfbcrk6eqknzy"
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "code_with_a_short_secret",
+   "status": "checked",
+   "case": "hostile",
+   "check": "pairing.code",
+   "why": "The secret is 128 bits, 26 characters.",
+   "input": {
+    "code": "splint-pair:host.example/ksisepy3tanomsgtjm2mfmbyk/gc3kwh5mf4wlkkfbcrk6eqknzy"
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "code_with_a_long_secret",
+   "status": "checked",
+   "case": "hostile",
+   "check": "pairing.code",
+   "why": "And no more.",
+   "input": {
+    "code": "splint-pair:host.example/ksisepy3tanomsgtjm2mfmbykma/gc3kwh5mf4wlkkfbcrk6eqknzy"
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "code_with_padding",
+   "status": "checked",
+   "case": "hostile",
+   "check": "pairing.code",
+   "why": "Base32 without padding.",
+   "input": {
+    "code": "splint-pair:host.example/ksisepy3tanomsgtjm2mfmbykm/gc3kwh5mf4wlkkfbcrk6eqknzy======"
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "code_with_leftover_bits_set",
+   "status": "checked",
+   "case": "hostile",
+   "check": "pairing.code",
+   "why": "The last character's 2 spare bits are zero, so one secret has one spelling.",
+   "input": {
+    "code": "splint-pair:host.example/ksisepy3tanomsgtjm2mfmbykn/gc3kwh5mf4wlkkfbcrk6eqknzy"
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "code_naming_a_host_in_capitals",
+   "status": "checked",
+   "case": "hostile",
+   "check": "pairing.code",
+   "why": "A host has one spelling, as in an address.",
+   "input": {
+    "code": "splint-pair:Host.example/ksisepy3tanomsgtjm2mfmbykm/gc3kwh5mf4wlkkfbcrk6eqknzy"
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "code_naming_no_owner",
+   "status": "checked",
+   "case": "hostile",
+   "check": "pairing.code",
+   "why": "A code names the owner who made it, so whoever opens its mailbox later can't be taken for them.",
+   "input": {
+    "code": "splint-pair:host.example/ksisepy3tanomsgtjm2mfmbykm"
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "code_with_a_short_owner",
+   "status": "checked",
+   "case": "hostile",
+   "check": "pairing.code",
+   "why": "The owner part is 16 bytes, 26 characters.",
+   "input": {
+    "code": "splint-pair:host.example/ksisepy3tanomsgtjm2mfmbykm/gc3kwh5mf4wlkkfbcrk6eqknz"
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "code_with_owner_leftover_bits_set",
+   "status": "checked",
+   "case": "hostile",
+   "check": "pairing.code",
+   "why": "And has one spelling too.",
+   "input": {
+    "code": "splint-pair:host.example/ksisepy3tanomsgtjm2mfmbykm/gc3kwh5mf4wlkkfbcrk6eqknzz"
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "code_with_another_part",
+   "status": "checked",
+   "case": "hostile",
+   "check": "pairing.code",
+   "why": "Three parts after the prefix, no more.",
+   "input": {
+    "code": "splint-pair:host.example/ksisepy3tanomsgtjm2mfmbykm/gc3kwh5mf4wlkkfbcrk6eqknzy/gc3kwh5mf4wlkkfbcrk6eqknzy"
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "pairing",
+   "status": "checked",
+   "case": "valid",
+   "check": "pairing.verify",
+   "why": "An owner's session opens a mailbox at its host for 15 minutes at most, signed by the session's key.",
+   "input": {
+    "pairing": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1wYWlyaW5nIn0.eyJ2IjoxLCJpZCI6ImI0MzExMTllNGE4MTNjZTZiMTkwYjAxNjY5MmJkN2Q4Iiwib3duZXIiOiJzcGxpbnQxMzBiNmFiMWZhYzJmMmNiNTI4YTExNDU1ZTI0MTRkY2UxMDVmNTI2M2ViMGFmOWY0ZTk5ZmVmYWM5MzZmMzk4ZSIsImhvc3QiOiJob3N0LmV4YW1wbGUiLCJwcm9vZiI6ImY5MzcxODVlMjNlMzQ4M2UzYjk2MDdkYzBiN2ExMDYxYmMxNjE2NTEzYzI4NWUyZDliZDYzYTZjZGU1NDBiNzQiLCJjbG9zZSI6IjQyMjBkMWE5MjNkZTlkOGUzZGYwZDkzMGQwOGJjYzViMWY5YzYyNGI4MzEzM2NmNjQyZTgzMGY0OTQ1ZjZkNTkiLCJpc3N1ZWRfYXQiOjE3OTM3NTA0MDAsImV4cGlyZXNfYXQiOjE3OTM3NTEzMDB9.8LH7f_eAf2YAYcopIi1SBD98yETKBjN3TAmsgZMy6qJISZiTnzaLPdv4LnYSHESnfdH5LQ1_U-GebL2TrqgMEw",
+    "session": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1vd25lci1zZXNzaW9uIn0.eyJ2IjoxLCJvd25lciI6InNwbGludDEzMGI2YWIxZmFjMmYyY2I1MjhhMTE0NTVlMjQxNGRjZTEwNWY1MjYzZWIwYWY5ZjRlOTlmZWZhYzkzNmYzOThlIiwia2V5IjoiQkdBWkVoMGNaYWpsdFUyTkhtekU1c2lPUjhtQ0xSMW8xUlBPQ1Y3RjFQX1Fvb2JGeEJVNWloMVlxRWluaWI5QlhoNTBUNGl4SVpOamI2dFVmSHQ3NjNVIiwiaG9zdCI6Imhvc3QuZXhhbXBsZSIsImlzc3VlZF9hdCI6MTc5Mzc1MDQwMCwiZXhwaXJlc19hdCI6MTc5Mzc5MzYwMH0.tJLL8zzc3HSkecyEiG_qZIMC0q2xoLh0pWKUm3AGjPZZU75fUZauF9eeucSb7jwybKgWcleAZnqGH0pzrj48tA",
+    "owner_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJLSjQ2NXRQTVFMVDJ3bGdkSjhXLTM4ckxjZHVORVhXaElSQkJqQmpmSXFmYmpJY2NjSW5RRVZDb3M2a3VpSzZsd3dld3ZFMnFPRzhWQjJMZEVVc2wySSIsInNlYWwiOiJCTEZ5bkx3WEhla04zamxRR2NfNnAtLUhlaTdhV1hMUjJySVl5NXBVbFdEMzFUVUlieWlWTzNZOXlDamN5dHVxTHRSQzdSNHptNzZCT0VFbExobjNhM28iLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiI5ODYwNTNmMDI1NDY5ZTQ3ODY3ODcxNGNjNmEyOGMzNzhhZWM4OWIxZjE2N2NjMjM4OGM3Yjk0MDg4MDc3Yjc3In19",
+    "host": "host.example",
+    "now": 1793750460
+   },
+   "expect": {
+    "ok": true,
+    "id": "b431119e4a813ce6b190b016692bd7d8",
+    "expires_at": 1793751300
+   }
+  },
+  {
+   "name": "pairing_by_a_passkey",
+   "status": "checked",
+   "case": "valid",
+   "check": "pairing.verify",
+   "why": "An owner whose key is a passkey signs the session, and the session's key the pairing, with no touch of its own.",
+   "input": {
+    "pairing": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1wYWlyaW5nIn0.eyJ2IjoxLCJpZCI6ImI0MzExMTllNGE4MTNjZTZiMTkwYjAxNjY5MmJkN2Q4Iiwib3duZXIiOiJzcGxpbnQxOWE2YTdjNDMzYjljY2M1NzUwZWFhZDM5ZjIwMzE1NDEzOTRmNDg5NTJjNjczNTIyOTU4NzA2NTA4YjQxYjA5ZSIsImhvc3QiOiJob3N0LmV4YW1wbGUiLCJwcm9vZiI6ImU2ZmYzZGE4NTIwNGE5ZDJmOGQ0YTY2MWM1Zjg2YzcwZmE1OWE3NTY5NzZiYzVhOTA0MjRkNTI5ZWYwNTllODkiLCJjbG9zZSI6IjQyMjBkMWE5MjNkZTlkOGUzZGYwZDkzMGQwOGJjYzViMWY5YzYyNGI4MzEzM2NmNjQyZTgzMGY0OTQ1ZjZkNTkiLCJpc3N1ZWRfYXQiOjE3OTM3NTA0MDAsImV4cGlyZXNfYXQiOjE3OTM3NTEzMDB9.XddiKtaDKgvYYQICfOsZeDqv-xpLG7oB4vMhdBruhdRhrcnzsMxr41TdJZ9HplIPgE-dNV5LQ8FqNjIBVxLFSA",
+    "session": "eyJhbGciOiJXQTI1NiIsInR5cCI6InNwbGludC1vd25lci1zZXNzaW9uIn0.eyJ2IjoxLCJvd25lciI6InNwbGludDE5YTZhN2M0MzNiOWNjYzU3NTBlYWFkMzlmMjAzMTU0MTM5NGY0ODk1MmM2NzM1MjI5NTg3MDY1MDhiNDFiMDllIiwia2V5IjoiQkdBWkVoMGNaYWpsdFUyTkhtekU1c2lPUjhtQ0xSMW8xUlBPQ1Y3RjFQX1Fvb2JGeEJVNWloMVlxRWluaWI5QlhoNTBUNGl4SVpOamI2dFVmSHQ3NjNVIiwiaG9zdCI6Imhvc3QuZXhhbXBsZSIsImlzc3VlZF9hdCI6MTc5Mzc1MDQwMCwiZXhwaXJlc19hdCI6MTc5Mzc5MzYwMH0.eyJhIjoibDBBdGNYTTJDRWJlM3lwOURTcjhfd0hvd0Vma3NZcHNza3hhVjQzUUFoQUZBQUFBQUEiLCJjIjoiZXlKMGVYQmxJam9pZDJWaVlYVjBhRzR1WjJWMElpd2lZMmhoYkd4bGJtZGxJam9pY2kxbk5WTnRWVVZKYzJWcE9XaGZhVUV0VVdOa2JHbGxOR1YxVm05eWRXSkJRVzl5UkV3MlZscGtNQ0lzSW05eWFXZHBiaUk2SW1oMGRIQnpPaTh2YUc5emRDNWxlR0Z0Y0d4bElpd2lZM0p2YzNOUGNtbG5hVzRpT21aaGJITmxmUSIsInMiOiJNRVVDSVFDeTRlc01mYmNCbmlpNkQ2cFlWZ2pVRUJKenBrUXB5RDh2S2F2WV85U181d0lnYkVERUJBVXFDU19DemplZkFpUDdhakdEd0dtY01yWURqVVg4Vk9RNUI0USJ9",
+    "owner_identity": "eyJ2Ijo1LCJhbGciOiJ3ZWJhdXRobi1lczI1NiIsImtleSI6IkJQUmtkdDFvREI5VmRXdlBsTjQ4M3FLV1BYS29rdE1sUVJqMXJMZTZmbW1Hek9JeVJVNjF4LW9Db2Q5ZE9PTHFlVXd5UWZGWE1aSzVzai16WnEzdERRdyIsInJwIjoiaG9zdC5leGFtcGxlIiwic2VhbCI6IkJNMU5rZ0ZUNWxDVjN0cGZtWDVnNTg3b2tDOTBjMlhHTHJCOE9HUm4yRzlJQXREM2pmaTlveDhoWlctLW1YZFdKUVNZYkNTbVZINlBVQ1JaUjJCOWQzayIsInJlY292ZXJ5Ijp7InJ1bGUiOiJiYWNrdXBfa2V5IiwiY29tbWl0bWVudCI6IjE1NjZhYjJiYzk2OTI4ZDNiYTY5YjFjMzI5OWQ2NzhhMjNiMTA1MmFiNTQ3NmU1M2JhNzQ3M2QzYzU3NTEzYjAifX0",
+    "host": "host.example",
+    "now": 1793750460
+   },
+   "expect": {
+    "ok": true,
+    "id": "b431119e4a813ce6b190b016692bd7d8",
+    "expires_at": 1793751300
+   }
+  },
+  {
+   "name": "pairing_over",
+   "status": "checked",
+   "case": "hostile",
+   "check": "pairing.verify",
+   "why": "A mailbox closes at its end.",
+   "input": {
+    "pairing": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1wYWlyaW5nIn0.eyJ2IjoxLCJpZCI6ImI0MzExMTllNGE4MTNjZTZiMTkwYjAxNjY5MmJkN2Q4Iiwib3duZXIiOiJzcGxpbnQxMzBiNmFiMWZhYzJmMmNiNTI4YTExNDU1ZTI0MTRkY2UxMDVmNTI2M2ViMGFmOWY0ZTk5ZmVmYWM5MzZmMzk4ZSIsImhvc3QiOiJob3N0LmV4YW1wbGUiLCJwcm9vZiI6ImY5MzcxODVlMjNlMzQ4M2UzYjk2MDdkYzBiN2ExMDYxYmMxNjE2NTEzYzI4NWUyZDliZDYzYTZjZGU1NDBiNzQiLCJjbG9zZSI6IjQyMjBkMWE5MjNkZTlkOGUzZGYwZDkzMGQwOGJjYzViMWY5YzYyNGI4MzEzM2NmNjQyZTgzMGY0OTQ1ZjZkNTkiLCJpc3N1ZWRfYXQiOjE3OTM3NTA0MDAsImV4cGlyZXNfYXQiOjE3OTM3NTEzMDB9.8LH7f_eAf2YAYcopIi1SBD98yETKBjN3TAmsgZMy6qJISZiTnzaLPdv4LnYSHESnfdH5LQ1_U-GebL2TrqgMEw",
+    "session": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1vd25lci1zZXNzaW9uIn0.eyJ2IjoxLCJvd25lciI6InNwbGludDEzMGI2YWIxZmFjMmYyY2I1MjhhMTE0NTVlMjQxNGRjZTEwNWY1MjYzZWIwYWY5ZjRlOTlmZWZhYzkzNmYzOThlIiwia2V5IjoiQkdBWkVoMGNaYWpsdFUyTkhtekU1c2lPUjhtQ0xSMW8xUlBPQ1Y3RjFQX1Fvb2JGeEJVNWloMVlxRWluaWI5QlhoNTBUNGl4SVpOamI2dFVmSHQ3NjNVIiwiaG9zdCI6Imhvc3QuZXhhbXBsZSIsImlzc3VlZF9hdCI6MTc5Mzc1MDQwMCwiZXhwaXJlc19hdCI6MTc5Mzc5MzYwMH0.tJLL8zzc3HSkecyEiG_qZIMC0q2xoLh0pWKUm3AGjPZZU75fUZauF9eeucSb7jwybKgWcleAZnqGH0pzrj48tA",
+    "owner_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJLSjQ2NXRQTVFMVDJ3bGdkSjhXLTM4ckxjZHVORVhXaElSQkJqQmpmSXFmYmpJY2NjSW5RRVZDb3M2a3VpSzZsd3dld3ZFMnFPRzhWQjJMZEVVc2wySSIsInNlYWwiOiJCTEZ5bkx3WEhla04zamxRR2NfNnAtLUhlaTdhV1hMUjJySVl5NXBVbFdEMzFUVUlieWlWTzNZOXlDamN5dHVxTHRSQzdSNHptNzZCT0VFbExobjNhM28iLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiI5ODYwNTNmMDI1NDY5ZTQ3ODY3ODcxNGNjNmEyOGMzNzhhZWM4OWIxZjE2N2NjMjM4OGM3Yjk0MDg4MDc3Yjc3In19",
+    "host": "host.example",
+    "now": 1793751300
+   },
+   "expect": {
+    "ok": false,
+    "reason": "expired"
+   }
+  },
+  {
+   "name": "pairing_dated_ahead",
+   "status": "checked",
+   "case": "hostile",
+   "check": "pairing.verify",
+   "why": "It can't start later than the owner's clock allows.",
+   "input": {
+    "pairing": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1wYWlyaW5nIn0.eyJ2IjoxLCJpZCI6ImI0MzExMTllNGE4MTNjZTZiMTkwYjAxNjY5MmJkN2Q4Iiwib3duZXIiOiJzcGxpbnQxMzBiNmFiMWZhYzJmMmNiNTI4YTExNDU1ZTI0MTRkY2UxMDVmNTI2M2ViMGFmOWY0ZTk5ZmVmYWM5MzZmMzk4ZSIsImhvc3QiOiJob3N0LmV4YW1wbGUiLCJwcm9vZiI6ImY5MzcxODVlMjNlMzQ4M2UzYjk2MDdkYzBiN2ExMDYxYmMxNjE2NTEzYzI4NWUyZDliZDYzYTZjZGU1NDBiNzQiLCJjbG9zZSI6IjQyMjBkMWE5MjNkZTlkOGUzZGYwZDkzMGQwOGJjYzViMWY5YzYyNGI4MzEzM2NmNjQyZTgzMGY0OTQ1ZjZkNTkiLCJpc3N1ZWRfYXQiOjE3OTM3NTA0MDAsImV4cGlyZXNfYXQiOjE3OTM3NTEzMDB9.8LH7f_eAf2YAYcopIi1SBD98yETKBjN3TAmsgZMy6qJISZiTnzaLPdv4LnYSHESnfdH5LQ1_U-GebL2TrqgMEw",
+    "session": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1vd25lci1zZXNzaW9uIn0.eyJ2IjoxLCJvd25lciI6InNwbGludDEzMGI2YWIxZmFjMmYyY2I1MjhhMTE0NTVlMjQxNGRjZTEwNWY1MjYzZWIwYWY5ZjRlOTlmZWZhYzkzNmYzOThlIiwia2V5IjoiQkdBWkVoMGNaYWpsdFUyTkhtekU1c2lPUjhtQ0xSMW8xUlBPQ1Y3RjFQX1Fvb2JGeEJVNWloMVlxRWluaWI5QlhoNTBUNGl4SVpOamI2dFVmSHQ3NjNVIiwiaG9zdCI6Imhvc3QuZXhhbXBsZSIsImlzc3VlZF9hdCI6MTc5Mzc1MDQwMCwiZXhwaXJlc19hdCI6MTc5Mzc5MzYwMH0.tJLL8zzc3HSkecyEiG_qZIMC0q2xoLh0pWKUm3AGjPZZU75fUZauF9eeucSb7jwybKgWcleAZnqGH0pzrj48tA",
+    "owner_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJLSjQ2NXRQTVFMVDJ3bGdkSjhXLTM4ckxjZHVORVhXaElSQkJqQmpmSXFmYmpJY2NjSW5RRVZDb3M2a3VpSzZsd3dld3ZFMnFPRzhWQjJMZEVVc2wySSIsInNlYWwiOiJCTEZ5bkx3WEhla04zamxRR2NfNnAtLUhlaTdhV1hMUjJySVl5NXBVbFdEMzFUVUlieWlWTzNZOXlDamN5dHVxTHRSQzdSNHptNzZCT0VFbExobjNhM28iLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiI5ODYwNTNmMDI1NDY5ZTQ3ODY3ODcxNGNjNmEyOGMzNzhhZWM4OWIxZjE2N2NjMjM4OGM3Yjk0MDg4MDc3Yjc3In19",
+    "host": "host.example",
+    "now": 1793750279
+   },
+   "expect": {
+    "ok": false,
+    "reason": "from_the_future"
+   }
+  },
+  {
+   "name": "pairing_for_more_than_15_minutes",
+   "status": "checked",
+   "case": "hostile",
+   "check": "pairing.verify",
+   "why": "A code lasts 15 minutes at most.",
+   "input": {
+    "pairing": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1wYWlyaW5nIn0.eyJ2IjoxLCJpZCI6ImI0MzExMTllNGE4MTNjZTZiMTkwYjAxNjY5MmJkN2Q4Iiwib3duZXIiOiJzcGxpbnQxMzBiNmFiMWZhYzJmMmNiNTI4YTExNDU1ZTI0MTRkY2UxMDVmNTI2M2ViMGFmOWY0ZTk5ZmVmYWM5MzZmMzk4ZSIsImhvc3QiOiJob3N0LmV4YW1wbGUiLCJwcm9vZiI6ImY5MzcxODVlMjNlMzQ4M2UzYjk2MDdkYzBiN2ExMDYxYmMxNjE2NTEzYzI4NWUyZDliZDYzYTZjZGU1NDBiNzQiLCJjbG9zZSI6IjQyMjBkMWE5MjNkZTlkOGUzZGYwZDkzMGQwOGJjYzViMWY5YzYyNGI4MzEzM2NmNjQyZTgzMGY0OTQ1ZjZkNTkiLCJpc3N1ZWRfYXQiOjE3OTM3NTA0MDAsImV4cGlyZXNfYXQiOjE3OTM3NTEzMDF9.ndg5cQ5oxFFrGWBZ_vpTc9pLSperNVHY2lbkdVo44_TJxpSfSojkMP8hn1eGo3Bgz8_m86FA8LPxIojgX02IZw",
+    "session": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1vd25lci1zZXNzaW9uIn0.eyJ2IjoxLCJvd25lciI6InNwbGludDEzMGI2YWIxZmFjMmYyY2I1MjhhMTE0NTVlMjQxNGRjZTEwNWY1MjYzZWIwYWY5ZjRlOTlmZWZhYzkzNmYzOThlIiwia2V5IjoiQkdBWkVoMGNaYWpsdFUyTkhtekU1c2lPUjhtQ0xSMW8xUlBPQ1Y3RjFQX1Fvb2JGeEJVNWloMVlxRWluaWI5QlhoNTBUNGl4SVpOamI2dFVmSHQ3NjNVIiwiaG9zdCI6Imhvc3QuZXhhbXBsZSIsImlzc3VlZF9hdCI6MTc5Mzc1MDQwMCwiZXhwaXJlc19hdCI6MTc5Mzc5MzYwMH0.tJLL8zzc3HSkecyEiG_qZIMC0q2xoLh0pWKUm3AGjPZZU75fUZauF9eeucSb7jwybKgWcleAZnqGH0pzrj48tA",
+    "owner_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJLSjQ2NXRQTVFMVDJ3bGdkSjhXLTM4ckxjZHVORVhXaElSQkJqQmpmSXFmYmpJY2NjSW5RRVZDb3M2a3VpSzZsd3dld3ZFMnFPRzhWQjJMZEVVc2wySSIsInNlYWwiOiJCTEZ5bkx3WEhla04zamxRR2NfNnAtLUhlaTdhV1hMUjJySVl5NXBVbFdEMzFUVUlieWlWTzNZOXlDamN5dHVxTHRSQzdSNHptNzZCT0VFbExobjNhM28iLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiI5ODYwNTNmMDI1NDY5ZTQ3ODY3ODcxNGNjNmEyOGMzNzhhZWM4OWIxZjE2N2NjMjM4OGM3Yjk0MDg4MDc3Yjc3In19",
+    "host": "host.example",
+    "now": 1793750460
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "pairing_outlasting_its_session",
+   "status": "checked",
+   "case": "hostile",
+   "check": "pairing.verify",
+   "why": "A session can't keep a mailbox open in its owner's name past its own end.",
+   "input": {
+    "pairing": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1wYWlyaW5nIn0.eyJ2IjoxLCJpZCI6ImI0MzExMTllNGE4MTNjZTZiMTkwYjAxNjY5MmJkN2Q4Iiwib3duZXIiOiJzcGxpbnQxMzBiNmFiMWZhYzJmMmNiNTI4YTExNDU1ZTI0MTRkY2UxMDVmNTI2M2ViMGFmOWY0ZTk5ZmVmYWM5MzZmMzk4ZSIsImhvc3QiOiJob3N0LmV4YW1wbGUiLCJwcm9vZiI6ImY5MzcxODVlMjNlMzQ4M2UzYjk2MDdkYzBiN2ExMDYxYmMxNjE2NTEzYzI4NWUyZDliZDYzYTZjZGU1NDBiNzQiLCJjbG9zZSI6IjQyMjBkMWE5MjNkZTlkOGUzZGYwZDkzMGQwOGJjYzViMWY5YzYyNGI4MzEzM2NmNjQyZTgzMGY0OTQ1ZjZkNTkiLCJpc3N1ZWRfYXQiOjE3OTM3NTA0MDAsImV4cGlyZXNfYXQiOjE3OTM3NTEzMDB9.8LH7f_eAf2YAYcopIi1SBD98yETKBjN3TAmsgZMy6qJISZiTnzaLPdv4LnYSHESnfdH5LQ1_U-GebL2TrqgMEw",
+    "session": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1vd25lci1zZXNzaW9uIn0.eyJ2IjoxLCJvd25lciI6InNwbGludDEzMGI2YWIxZmFjMmYyY2I1MjhhMTE0NTVlMjQxNGRjZTEwNWY1MjYzZWIwYWY5ZjRlOTlmZWZhYzkzNmYzOThlIiwia2V5IjoiQkdBWkVoMGNaYWpsdFUyTkhtekU1c2lPUjhtQ0xSMW8xUlBPQ1Y3RjFQX1Fvb2JGeEJVNWloMVlxRWluaWI5QlhoNTBUNGl4SVpOamI2dFVmSHQ3NjNVIiwiaG9zdCI6Imhvc3QuZXhhbXBsZSIsImlzc3VlZF9hdCI6MTc5Mzc1MDQwMCwiZXhwaXJlc19hdCI6MTc5Mzc1MTAwMH0.P8t4MhEpPqiXUHG7sRzx4T4x1lhZnMU9o28pd0v_CpTEIRtxwdRaqGzyZzC4xE9yZqNg8O3HFjhahia_lUv46w",
+    "owner_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJLSjQ2NXRQTVFMVDJ3bGdkSjhXLTM4ckxjZHVORVhXaElSQkJqQmpmSXFmYmpJY2NjSW5RRVZDb3M2a3VpSzZsd3dld3ZFMnFPRzhWQjJMZEVVc2wySSIsInNlYWwiOiJCTEZ5bkx3WEhla04zamxRR2NfNnAtLUhlaTdhV1hMUjJySVl5NXBVbFdEMzFUVUlieWlWTzNZOXlDamN5dHVxTHRSQzdSNHptNzZCT0VFbExobjNhM28iLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiI5ODYwNTNmMDI1NDY5ZTQ3ODY3ODcxNGNjNmEyOGMzNzhhZWM4OWIxZjE2N2NjMjM4OGM3Yjk0MDg4MDc3Yjc3In19",
+    "host": "host.example",
+    "now": 1793750460
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "pairing_for_another_host",
+   "status": "checked",
+   "case": "hostile",
+   "check": "pairing.verify",
+   "why": "A pairing opens a mailbox at the host it names, even under a session good at the host reading it.",
+   "input": {
+    "pairing": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1wYWlyaW5nIn0.eyJ2IjoxLCJpZCI6ImI0MzExMTllNGE4MTNjZTZiMTkwYjAxNjY5MmJkN2Q4Iiwib3duZXIiOiJzcGxpbnQxMzBiNmFiMWZhYzJmMmNiNTI4YTExNDU1ZTI0MTRkY2UxMDVmNTI2M2ViMGFmOWY0ZTk5ZmVmYWM5MzZmMzk4ZSIsImhvc3QiOiJob3N0LmV4YW1wbGUiLCJwcm9vZiI6ImY5MzcxODVlMjNlMzQ4M2UzYjk2MDdkYzBiN2ExMDYxYmMxNjE2NTEzYzI4NWUyZDliZDYzYTZjZGU1NDBiNzQiLCJjbG9zZSI6IjQyMjBkMWE5MjNkZTlkOGUzZGYwZDkzMGQwOGJjYzViMWY5YzYyNGI4MzEzM2NmNjQyZTgzMGY0OTQ1ZjZkNTkiLCJpc3N1ZWRfYXQiOjE3OTM3NTA0MDAsImV4cGlyZXNfYXQiOjE3OTM3NTEzMDB9.8LH7f_eAf2YAYcopIi1SBD98yETKBjN3TAmsgZMy6qJISZiTnzaLPdv4LnYSHESnfdH5LQ1_U-GebL2TrqgMEw",
+    "session": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1vd25lci1zZXNzaW9uIn0.eyJ2IjoxLCJvd25lciI6InNwbGludDEzMGI2YWIxZmFjMmYyY2I1MjhhMTE0NTVlMjQxNGRjZTEwNWY1MjYzZWIwYWY5ZjRlOTlmZWZhYzkzNmYzOThlIiwia2V5IjoiQkdBWkVoMGNaYWpsdFUyTkhtekU1c2lPUjhtQ0xSMW8xUlBPQ1Y3RjFQX1Fvb2JGeEJVNWloMVlxRWluaWI5QlhoNTBUNGl4SVpOamI2dFVmSHQ3NjNVIiwiaG9zdCI6Im90aGVyLmV4YW1wbGUiLCJpc3N1ZWRfYXQiOjE3OTM3NTA0MDAsImV4cGlyZXNfYXQiOjE3OTM3OTM2MDB9.6MDHrskJ9bYNoltfi9-1YDVPwrCksces9vcOfIz3bitJF0uHsUzsZZFmfoyxJ-ufa6rJRvp7wcwpwmojIp25tA",
+    "owner_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJLSjQ2NXRQTVFMVDJ3bGdkSjhXLTM4ckxjZHVORVhXaElSQkJqQmpmSXFmYmpJY2NjSW5RRVZDb3M2a3VpSzZsd3dld3ZFMnFPRzhWQjJMZEVVc2wySSIsInNlYWwiOiJCTEZ5bkx3WEhla04zamxRR2NfNnAtLUhlaTdhV1hMUjJySVl5NXBVbFdEMzFUVUlieWlWTzNZOXlDamN5dHVxTHRSQzdSNHptNzZCT0VFbExobjNhM28iLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiI5ODYwNTNmMDI1NDY5ZTQ3ODY3ODcxNGNjNmEyOGMzNzhhZWM4OWIxZjE2N2NjMjM4OGM3Yjk0MDg4MDc3Yjc3In19",
+    "host": "other.example",
+    "now": 1793750460
+   },
+   "expect": {
+    "ok": false,
+    "reason": "proof_mismatch"
+   }
+  },
+  {
+   "name": "pairing_under_a_session_for_another_host",
+   "status": "checked",
+   "case": "hostile",
+   "check": "pairing.verify",
+   "why": "A session opens mailboxes only at the host it names.",
+   "input": {
+    "pairing": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1wYWlyaW5nIn0.eyJ2IjoxLCJpZCI6ImI0MzExMTllNGE4MTNjZTZiMTkwYjAxNjY5MmJkN2Q4Iiwib3duZXIiOiJzcGxpbnQxMzBiNmFiMWZhYzJmMmNiNTI4YTExNDU1ZTI0MTRkY2UxMDVmNTI2M2ViMGFmOWY0ZTk5ZmVmYWM5MzZmMzk4ZSIsImhvc3QiOiJob3N0LmV4YW1wbGUiLCJwcm9vZiI6ImY5MzcxODVlMjNlMzQ4M2UzYjk2MDdkYzBiN2ExMDYxYmMxNjE2NTEzYzI4NWUyZDliZDYzYTZjZGU1NDBiNzQiLCJjbG9zZSI6IjQyMjBkMWE5MjNkZTlkOGUzZGYwZDkzMGQwOGJjYzViMWY5YzYyNGI4MzEzM2NmNjQyZTgzMGY0OTQ1ZjZkNTkiLCJpc3N1ZWRfYXQiOjE3OTM3NTA0MDAsImV4cGlyZXNfYXQiOjE3OTM3NTEzMDB9.8LH7f_eAf2YAYcopIi1SBD98yETKBjN3TAmsgZMy6qJISZiTnzaLPdv4LnYSHESnfdH5LQ1_U-GebL2TrqgMEw",
+    "session": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1vd25lci1zZXNzaW9uIn0.eyJ2IjoxLCJvd25lciI6InNwbGludDEzMGI2YWIxZmFjMmYyY2I1MjhhMTE0NTVlMjQxNGRjZTEwNWY1MjYzZWIwYWY5ZjRlOTlmZWZhYzkzNmYzOThlIiwia2V5IjoiQkdBWkVoMGNaYWpsdFUyTkhtekU1c2lPUjhtQ0xSMW8xUlBPQ1Y3RjFQX1Fvb2JGeEJVNWloMVlxRWluaWI5QlhoNTBUNGl4SVpOamI2dFVmSHQ3NjNVIiwiaG9zdCI6Im90aGVyLmV4YW1wbGUiLCJpc3N1ZWRfYXQiOjE3OTM3NTA0MDAsImV4cGlyZXNfYXQiOjE3OTM3OTM2MDB9.6MDHrskJ9bYNoltfi9-1YDVPwrCksces9vcOfIz3bitJF0uHsUzsZZFmfoyxJ-ufa6rJRvp7wcwpwmojIp25tA",
+    "owner_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJLSjQ2NXRQTVFMVDJ3bGdkSjhXLTM4ckxjZHVORVhXaElSQkJqQmpmSXFmYmpJY2NjSW5RRVZDb3M2a3VpSzZsd3dld3ZFMnFPRzhWQjJMZEVVc2wySSIsInNlYWwiOiJCTEZ5bkx3WEhla04zamxRR2NfNnAtLUhlaTdhV1hMUjJySVl5NXBVbFdEMzFUVUlieWlWTzNZOXlDamN5dHVxTHRSQzdSNHptNzZCT0VFbExobjNhM28iLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiI5ODYwNTNmMDI1NDY5ZTQ3ODY3ODcxNGNjNmEyOGMzNzhhZWM4OWIxZjE2N2NjMjM4OGM3Yjk0MDg4MDc3Yjc3In19",
+    "host": "host.example",
+    "now": 1793750460
+   },
+   "expect": {
+    "ok": false,
+    "reason": "proof_mismatch"
+   }
+  },
+  {
+   "name": "pairing_naming_another_owner",
+   "status": "checked",
+   "case": "hostile",
+   "check": "pairing.verify",
+   "why": "It names the owner whose session's key signed it.",
+   "input": {
+    "pairing": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1wYWlyaW5nIn0.eyJ2IjoxLCJpZCI6ImI0MzExMTllNGE4MTNjZTZiMTkwYjAxNjY5MmJkN2Q4Iiwib3duZXIiOiJzcGxpbnQxYzAzOTBhMTQ5NDViYTdmMTAyNzkyYWM2ODE0ZmIxOTczOTMxYjQ3ZTg1YTVhMDFkZDAyM2QxYmJhMGQ5NDU4MyIsImhvc3QiOiJob3N0LmV4YW1wbGUiLCJwcm9vZiI6IjE4NGQwMGQzZDQ0ZDVkZDdmN2NlZmU5YzZkNGQ3ODU1OWI3YjQxNDM5MjlkNTU2OTIyZDlkNTVmMzA1YTg4YjIiLCJjbG9zZSI6IjQyMjBkMWE5MjNkZTlkOGUzZGYwZDkzMGQwOGJjYzViMWY5YzYyNGI4MzEzM2NmNjQyZTgzMGY0OTQ1ZjZkNTkiLCJpc3N1ZWRfYXQiOjE3OTM3NTA0MDAsImV4cGlyZXNfYXQiOjE3OTM3NTEzMDB9.tQDtg74AlP2NBlqXCeQFOADfY15R4nvdtikSXqMdblpbDEfMJoR9zhChx_ejkwkjSkPV5zinowkuMTMx1jpXQQ",
+    "session": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1vd25lci1zZXNzaW9uIn0.eyJ2IjoxLCJvd25lciI6InNwbGludDEzMGI2YWIxZmFjMmYyY2I1MjhhMTE0NTVlMjQxNGRjZTEwNWY1MjYzZWIwYWY5ZjRlOTlmZWZhYzkzNmYzOThlIiwia2V5IjoiQkdBWkVoMGNaYWpsdFUyTkhtekU1c2lPUjhtQ0xSMW8xUlBPQ1Y3RjFQX1Fvb2JGeEJVNWloMVlxRWluaWI5QlhoNTBUNGl4SVpOamI2dFVmSHQ3NjNVIiwiaG9zdCI6Imhvc3QuZXhhbXBsZSIsImlzc3VlZF9hdCI6MTc5Mzc1MDQwMCwiZXhwaXJlc19hdCI6MTc5Mzc5MzYwMH0.tJLL8zzc3HSkecyEiG_qZIMC0q2xoLh0pWKUm3AGjPZZU75fUZauF9eeucSb7jwybKgWcleAZnqGH0pzrj48tA",
+    "owner_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJLSjQ2NXRQTVFMVDJ3bGdkSjhXLTM4ckxjZHVORVhXaElSQkJqQmpmSXFmYmpJY2NjSW5RRVZDb3M2a3VpSzZsd3dld3ZFMnFPRzhWQjJMZEVVc2wySSIsInNlYWwiOiJCTEZ5bkx3WEhla04zamxRR2NfNnAtLUhlaTdhV1hMUjJySVl5NXBVbFdEMzFUVUlieWlWTzNZOXlDamN5dHVxTHRSQzdSNHptNzZCT0VFbExobjNhM28iLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiI5ODYwNTNmMDI1NDY5ZTQ3ODY3ODcxNGNjNmEyOGMzNzhhZWM4OWIxZjE2N2NjMjM4OGM3Yjk0MDg4MDc3Yjc3In19",
+    "host": "host.example",
+    "now": 1793750460
+   },
+   "expect": {
+    "ok": false,
+    "reason": "wrong_signer"
+   }
+  },
+  {
+   "name": "pairing_signed_by_another_key",
+   "status": "checked",
+   "case": "hostile",
+   "check": "pairing.verify",
+   "why": "Only the session's own key opens one under it.",
+   "input": {
+    "pairing": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1wYWlyaW5nIn0.eyJ2IjoxLCJpZCI6ImI0MzExMTllNGE4MTNjZTZiMTkwYjAxNjY5MmJkN2Q4Iiwib3duZXIiOiJzcGxpbnQxMzBiNmFiMWZhYzJmMmNiNTI4YTExNDU1ZTI0MTRkY2UxMDVmNTI2M2ViMGFmOWY0ZTk5ZmVmYWM5MzZmMzk4ZSIsImhvc3QiOiJob3N0LmV4YW1wbGUiLCJwcm9vZiI6ImY5MzcxODVlMjNlMzQ4M2UzYjk2MDdkYzBiN2ExMDYxYmMxNjE2NTEzYzI4NWUyZDliZDYzYTZjZGU1NDBiNzQiLCJjbG9zZSI6IjQyMjBkMWE5MjNkZTlkOGUzZGYwZDkzMGQwOGJjYzViMWY5YzYyNGI4MzEzM2NmNjQyZTgzMGY0OTQ1ZjZkNTkiLCJpc3N1ZWRfYXQiOjE3OTM3NTA0MDAsImV4cGlyZXNfYXQiOjE3OTM3NTEzMDB9.qvsUYNX0vCF8QFZiT_JSjx1fJJ5BsQaHJDQ1us_vjVCH6Xab9LaApyQ6XQkZl0jBXWu0msrVMf3et00j79BJHg",
+    "session": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1vd25lci1zZXNzaW9uIn0.eyJ2IjoxLCJvd25lciI6InNwbGludDEzMGI2YWIxZmFjMmYyY2I1MjhhMTE0NTVlMjQxNGRjZTEwNWY1MjYzZWIwYWY5ZjRlOTlmZWZhYzkzNmYzOThlIiwia2V5IjoiQkdBWkVoMGNaYWpsdFUyTkhtekU1c2lPUjhtQ0xSMW8xUlBPQ1Y3RjFQX1Fvb2JGeEJVNWloMVlxRWluaWI5QlhoNTBUNGl4SVpOamI2dFVmSHQ3NjNVIiwiaG9zdCI6Imhvc3QuZXhhbXBsZSIsImlzc3VlZF9hdCI6MTc5Mzc1MDQwMCwiZXhwaXJlc19hdCI6MTc5Mzc5MzYwMH0.tJLL8zzc3HSkecyEiG_qZIMC0q2xoLh0pWKUm3AGjPZZU75fUZauF9eeucSb7jwybKgWcleAZnqGH0pzrj48tA",
+    "owner_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJLSjQ2NXRQTVFMVDJ3bGdkSjhXLTM4ckxjZHVORVhXaElSQkJqQmpmSXFmYmpJY2NjSW5RRVZDb3M2a3VpSzZsd3dld3ZFMnFPRzhWQjJMZEVVc2wySSIsInNlYWwiOiJCTEZ5bkx3WEhla04zamxRR2NfNnAtLUhlaTdhV1hMUjJySVl5NXBVbFdEMzFUVUlieWlWTzNZOXlDamN5dHVxTHRSQzdSNHptNzZCT0VFbExobjNhM28iLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiI5ODYwNTNmMDI1NDY5ZTQ3ODY3ODcxNGNjNmEyOGMzNzhhZWM4OWIxZjE2N2NjMjM4OGM3Yjk0MDg4MDc3Yjc3In19",
+    "host": "host.example",
+    "now": 1793750460
+   },
+   "expect": {
+    "ok": false,
+    "reason": "bad_signature"
+   }
+  },
+  {
+   "name": "pairing_signed_by_the_owners_own_key",
+   "status": "checked",
+   "case": "hostile",
+   "check": "pairing.verify",
+   "why": "A pairing is the session key's to sign. The owner's key signs the session.",
+   "input": {
+    "pairing": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1wYWlyaW5nIn0.eyJ2IjoxLCJpZCI6ImI0MzExMTllNGE4MTNjZTZiMTkwYjAxNjY5MmJkN2Q4Iiwib3duZXIiOiJzcGxpbnQxMzBiNmFiMWZhYzJmMmNiNTI4YTExNDU1ZTI0MTRkY2UxMDVmNTI2M2ViMGFmOWY0ZTk5ZmVmYWM5MzZmMzk4ZSIsImhvc3QiOiJob3N0LmV4YW1wbGUiLCJwcm9vZiI6ImY5MzcxODVlMjNlMzQ4M2UzYjk2MDdkYzBiN2ExMDYxYmMxNjE2NTEzYzI4NWUyZDliZDYzYTZjZGU1NDBiNzQiLCJjbG9zZSI6IjQyMjBkMWE5MjNkZTlkOGUzZGYwZDkzMGQwOGJjYzViMWY5YzYyNGI4MzEzM2NmNjQyZTgzMGY0OTQ1ZjZkNTkiLCJpc3N1ZWRfYXQiOjE3OTM3NTA0MDAsImV4cGlyZXNfYXQiOjE3OTM3NTEzMDB9.2qcBlaZL11Fk3YRi-wCK5ftahpjAcUZfyoK81L-rEphENq6SdVGjjyy0l7jy7FLuXY9TzSwgIuUoS4yCYcCsDA",
+    "session": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1vd25lci1zZXNzaW9uIn0.eyJ2IjoxLCJvd25lciI6InNwbGludDEzMGI2YWIxZmFjMmYyY2I1MjhhMTE0NTVlMjQxNGRjZTEwNWY1MjYzZWIwYWY5ZjRlOTlmZWZhYzkzNmYzOThlIiwia2V5IjoiQkdBWkVoMGNaYWpsdFUyTkhtekU1c2lPUjhtQ0xSMW8xUlBPQ1Y3RjFQX1Fvb2JGeEJVNWloMVlxRWluaWI5QlhoNTBUNGl4SVpOamI2dFVmSHQ3NjNVIiwiaG9zdCI6Imhvc3QuZXhhbXBsZSIsImlzc3VlZF9hdCI6MTc5Mzc1MDQwMCwiZXhwaXJlc19hdCI6MTc5Mzc5MzYwMH0.tJLL8zzc3HSkecyEiG_qZIMC0q2xoLh0pWKUm3AGjPZZU75fUZauF9eeucSb7jwybKgWcleAZnqGH0pzrj48tA",
+    "owner_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJLSjQ2NXRQTVFMVDJ3bGdkSjhXLTM4ckxjZHVORVhXaElSQkJqQmpmSXFmYmpJY2NjSW5RRVZDb3M2a3VpSzZsd3dld3ZFMnFPRzhWQjJMZEVVc2wySSIsInNlYWwiOiJCTEZ5bkx3WEhla04zamxRR2NfNnAtLUhlaTdhV1hMUjJySVl5NXBVbFdEMzFUVUlieWlWTzNZOXlDamN5dHVxTHRSQzdSNHptNzZCT0VFbExobjNhM28iLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiI5ODYwNTNmMDI1NDY5ZTQ3ODY3ODcxNGNjNmEyOGMzNzhhZWM4OWIxZjE2N2NjMjM4OGM3Yjk0MDg4MDc3Yjc3In19",
+    "host": "host.example",
+    "now": 1793750460
+   },
+   "expect": {
+    "ok": false,
+    "reason": "bad_signature"
+   }
+  },
+  {
+   "name": "pairing_signed_by_a_passkey",
+   "status": "checked",
+   "case": "hostile",
+   "check": "pairing.verify",
+   "why": "A passkey signs only what an owner's key signs, and a pairing isn't that.",
+   "input": {
+    "pairing": "eyJhbGciOiJXQTI1NiIsInR5cCI6InNwbGludC1wYWlyaW5nIn0.eyJ2IjoxLCJpZCI6ImI0MzExMTllNGE4MTNjZTZiMTkwYjAxNjY5MmJkN2Q4Iiwib3duZXIiOiJzcGxpbnQxOWE2YTdjNDMzYjljY2M1NzUwZWFhZDM5ZjIwMzE1NDEzOTRmNDg5NTJjNjczNTIyOTU4NzA2NTA4YjQxYjA5ZSIsImhvc3QiOiJob3N0LmV4YW1wbGUiLCJwcm9vZiI6ImU2ZmYzZGE4NTIwNGE5ZDJmOGQ0YTY2MWM1Zjg2YzcwZmE1OWE3NTY5NzZiYzVhOTA0MjRkNTI5ZWYwNTllODkiLCJjbG9zZSI6IjQyMjBkMWE5MjNkZTlkOGUzZGYwZDkzMGQwOGJjYzViMWY5YzYyNGI4MzEzM2NmNjQyZTgzMGY0OTQ1ZjZkNTkiLCJpc3N1ZWRfYXQiOjE3OTM3NTA0MDAsImV4cGlyZXNfYXQiOjE3OTM3NTEzMDB9.eyJhIjoibDBBdGNYTTJDRWJlM3lwOURTcjhfd0hvd0Vma3NZcHNza3hhVjQzUUFoQUZBQUFBQUEiLCJjIjoiZXlKMGVYQmxJam9pZDJWaVlYVjBhRzR1WjJWMElpd2lZMmhoYkd4bGJtZGxJam9pYkRCdU1TMTZaR2QwZUdvMWNFZG9WRFJaTmtad2NtcG1SbEZQTkdkb1RuVnBWbk15Y3pKVk1rUXRheUlzSW05eWFXZHBiaUk2SW1oMGRIQnpPaTh2YUc5emRDNWxlR0Z0Y0d4bElpd2lZM0p2YzNOUGNtbG5hVzRpT21aaGJITmxmUSIsInMiOiJNRVlDSVFES2FxYmZDOWtsa19VSFFKNWJleTJVTUFCWnJzWm16YnRLOGd4RG9xOWc2Z0loQVBwYk5ySmFjX3BJaXRkQ0dCX2lIbFg1VjFhQ1lFNEFEbFozS2FsZ0d5NUwifQ",
+    "session": "eyJhbGciOiJXQTI1NiIsInR5cCI6InNwbGludC1vd25lci1zZXNzaW9uIn0.eyJ2IjoxLCJvd25lciI6InNwbGludDE5YTZhN2M0MzNiOWNjYzU3NTBlYWFkMzlmMjAzMTU0MTM5NGY0ODk1MmM2NzM1MjI5NTg3MDY1MDhiNDFiMDllIiwia2V5IjoiQkdBWkVoMGNaYWpsdFUyTkhtekU1c2lPUjhtQ0xSMW8xUlBPQ1Y3RjFQX1Fvb2JGeEJVNWloMVlxRWluaWI5QlhoNTBUNGl4SVpOamI2dFVmSHQ3NjNVIiwiaG9zdCI6Imhvc3QuZXhhbXBsZSIsImlzc3VlZF9hdCI6MTc5Mzc1MDQwMCwiZXhwaXJlc19hdCI6MTc5Mzc5MzYwMH0.eyJhIjoibDBBdGNYTTJDRWJlM3lwOURTcjhfd0hvd0Vma3NZcHNza3hhVjQzUUFoQUZBQUFBQUEiLCJjIjoiZXlKMGVYQmxJam9pZDJWaVlYVjBhRzR1WjJWMElpd2lZMmhoYkd4bGJtZGxJam9pY2kxbk5WTnRWVVZKYzJWcE9XaGZhVUV0VVdOa2JHbGxOR1YxVm05eWRXSkJRVzl5UkV3MlZscGtNQ0lzSW05eWFXZHBiaUk2SW1oMGRIQnpPaTh2YUc5emRDNWxlR0Z0Y0d4bElpd2lZM0p2YzNOUGNtbG5hVzRpT21aaGJITmxmUSIsInMiOiJNRVVDSVFDeTRlc01mYmNCbmlpNkQ2cFlWZ2pVRUJKenBrUXB5RDh2S2F2WV85U181d0lnYkVERUJBVXFDU19DemplZkFpUDdhakdEd0dtY01yWURqVVg4Vk9RNUI0USJ9",
+    "owner_identity": "eyJ2Ijo1LCJhbGciOiJ3ZWJhdXRobi1lczI1NiIsImtleSI6IkJQUmtkdDFvREI5VmRXdlBsTjQ4M3FLV1BYS29rdE1sUVJqMXJMZTZmbW1Hek9JeVJVNjF4LW9Db2Q5ZE9PTHFlVXd5UWZGWE1aSzVzai16WnEzdERRdyIsInJwIjoiaG9zdC5leGFtcGxlIiwic2VhbCI6IkJNMU5rZ0ZUNWxDVjN0cGZtWDVnNTg3b2tDOTBjMlhHTHJCOE9HUm4yRzlJQXREM2pmaTlveDhoWlctLW1YZFdKUVNZYkNTbVZINlBVQ1JaUjJCOWQzayIsInJlY292ZXJ5Ijp7InJ1bGUiOiJiYWNrdXBfa2V5IiwiY29tbWl0bWVudCI6IjE1NjZhYjJiYzk2OTI4ZDNiYTY5YjFjMzI5OWQ2NzhhMjNiMTA1MmFiNTQ3NmU1M2JhNzQ3M2QzYzU3NTEzYjAifX0",
+    "host": "host.example",
+    "now": 1793750460
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "pairing_under_another_owners_session",
+   "status": "checked",
+   "case": "hostile",
+   "check": "pairing.verify",
+   "why": "Another owner's session, read as this owner's, is checked under this owner's key.",
+   "input": {
+    "pairing": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1wYWlyaW5nIn0.eyJ2IjoxLCJpZCI6ImI0MzExMTllNGE4MTNjZTZiMTkwYjAxNjY5MmJkN2Q4Iiwib3duZXIiOiJzcGxpbnQxMzBiNmFiMWZhYzJmMmNiNTI4YTExNDU1ZTI0MTRkY2UxMDVmNTI2M2ViMGFmOWY0ZTk5ZmVmYWM5MzZmMzk4ZSIsImhvc3QiOiJob3N0LmV4YW1wbGUiLCJwcm9vZiI6ImY5MzcxODVlMjNlMzQ4M2UzYjk2MDdkYzBiN2ExMDYxYmMxNjE2NTEzYzI4NWUyZDliZDYzYTZjZGU1NDBiNzQiLCJjbG9zZSI6IjQyMjBkMWE5MjNkZTlkOGUzZGYwZDkzMGQwOGJjYzViMWY5YzYyNGI4MzEzM2NmNjQyZTgzMGY0OTQ1ZjZkNTkiLCJpc3N1ZWRfYXQiOjE3OTM3NTA0MDAsImV4cGlyZXNfYXQiOjE3OTM3NTEzMDB9.qvsUYNX0vCF8QFZiT_JSjx1fJJ5BsQaHJDQ1us_vjVCH6Xab9LaApyQ6XQkZl0jBXWu0msrVMf3et00j79BJHg",
+    "session": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1vd25lci1zZXNzaW9uIn0.eyJ2IjoxLCJvd25lciI6InNwbGludDFjMDM5MGExNDk0NWJhN2YxMDI3OTJhYzY4MTRmYjE5NzM5MzFiNDdlODVhNWEwMWRkMDIzZDFiYmEwZDk0NTgzIiwia2V5IjoiQkZPWE1LY25WRzQ5ZlYzQkR6X01HRFlXMmtsMlZkb3hlVm0xN0xtaWVFdmQ2Z2lUNHR0TkhLNlBTNFVaenFtSmhmZHF0VDVoTElENkZrSXA0eEs5bVM0IiwiaG9zdCI6Imhvc3QuZXhhbXBsZSIsImlzc3VlZF9hdCI6MTc5Mzc1MDQwMCwiZXhwaXJlc19hdCI6MTc5Mzc5MzYwMH0.dLtLflzuH-JmaPm3HcYapjhVKlpEfvy9HYKxRcg34CPBqd1W-0VnGIYwayBhdGUWfbzmtz2d7-p-64ukik38ag",
+    "owner_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJLSjQ2NXRQTVFMVDJ3bGdkSjhXLTM4ckxjZHVORVhXaElSQkJqQmpmSXFmYmpJY2NjSW5RRVZDb3M2a3VpSzZsd3dld3ZFMnFPRzhWQjJMZEVVc2wySSIsInNlYWwiOiJCTEZ5bkx3WEhla04zamxRR2NfNnAtLUhlaTdhV1hMUjJySVl5NXBVbFdEMzFUVUlieWlWTzNZOXlDamN5dHVxTHRSQzdSNHptNzZCT0VFbExobjNhM28iLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiI5ODYwNTNmMDI1NDY5ZTQ3ODY3ODcxNGNjNmEyOGMzNzhhZWM4OWIxZjE2N2NjMjM4OGM3Yjk0MDg4MDc3Yjc3In19",
+    "host": "host.example",
+    "now": 1793750460
+   },
+   "expect": {
+    "ok": false,
+    "reason": "bad_signature"
+   }
+  },
+  {
+   "name": "pairing_by_a_stand_in",
+   "status": "checked",
+   "case": "hostile",
+   "check": "pairing.verify",
+   "why": "A stand-in's key is on an agent's machine, so it starts no session and pairs nothing.",
+   "input": {
+    "pairing": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1wYWlyaW5nIn0.eyJ2IjoxLCJpZCI6ImI0MzExMTllNGE4MTNjZTZiMTkwYjAxNjY5MmJkN2Q4Iiwib3duZXIiOiJzcGxpbnQxMGYyOTI2NDIzNGM3MmRkODFiMGU1ZGNjN2QwNmFmZTUxNTJjNTdlMmY2MDQ4YmE4OTQ1N2ZiMTMxOWQzYzkzZiIsImhvc3QiOiJob3N0LmV4YW1wbGUiLCJwcm9vZiI6ImZhYTk0NDY0NjMxY2IxMDE2YjY4MGIyMjFlN2RmMmRkZWJjZjg0NzhhYzMwYTA0Y2Q1ZThkZDY1OTkzZDU0ODciLCJjbG9zZSI6IjQyMjBkMWE5MjNkZTlkOGUzZGYwZDkzMGQwOGJjYzViMWY5YzYyNGI4MzEzM2NmNjQyZTgzMGY0OTQ1ZjZkNTkiLCJpc3N1ZWRfYXQiOjE3OTM3NTA0MDAsImV4cGlyZXNfYXQiOjE3OTM3NTEzMDB9.qW0SJdDeLYf7whQdQpd2hHV2q0xgA4DcZ5seWkK6h72A4g_Q_pghBwzRj8d0DBD-EPnM6j-ciUD8EL2eShdbHA",
+    "session": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1vd25lci1zZXNzaW9uIn0.eyJ2IjoxLCJvd25lciI6InNwbGludDEwZjI5MjY0MjM0YzcyZGQ4MWIwZTVkY2M3ZDA2YWZlNTE1MmM1N2UyZjYwNDhiYTg5NDU3ZmIxMzE5ZDNjOTNmIiwia2V5IjoiQkdBWkVoMGNaYWpsdFUyTkhtekU1c2lPUjhtQ0xSMW8xUlBPQ1Y3RjFQX1Fvb2JGeEJVNWloMVlxRWluaWI5QlhoNTBUNGl4SVpOamI2dFVmSHQ3NjNVIiwiaG9zdCI6Imhvc3QuZXhhbXBsZSIsImlzc3VlZF9hdCI6MTc5Mzc1MDQwMCwiZXhwaXJlc19hdCI6MTc5Mzc5MzYwMH0.N_ZorbE3tj8Tjhhl6LCsudMgKLwKJbIAPiWcOsAzZxA8L_QaX6Pt7mj6QM9IXFcwhLg0U0V2Kbq5ADzlvRPugg",
+    "owner_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJKV002VFktSTJTbklZYW1uLXZYLXJPbVgtYVJoLXFhdWFVdkZJRDNhdEFVUkgzaHhmQWRnN1NyMlZyYmVLcnIxaGdIcVpkb2VfQmFKMUpROEhqUXNMcyIsInNlYWwiOiJCRlZtWkFIdDBtRTdIUEQ3SFJsQ2ZyS3k0VzNhQ0M3aXNoNXcyOWI4RmNGdXpLWnVOV1Q3R0Z3c2xNOFdoM2p1a3BHVENMejc5Nl9iUFQ1T21TSzgwQXMiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiI1MmMxOTI0ODEzZWM1YmYxMjFmYjA1Y2E5ODYwMTY5OTY3NmNkMTY0ODYwODY4YTk5NmY0YmU4ZjNiMWE5NmIxIn19",
+    "host": "host.example",
+    "now": 1793750460
+   },
+   "expect": {
+    "ok": false,
+    "reason": "wrong_signer"
+   }
+  },
+  {
+   "name": "pairing_by_a_guest",
+   "status": "checked",
+   "case": "hostile",
+   "check": "pairing.verify",
+   "why": "A guest's key lasts one request and has no agents. Only a link reads a guest's ID, so one handed over as an owner's isn't read.",
+   "input": {
+    "pairing": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1wYWlyaW5nIn0.eyJ2IjoxLCJpZCI6ImI0MzExMTllNGE4MTNjZTZiMTkwYjAxNjY5MmJkN2Q4Iiwib3duZXIiOiJzcGxpbnQxZ2M3YWM4YTRhNGE0OTUwYTExMmNkNWZiYmMyY2VmNTNkYjgyZTVlZDAyYTNlYTlkNzA3MjhhNDI2ZWQyZjA5YTUiLCJob3N0IjoiaG9zdC5leGFtcGxlIiwicHJvb2YiOiIwNGQ5N2Y0YTFjMzliMmU5ODNlYTI1MTJmNjJhZGIwN2QxMmJmMjliY2E5NzAxNjhkNGQ0NTJiOTA0ZjJlMGQxIiwiY2xvc2UiOiI0MjIwZDFhOTIzZGU5ZDhlM2RmMGQ5MzBkMDhiY2M1YjFmOWM2MjRiODMxMzNjZjY0MmU4MzBmNDk0NWY2ZDU5IiwiaXNzdWVkX2F0IjoxNzkzNzUwNDAwLCJleHBpcmVzX2F0IjoxNzkzNzUxMzAwfQ.dXmT43uHBgF4AfyG6VGqsIj-lB5LDbCraxd0hEyBYVzScZDJ16zFOeL-HhpsKeRQv2rn071kvFt0ieEUdu_Utg",
+    "session": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1vd25lci1zZXNzaW9uIn0.eyJ2IjoxLCJvd25lciI6InNwbGludDFnYzdhYzhhNGE0YTQ5NTBhMTEyY2Q1ZmJiYzJjZWY1M2RiODJlNWVkMDJhM2VhOWQ3MDcyOGE0MjZlZDJmMDlhNSIsImtleSI6IkJHQVpFaDBjWmFqbHRVMk5IbXpFNXNpT1I4bUNMUjFvMVJQT0NWN0YxUF9Rb29iRnhCVTVpaDFZcUVpbmliOUJYaDUwVDRpeElaTmpiNnRVZkh0NzYzVSIsImhvc3QiOiJob3N0LmV4YW1wbGUiLCJpc3N1ZWRfYXQiOjE3OTM3NTA0MDAsImV4cGlyZXNfYXQiOjE3OTM3OTM2MDB9.F3EuD8FtDmMPNhmy4FKBB-IgISw5ABGlSgIwyPjC8R8p3Y0o6G-zxcolZMRd4iKDLFe-7_a_tR2FcGYf4A1LFQ",
+    "owner_identity": "eyJ2IjoyLCJyb2xlIjoiZ3Vlc3QiLCJhbGciOiJFUzI1NiIsImtleSI6IkJEbHN5c3ZQOG1faGNSMTRlV2xnOHdrUDZLci1iWFB6bE9QVnhyRmZOVTdYcDhTVlhZOEVXWU0yRU8tdFRnSDJCVHVaQTIzaGVsTVgxOWM3cDdmOVpIYyJ9",
+    "host": "host.example",
+    "now": 1793750460
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "pairing_with_a_proof_in_capitals",
+   "status": "checked",
+   "case": "hostile",
+   "check": "pairing.verify",
+   "why": "A proof is lowercase hex.",
+   "input": {
+    "pairing": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1wYWlyaW5nIn0.eyJ2IjoxLCJpZCI6ImI0MzExMTllNGE4MTNjZTZiMTkwYjAxNjY5MmJkN2Q4Iiwib3duZXIiOiJzcGxpbnQxMzBiNmFiMWZhYzJmMmNiNTI4YTExNDU1ZTI0MTRkY2UxMDVmNTI2M2ViMGFmOWY0ZTk5ZmVmYWM5MzZmMzk4ZSIsImhvc3QiOiJob3N0LmV4YW1wbGUiLCJwcm9vZiI6IkY5MzcxODVFMjNFMzQ4M0UzQjk2MDdEQzBCN0ExMDYxQkMxNjE2NTEzQzI4NUUyRDlCRDYzQTZDREU1NDBCNzQiLCJjbG9zZSI6IjQyMjBkMWE5MjNkZTlkOGUzZGYwZDkzMGQwOGJjYzViMWY5YzYyNGI4MzEzM2NmNjQyZTgzMGY0OTQ1ZjZkNTkiLCJpc3N1ZWRfYXQiOjE3OTM3NTA0MDAsImV4cGlyZXNfYXQiOjE3OTM3NTEzMDB9.EKkT4yrXVSGLjvTyPnVtAc4VmlBuDDs8DYeVLz-wCJ6N0V72QyQ6vh-epxkRPw8NjBpo608e59ifXnV-r_v0bg",
+    "session": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1vd25lci1zZXNzaW9uIn0.eyJ2IjoxLCJvd25lciI6InNwbGludDEzMGI2YWIxZmFjMmYyY2I1MjhhMTE0NTVlMjQxNGRjZTEwNWY1MjYzZWIwYWY5ZjRlOTlmZWZhYzkzNmYzOThlIiwia2V5IjoiQkdBWkVoMGNaYWpsdFUyTkhtekU1c2lPUjhtQ0xSMW8xUlBPQ1Y3RjFQX1Fvb2JGeEJVNWloMVlxRWluaWI5QlhoNTBUNGl4SVpOamI2dFVmSHQ3NjNVIiwiaG9zdCI6Imhvc3QuZXhhbXBsZSIsImlzc3VlZF9hdCI6MTc5Mzc1MDQwMCwiZXhwaXJlc19hdCI6MTc5Mzc5MzYwMH0.tJLL8zzc3HSkecyEiG_qZIMC0q2xoLh0pWKUm3AGjPZZU75fUZauF9eeucSb7jwybKgWcleAZnqGH0pzrj48tA",
+    "owner_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJLSjQ2NXRQTVFMVDJ3bGdkSjhXLTM4ckxjZHVORVhXaElSQkJqQmpmSXFmYmpJY2NjSW5RRVZDb3M2a3VpSzZsd3dld3ZFMnFPRzhWQjJMZEVVc2wySSIsInNlYWwiOiJCTEZ5bkx3WEhla04zamxRR2NfNnAtLUhlaTdhV1hMUjJySVl5NXBVbFdEMzFUVUlieWlWTzNZOXlDamN5dHVxTHRSQzdSNHptNzZCT0VFbExobjNhM28iLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiI5ODYwNTNmMDI1NDY5ZTQ3ODY3ODcxNGNjNmEyOGMzNzhhZWM4OWIxZjE2N2NjMjM4OGM3Yjk0MDg4MDc3Yjc3In19",
+    "host": "host.example",
+    "now": 1793750460
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "pairing_in_another_field_order",
+   "status": "checked",
+   "case": "hostile",
+   "check": "pairing.verify",
+   "why": "One encoding.",
+   "input": {
+    "pairing": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1wYWlyaW5nIn0.eyJjbG9zZSI6IjQyMjBkMWE5MjNkZTlkOGUzZGYwZDkzMGQwOGJjYzViMWY5YzYyNGI4MzEzM2NmNjQyZTgzMGY0OTQ1ZjZkNTkiLCJleHBpcmVzX2F0IjoxNzkzNzUxMzAwLCJob3N0IjoiaG9zdC5leGFtcGxlIiwiaWQiOiJiNDMxMTE5ZTRhODEzY2U2YjE5MGIwMTY2OTJiZDdkOCIsImlzc3VlZF9hdCI6MTc5Mzc1MDQwMCwib3duZXIiOiJzcGxpbnQxMzBiNmFiMWZhYzJmMmNiNTI4YTExNDU1ZTI0MTRkY2UxMDVmNTI2M2ViMGFmOWY0ZTk5ZmVmYWM5MzZmMzk4ZSIsInByb29mIjoiZjkzNzE4NWUyM2UzNDgzZTNiOTYwN2RjMGI3YTEwNjFiYzE2MTY1MTNjMjg1ZTJkOWJkNjNhNmNkZTU0MGI3NCIsInYiOjF9.nRETMvNVx4NTDjF2SfajwUe_mQ89nbhNIcuFpQ-_SWwHGXjg3RQd3hI28OFo94gTF6s3bWkIC52E16wVk_WRYA",
+    "session": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1vd25lci1zZXNzaW9uIn0.eyJ2IjoxLCJvd25lciI6InNwbGludDEzMGI2YWIxZmFjMmYyY2I1MjhhMTE0NTVlMjQxNGRjZTEwNWY1MjYzZWIwYWY5ZjRlOTlmZWZhYzkzNmYzOThlIiwia2V5IjoiQkdBWkVoMGNaYWpsdFUyTkhtekU1c2lPUjhtQ0xSMW8xUlBPQ1Y3RjFQX1Fvb2JGeEJVNWloMVlxRWluaWI5QlhoNTBUNGl4SVpOamI2dFVmSHQ3NjNVIiwiaG9zdCI6Imhvc3QuZXhhbXBsZSIsImlzc3VlZF9hdCI6MTc5Mzc1MDQwMCwiZXhwaXJlc19hdCI6MTc5Mzc5MzYwMH0.tJLL8zzc3HSkecyEiG_qZIMC0q2xoLh0pWKUm3AGjPZZU75fUZauF9eeucSb7jwybKgWcleAZnqGH0pzrj48tA",
+    "owner_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJLSjQ2NXRQTVFMVDJ3bGdkSjhXLTM4ckxjZHVORVhXaElSQkJqQmpmSXFmYmpJY2NjSW5RRVZDb3M2a3VpSzZsd3dld3ZFMnFPRzhWQjJMZEVVc2wySSIsInNlYWwiOiJCTEZ5bkx3WEhla04zamxRR2NfNnAtLUhlaTdhV1hMUjJySVl5NXBVbFdEMzFUVUlieWlWTzNZOXlDamN5dHVxTHRSQzdSNHptNzZCT0VFbExobjNhM28iLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiI5ODYwNTNmMDI1NDY5ZTQ3ODY3ODcxNGNjNmEyOGMzNzhhZWM4OWIxZjE2N2NjMjM4OGM3Yjk0MDg4MDc3Yjc3In19",
+    "host": "host.example",
+    "now": 1793750460
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "opener",
+   "status": "checked",
+   "case": "valid",
+   "check": "pairing.opener",
+   "why": "The agent checks who opened the mailbox its code names: the owner the code names, by a proof only the code's secret makes, under that owner's session.",
+   "input": {
+    "pairing": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1wYWlyaW5nIn0.eyJ2IjoxLCJpZCI6ImI0MzExMTllNGE4MTNjZTZiMTkwYjAxNjY5MmJkN2Q4Iiwib3duZXIiOiJzcGxpbnQxMzBiNmFiMWZhYzJmMmNiNTI4YTExNDU1ZTI0MTRkY2UxMDVmNTI2M2ViMGFmOWY0ZTk5ZmVmYWM5MzZmMzk4ZSIsImhvc3QiOiJob3N0LmV4YW1wbGUiLCJwcm9vZiI6ImY5MzcxODVlMjNlMzQ4M2UzYjk2MDdkYzBiN2ExMDYxYmMxNjE2NTEzYzI4NWUyZDliZDYzYTZjZGU1NDBiNzQiLCJjbG9zZSI6IjQyMjBkMWE5MjNkZTlkOGUzZGYwZDkzMGQwOGJjYzViMWY5YzYyNGI4MzEzM2NmNjQyZTgzMGY0OTQ1ZjZkNTkiLCJpc3N1ZWRfYXQiOjE3OTM3NTA0MDAsImV4cGlyZXNfYXQiOjE3OTM3NTEzMDB9.8LH7f_eAf2YAYcopIi1SBD98yETKBjN3TAmsgZMy6qJISZiTnzaLPdv4LnYSHESnfdH5LQ1_U-GebL2TrqgMEw",
+    "session": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1vd25lci1zZXNzaW9uIn0.eyJ2IjoxLCJvd25lciI6InNwbGludDEzMGI2YWIxZmFjMmYyY2I1MjhhMTE0NTVlMjQxNGRjZTEwNWY1MjYzZWIwYWY5ZjRlOTlmZWZhYzkzNmYzOThlIiwia2V5IjoiQkdBWkVoMGNaYWpsdFUyTkhtekU1c2lPUjhtQ0xSMW8xUlBPQ1Y3RjFQX1Fvb2JGeEJVNWloMVlxRWluaWI5QlhoNTBUNGl4SVpOamI2dFVmSHQ3NjNVIiwiaG9zdCI6Imhvc3QuZXhhbXBsZSIsImlzc3VlZF9hdCI6MTc5Mzc1MDQwMCwiZXhwaXJlc19hdCI6MTc5Mzc5MzYwMH0.tJLL8zzc3HSkecyEiG_qZIMC0q2xoLh0pWKUm3AGjPZZU75fUZauF9eeucSb7jwybKgWcleAZnqGH0pzrj48tA",
+    "owner_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJLSjQ2NXRQTVFMVDJ3bGdkSjhXLTM4ckxjZHVORVhXaElSQkJqQmpmSXFmYmpJY2NjSW5RRVZDb3M2a3VpSzZsd3dld3ZFMnFPRzhWQjJMZEVVc2wySSIsInNlYWwiOiJCTEZ5bkx3WEhla04zamxRR2NfNnAtLUhlaTdhV1hMUjJySVl5NXBVbFdEMzFUVUlieWlWTzNZOXlDamN5dHVxTHRSQzdSNHptNzZCT0VFbExobjNhM28iLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiI5ODYwNTNmMDI1NDY5ZTQ3ODY3ODcxNGNjNmEyOGMzNzhhZWM4OWIxZjE2N2NjMjM4OGM3Yjk0MDg4MDc3Yjc3In19",
+    "code": "splint-pair:host.example/ksisepy3tanomsgtjm2mfmbykm/gc3kwh5mf4wlkkfbcrk6eqknzy",
+    "now": 1793750460
+   },
+   "expect": {
+    "ok": true,
+    "owner": "splint130b6ab1fac2f2cb528a11455e2414dce105f5263eb0af9f4e99fefac936f398e"
+   }
+  },
+  {
+   "name": "opener_by_a_passkey",
+   "status": "checked",
+   "case": "valid",
+   "check": "pairing.opener",
+   "why": "A code made by an owner whose key is a passkey names their ID the same way.",
+   "input": {
+    "pairing": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1wYWlyaW5nIn0.eyJ2IjoxLCJpZCI6ImI0MzExMTllNGE4MTNjZTZiMTkwYjAxNjY5MmJkN2Q4Iiwib3duZXIiOiJzcGxpbnQxOWE2YTdjNDMzYjljY2M1NzUwZWFhZDM5ZjIwMzE1NDEzOTRmNDg5NTJjNjczNTIyOTU4NzA2NTA4YjQxYjA5ZSIsImhvc3QiOiJob3N0LmV4YW1wbGUiLCJwcm9vZiI6ImU2ZmYzZGE4NTIwNGE5ZDJmOGQ0YTY2MWM1Zjg2YzcwZmE1OWE3NTY5NzZiYzVhOTA0MjRkNTI5ZWYwNTllODkiLCJjbG9zZSI6IjQyMjBkMWE5MjNkZTlkOGUzZGYwZDkzMGQwOGJjYzViMWY5YzYyNGI4MzEzM2NmNjQyZTgzMGY0OTQ1ZjZkNTkiLCJpc3N1ZWRfYXQiOjE3OTM3NTA0MDAsImV4cGlyZXNfYXQiOjE3OTM3NTEzMDB9.XddiKtaDKgvYYQICfOsZeDqv-xpLG7oB4vMhdBruhdRhrcnzsMxr41TdJZ9HplIPgE-dNV5LQ8FqNjIBVxLFSA",
+    "session": "eyJhbGciOiJXQTI1NiIsInR5cCI6InNwbGludC1vd25lci1zZXNzaW9uIn0.eyJ2IjoxLCJvd25lciI6InNwbGludDE5YTZhN2M0MzNiOWNjYzU3NTBlYWFkMzlmMjAzMTU0MTM5NGY0ODk1MmM2NzM1MjI5NTg3MDY1MDhiNDFiMDllIiwia2V5IjoiQkdBWkVoMGNaYWpsdFUyTkhtekU1c2lPUjhtQ0xSMW8xUlBPQ1Y3RjFQX1Fvb2JGeEJVNWloMVlxRWluaWI5QlhoNTBUNGl4SVpOamI2dFVmSHQ3NjNVIiwiaG9zdCI6Imhvc3QuZXhhbXBsZSIsImlzc3VlZF9hdCI6MTc5Mzc1MDQwMCwiZXhwaXJlc19hdCI6MTc5Mzc5MzYwMH0.eyJhIjoibDBBdGNYTTJDRWJlM3lwOURTcjhfd0hvd0Vma3NZcHNza3hhVjQzUUFoQUZBQUFBQUEiLCJjIjoiZXlKMGVYQmxJam9pZDJWaVlYVjBhRzR1WjJWMElpd2lZMmhoYkd4bGJtZGxJam9pY2kxbk5WTnRWVVZKYzJWcE9XaGZhVUV0VVdOa2JHbGxOR1YxVm05eWRXSkJRVzl5UkV3MlZscGtNQ0lzSW05eWFXZHBiaUk2SW1oMGRIQnpPaTh2YUc5emRDNWxlR0Z0Y0d4bElpd2lZM0p2YzNOUGNtbG5hVzRpT21aaGJITmxmUSIsInMiOiJNRVVDSVFDeTRlc01mYmNCbmlpNkQ2cFlWZ2pVRUJKenBrUXB5RDh2S2F2WV85U181d0lnYkVERUJBVXFDU19DemplZkFpUDdhakdEd0dtY01yWURqVVg4Vk9RNUI0USJ9",
+    "owner_identity": "eyJ2Ijo1LCJhbGciOiJ3ZWJhdXRobi1lczI1NiIsImtleSI6IkJQUmtkdDFvREI5VmRXdlBsTjQ4M3FLV1BYS29rdE1sUVJqMXJMZTZmbW1Hek9JeVJVNjF4LW9Db2Q5ZE9PTHFlVXd5UWZGWE1aSzVzai16WnEzdERRdyIsInJwIjoiaG9zdC5leGFtcGxlIiwic2VhbCI6IkJNMU5rZ0ZUNWxDVjN0cGZtWDVnNTg3b2tDOTBjMlhHTHJCOE9HUm4yRzlJQXREM2pmaTlveDhoWlctLW1YZFdKUVNZYkNTbVZINlBVQ1JaUjJCOWQzayIsInJlY292ZXJ5Ijp7InJ1bGUiOiJiYWNrdXBfa2V5IiwiY29tbWl0bWVudCI6IjE1NjZhYjJiYzk2OTI4ZDNiYTY5YjFjMzI5OWQ2NzhhMjNiMTA1MmFiNTQ3NmU1M2JhNzQ3M2QzYzU3NTEzYjAifX0",
+    "code": "splint-pair:host.example/ksisepy3tanomsgtjm2mfmbykm/tjvhyqz3ttgfouhkvu47eayvie",
+    "now": 1793750460
+   },
+   "expect": {
+    "ok": true,
+    "owner": "splint19a6a7c433b9ccc5750eaad39f2031541394f48952c673522958706508b41b09e"
+   }
+  },
+  {
+   "name": "opener_proven_with_another_secret",
+   "status": "checked",
+   "case": "hostile",
+   "check": "pairing.opener",
+   "why": "A host holding a session can't make the proof without the code's secret.",
+   "input": {
+    "pairing": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1wYWlyaW5nIn0.eyJ2IjoxLCJpZCI6ImI0MzExMTllNGE4MTNjZTZiMTkwYjAxNjY5MmJkN2Q4Iiwib3duZXIiOiJzcGxpbnQxMzBiNmFiMWZhYzJmMmNiNTI4YTExNDU1ZTI0MTRkY2UxMDVmNTI2M2ViMGFmOWY0ZTk5ZmVmYWM5MzZmMzk4ZSIsImhvc3QiOiJob3N0LmV4YW1wbGUiLCJwcm9vZiI6IjRkNWY0OGJhMzRiM2ViYmNmYTc0M2Y4MjQxZGVhMGI0OWVmNjYzZTc0ODc3NjQ5NWQ3NDU3ZGE0Yzk4YTdjYjIiLCJjbG9zZSI6IjQyMjBkMWE5MjNkZTlkOGUzZGYwZDkzMGQwOGJjYzViMWY5YzYyNGI4MzEzM2NmNjQyZTgzMGY0OTQ1ZjZkNTkiLCJpc3N1ZWRfYXQiOjE3OTM3NTA0MDAsImV4cGlyZXNfYXQiOjE3OTM3NTEzMDB9.oWom_cnHwv4idwoqsud6PY4wMrgXcMbKFXIJMZVQIX4GhbHaGLzxztG4ySNl-MhOGSoyswJpvQNVcmDuKc74Pw",
+    "session": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1vd25lci1zZXNzaW9uIn0.eyJ2IjoxLCJvd25lciI6InNwbGludDEzMGI2YWIxZmFjMmYyY2I1MjhhMTE0NTVlMjQxNGRjZTEwNWY1MjYzZWIwYWY5ZjRlOTlmZWZhYzkzNmYzOThlIiwia2V5IjoiQkdBWkVoMGNaYWpsdFUyTkhtekU1c2lPUjhtQ0xSMW8xUlBPQ1Y3RjFQX1Fvb2JGeEJVNWloMVlxRWluaWI5QlhoNTBUNGl4SVpOamI2dFVmSHQ3NjNVIiwiaG9zdCI6Imhvc3QuZXhhbXBsZSIsImlzc3VlZF9hdCI6MTc5Mzc1MDQwMCwiZXhwaXJlc19hdCI6MTc5Mzc5MzYwMH0.tJLL8zzc3HSkecyEiG_qZIMC0q2xoLh0pWKUm3AGjPZZU75fUZauF9eeucSb7jwybKgWcleAZnqGH0pzrj48tA",
+    "owner_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJLSjQ2NXRQTVFMVDJ3bGdkSjhXLTM4ckxjZHVORVhXaElSQkJqQmpmSXFmYmpJY2NjSW5RRVZDb3M2a3VpSzZsd3dld3ZFMnFPRzhWQjJMZEVVc2wySSIsInNlYWwiOiJCTEZ5bkx3WEhla04zamxRR2NfNnAtLUhlaTdhV1hMUjJySVl5NXBVbFdEMzFUVUlieWlWTzNZOXlDamN5dHVxTHRSQzdSNHptNzZCT0VFbExobjNhM28iLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiI5ODYwNTNmMDI1NDY5ZTQ3ODY3ODcxNGNjNmEyOGMzNzhhZWM4OWIxZjE2N2NjMjM4OGM3Yjk0MDg4MDc3Yjc3In19",
+    "code": "splint-pair:host.example/ksisepy3tanomsgtjm2mfmbykm/gc3kwh5mf4wlkkfbcrk6eqknzy",
+    "now": 1793750460
+   },
+   "expect": {
+    "ok": false,
+    "reason": "bad_signature"
+   }
+  },
+  {
+   "name": "opener_naming_an_owner_the_code_doesnt",
+   "status": "checked",
+   "case": "hostile",
+   "check": "pairing.opener",
+   "why": "Anyone with the code can make the proof for an owner of their own, and open its mailbox under their own session once the owner's has closed. The code names its maker, so the agent takes nobody else.",
+   "input": {
+    "pairing": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1wYWlyaW5nIn0.eyJ2IjoxLCJpZCI6ImI0MzExMTllNGE4MTNjZTZiMTkwYjAxNjY5MmJkN2Q4Iiwib3duZXIiOiJzcGxpbnQxYzAzOTBhMTQ5NDViYTdmMTAyNzkyYWM2ODE0ZmIxOTczOTMxYjQ3ZTg1YTVhMDFkZDAyM2QxYmJhMGQ5NDU4MyIsImhvc3QiOiJob3N0LmV4YW1wbGUiLCJwcm9vZiI6IjE4NGQwMGQzZDQ0ZDVkZDdmN2NlZmU5YzZkNGQ3ODU1OWI3YjQxNDM5MjlkNTU2OTIyZDlkNTVmMzA1YTg4YjIiLCJjbG9zZSI6IjQyMjBkMWE5MjNkZTlkOGUzZGYwZDkzMGQwOGJjYzViMWY5YzYyNGI4MzEzM2NmNjQyZTgzMGY0OTQ1ZjZkNTkiLCJpc3N1ZWRfYXQiOjE3OTM3NTA0MDAsImV4cGlyZXNfYXQiOjE3OTM3NTEzMDB9.Ma1FLcei1AWqm_8P28hQvTQ6VzG_iQFy98cKeNGE6R442tAlaS_4ED8NNTqGt6nsyLBkB_w0kr6YAsmuO3XsiQ",
+    "session": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1vd25lci1zZXNzaW9uIn0.eyJ2IjoxLCJvd25lciI6InNwbGludDFjMDM5MGExNDk0NWJhN2YxMDI3OTJhYzY4MTRmYjE5NzM5MzFiNDdlODVhNWEwMWRkMDIzZDFiYmEwZDk0NTgzIiwia2V5IjoiQkZPWE1LY25WRzQ5ZlYzQkR6X01HRFlXMmtsMlZkb3hlVm0xN0xtaWVFdmQ2Z2lUNHR0TkhLNlBTNFVaenFtSmhmZHF0VDVoTElENkZrSXA0eEs5bVM0IiwiaG9zdCI6Imhvc3QuZXhhbXBsZSIsImlzc3VlZF9hdCI6MTc5Mzc1MDQwMCwiZXhwaXJlc19hdCI6MTc5Mzc5MzYwMH0.dLtLflzuH-JmaPm3HcYapjhVKlpEfvy9HYKxRcg34CPBqd1W-0VnGIYwayBhdGUWfbzmtz2d7-p-64ukik38ag",
+    "owner_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJJd1Utc2JfSTV5VUl5MzNON0JIQ05GdVdTYTZvVmo1MHBZZEUyT1VuNENXS2MzbG1nZTZUMEQ2V29MMTFTbERSeVZzeUdIUVFtQjBLRldRMnEzeURoRSIsInNlYWwiOiJCRG90ZjRTY2w3dldmYk9rOHFwdWhpYldfUlk5T3hicExRenF1N00zcll0M01iM0J2bEdJQzRqWlRiYkZKZUtFT21pSEhYZ1lGT1JBY2x0eXJrV3dSbWsiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiI0NTY4NzRjZTdiNTZkMzk3NjdhM2YzZGM5NmQ4NDI3NWY1NGE0MDI5YjZmNjk4NjVhYTYxZDY0MjI1ZWI5N2UyIn19",
+    "code": "splint-pair:host.example/ksisepy3tanomsgtjm2mfmbykm/gc3kwh5mf4wlkkfbcrk6eqknzy",
+    "now": 1793750460
+   },
+   "expect": {
+    "ok": false,
+    "reason": "wrong_signer"
+   }
+  },
+  {
+   "name": "opener_of_another_mailbox",
+   "status": "checked",
+   "case": "hostile",
+   "check": "pairing.opener",
+   "why": "The pairing has to be for the mailbox the code names.",
+   "input": {
+    "pairing": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1wYWlyaW5nIn0.eyJ2IjoxLCJpZCI6Ijk4ZTFjYzg2NDAxM2QyMmFkNGMyZjhhM2ZmNWZmMGU3Iiwib3duZXIiOiJzcGxpbnQxMzBiNmFiMWZhYzJmMmNiNTI4YTExNDU1ZTI0MTRkY2UxMDVmNTI2M2ViMGFmOWY0ZTk5ZmVmYWM5MzZmMzk4ZSIsImhvc3QiOiJob3N0LmV4YW1wbGUiLCJwcm9vZiI6IjRkNWY0OGJhMzRiM2ViYmNmYTc0M2Y4MjQxZGVhMGI0OWVmNjYzZTc0ODc3NjQ5NWQ3NDU3ZGE0Yzk4YTdjYjIiLCJjbG9zZSI6IjQyMjBkMWE5MjNkZTlkOGUzZGYwZDkzMGQwOGJjYzViMWY5YzYyNGI4MzEzM2NmNjQyZTgzMGY0OTQ1ZjZkNTkiLCJpc3N1ZWRfYXQiOjE3OTM3NTA0MDAsImV4cGlyZXNfYXQiOjE3OTM3NTEzMDB9.3LUrW9RDqhtwXfJOfK_y-ILiRDGJzjkaEDHM6ygdCPE58ajSVkmAS8teOFCG6p20VMYYyKDdPwYsI9ZeCTE3Xg",
+    "session": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1vd25lci1zZXNzaW9uIn0.eyJ2IjoxLCJvd25lciI6InNwbGludDEzMGI2YWIxZmFjMmYyY2I1MjhhMTE0NTVlMjQxNGRjZTEwNWY1MjYzZWIwYWY5ZjRlOTlmZWZhYzkzNmYzOThlIiwia2V5IjoiQkdBWkVoMGNaYWpsdFUyTkhtekU1c2lPUjhtQ0xSMW8xUlBPQ1Y3RjFQX1Fvb2JGeEJVNWloMVlxRWluaWI5QlhoNTBUNGl4SVpOamI2dFVmSHQ3NjNVIiwiaG9zdCI6Imhvc3QuZXhhbXBsZSIsImlzc3VlZF9hdCI6MTc5Mzc1MDQwMCwiZXhwaXJlc19hdCI6MTc5Mzc5MzYwMH0.tJLL8zzc3HSkecyEiG_qZIMC0q2xoLh0pWKUm3AGjPZZU75fUZauF9eeucSb7jwybKgWcleAZnqGH0pzrj48tA",
+    "owner_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJLSjQ2NXRQTVFMVDJ3bGdkSjhXLTM4ckxjZHVORVhXaElSQkJqQmpmSXFmYmpJY2NjSW5RRVZDb3M2a3VpSzZsd3dld3ZFMnFPRzhWQjJMZEVVc2wySSIsInNlYWwiOiJCTEZ5bkx3WEhla04zamxRR2NfNnAtLUhlaTdhV1hMUjJySVl5NXBVbFdEMzFUVUlieWlWTzNZOXlDamN5dHVxTHRSQzdSNHptNzZCT0VFbExobjNhM28iLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiI5ODYwNTNmMDI1NDY5ZTQ3ODY3ODcxNGNjNmEyOGMzNzhhZWM4OWIxZjE2N2NjMjM4OGM3Yjk0MDg4MDc3Yjc3In19",
+    "code": "splint-pair:host.example/ksisepy3tanomsgtjm2mfmbykm/gc3kwh5mf4wlkkfbcrk6eqknzy",
+    "now": 1793750460
+   },
+   "expect": {
+    "ok": false,
+    "reason": "proof_mismatch"
+   }
+  },
+  {
+   "name": "opener_whose_session_isnt_the_owners",
+   "status": "checked",
+   "case": "hostile",
+   "check": "pairing.opener",
+   "why": "A host can't open a mailbox in an owner's name with a session key of its own.",
+   "input": {
+    "pairing": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1wYWlyaW5nIn0.eyJ2IjoxLCJpZCI6ImI0MzExMTllNGE4MTNjZTZiMTkwYjAxNjY5MmJkN2Q4Iiwib3duZXIiOiJzcGxpbnQxMzBiNmFiMWZhYzJmMmNiNTI4YTExNDU1ZTI0MTRkY2UxMDVmNTI2M2ViMGFmOWY0ZTk5ZmVmYWM5MzZmMzk4ZSIsImhvc3QiOiJob3N0LmV4YW1wbGUiLCJwcm9vZiI6ImY5MzcxODVlMjNlMzQ4M2UzYjk2MDdkYzBiN2ExMDYxYmMxNjE2NTEzYzI4NWUyZDliZDYzYTZjZGU1NDBiNzQiLCJjbG9zZSI6IjQyMjBkMWE5MjNkZTlkOGUzZGYwZDkzMGQwOGJjYzViMWY5YzYyNGI4MzEzM2NmNjQyZTgzMGY0OTQ1ZjZkNTkiLCJpc3N1ZWRfYXQiOjE3OTM3NTA0MDAsImV4cGlyZXNfYXQiOjE3OTM3NTEzMDB9.qvsUYNX0vCF8QFZiT_JSjx1fJJ5BsQaHJDQ1us_vjVCH6Xab9LaApyQ6XQkZl0jBXWu0msrVMf3et00j79BJHg",
+    "session": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1vd25lci1zZXNzaW9uIn0.eyJ2IjoxLCJvd25lciI6InNwbGludDEzMGI2YWIxZmFjMmYyY2I1MjhhMTE0NTVlMjQxNGRjZTEwNWY1MjYzZWIwYWY5ZjRlOTlmZWZhYzkzNmYzOThlIiwia2V5IjoiQkZPWE1LY25WRzQ5ZlYzQkR6X01HRFlXMmtsMlZkb3hlVm0xN0xtaWVFdmQ2Z2lUNHR0TkhLNlBTNFVaenFtSmhmZHF0VDVoTElENkZrSXA0eEs5bVM0IiwiaG9zdCI6Imhvc3QuZXhhbXBsZSIsImlzc3VlZF9hdCI6MTc5Mzc1MDQwMCwiZXhwaXJlc19hdCI6MTc5Mzc5MzYwMH0.Xlw6e_DU3WyiZcq0afbsCWmO0ZHD9e6sAjUzvNJU63mkEAoLuor4XaEJ_lTkZbTRsVlkeGXiUxiGsE9JmVm7fQ",
+    "owner_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJLSjQ2NXRQTVFMVDJ3bGdkSjhXLTM4ckxjZHVORVhXaElSQkJqQmpmSXFmYmpJY2NjSW5RRVZDb3M2a3VpSzZsd3dld3ZFMnFPRzhWQjJMZEVVc2wySSIsInNlYWwiOiJCTEZ5bkx3WEhla04zamxRR2NfNnAtLUhlaTdhV1hMUjJySVl5NXBVbFdEMzFUVUlieWlWTzNZOXlDamN5dHVxTHRSQzdSNHptNzZCT0VFbExobjNhM28iLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiI5ODYwNTNmMDI1NDY5ZTQ3ODY3ODcxNGNjNmEyOGMzNzhhZWM4OWIxZjE2N2NjMjM4OGM3Yjk0MDg4MDc3Yjc3In19",
+    "code": "splint-pair:host.example/ksisepy3tanomsgtjm2mfmbykm/gc3kwh5mf4wlkkfbcrk6eqknzy",
+    "now": 1793750460
+   },
+   "expect": {
+    "ok": false,
+    "reason": "bad_signature"
+   }
+  },
+  {
+   "name": "answer",
+   "status": "checked",
+   "case": "valid",
+   "check": "pairing.answer",
+   "why": "An agent's ID, address and delegate key, under a MAC by the code's secret.",
+   "input": {
+    "code": "splint-pair:host.example/ksisepy3tanomsgtjm2mfmbykm/gc3kwh5mf4wlkkfbcrk6eqknzy",
+    "answer": {
+     "agent_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJQWmlGMXhLWHVpMFFMZWprTFZRY1RXRHVKOFFVYnZ1ZmxjTHNlTnNFUlI5Szh4UFRPVWhQbGo1Qlg4TnBpQjUxYzlLcFZkeWRiZ2JKTEJmd3Y2NVVmUSIsInNlYWwiOiJCTzNlSnduZFNSSE9YTklPVUtVT2NSMmxfT0NjUFFhZ0dWZVJHLWNieEFpZmhpRGxsRW9iZHdyUVN1ZXZtZ19Sd2RBWTFYTU9BMm9LZXNqUmJLN1NpbkEiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiIyNDVmMGI4YThkY2ZlYWYxYWM0MTg1ZGNhMjIzOWVkZGRkMTdlMGExNWUxYTNjOWJlYjlkZmMyYzEwNWFiNzI2In19",
+     "address": "ana~host.example",
+     "delegate": "BP1iIEKxetCgWyGj2n-X4w6YgOpfsYuPKt4JVP5_55UHbqNRqd50aem5Ry5d2Ysx1brnGeBOjX0hb-Gj6ERBxOI",
+     "mac": "6c966e2128a550a1bc112b582782776d7d6ab78a54b0d6e3fe09cb7bb153ef99"
+    }
+   },
+   "expect": {
+    "ok": true,
+    "agent": "splint1d7d865cc40850d9598580b2e48670390cecbf2603a21e75ed771d5672f374598",
+    "address": "ana~host.example",
+    "delegate": "BP1iIEKxetCgWyGj2n-X4w6YgOpfsYuPKt4JVP5_55UHbqNRqd50aem5Ry5d2Ysx1brnGeBOjX0hb-Gj6ERBxOI"
+   }
+  },
+  {
+   "name": "answer_under_another_secret",
+   "status": "checked",
+   "case": "hostile",
+   "check": "pairing.answer",
+   "why": "Only an agent given the code can answer it, so a host can't answer in an agent's place.",
+   "input": {
+    "code": "splint-pair:host.example/ksisepy3tanomsgtjm2mfmbykm/gc3kwh5mf4wlkkfbcrk6eqknzy",
+    "answer": {
+     "agent_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJQWmlGMXhLWHVpMFFMZWprTFZRY1RXRHVKOFFVYnZ1ZmxjTHNlTnNFUlI5Szh4UFRPVWhQbGo1Qlg4TnBpQjUxYzlLcFZkeWRiZ2JKTEJmd3Y2NVVmUSIsInNlYWwiOiJCTzNlSnduZFNSSE9YTklPVUtVT2NSMmxfT0NjUFFhZ0dWZVJHLWNieEFpZmhpRGxsRW9iZHdyUVN1ZXZtZ19Sd2RBWTFYTU9BMm9LZXNqUmJLN1NpbkEiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiIyNDVmMGI4YThkY2ZlYWYxYWM0MTg1ZGNhMjIzOWVkZGRkMTdlMGExNWUxYTNjOWJlYjlkZmMyYzEwNWFiNzI2In19",
+     "address": "ana~host.example",
+     "delegate": "BP1iIEKxetCgWyGj2n-X4w6YgOpfsYuPKt4JVP5_55UHbqNRqd50aem5Ry5d2Ysx1brnGeBOjX0hb-Gj6ERBxOI",
+     "mac": "db8c2d08c02d498fb2338b49859258f54310fdf8227fabfd9fa6150875c82f5e"
+    }
+   },
+   "expect": {
+    "ok": false,
+    "reason": "bad_signature"
+   }
+  },
+  {
+   "name": "answer_with_its_address_changed",
+   "status": "checked",
+   "case": "hostile",
+   "check": "pairing.answer",
+   "why": "The MAC covers the address the page shows.",
+   "input": {
+    "code": "splint-pair:host.example/ksisepy3tanomsgtjm2mfmbykm/gc3kwh5mf4wlkkfbcrk6eqknzy",
+    "answer": {
+     "agent_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJQWmlGMXhLWHVpMFFMZWprTFZRY1RXRHVKOFFVYnZ1ZmxjTHNlTnNFUlI5Szh4UFRPVWhQbGo1Qlg4TnBpQjUxYzlLcFZkeWRiZ2JKTEJmd3Y2NVVmUSIsInNlYWwiOiJCTzNlSnduZFNSSE9YTklPVUtVT2NSMmxfT0NjUFFhZ0dWZVJHLWNieEFpZmhpRGxsRW9iZHdyUVN1ZXZtZ19Sd2RBWTFYTU9BMm9LZXNqUmJLN1NpbkEiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiIyNDVmMGI4YThkY2ZlYWYxYWM0MTg1ZGNhMjIzOWVkZGRkMTdlMGExNWUxYTNjOWJlYjlkZmMyYzEwNWFiNzI2In19",
+     "address": "bank~host.example",
+     "delegate": "BP1iIEKxetCgWyGj2n-X4w6YgOpfsYuPKt4JVP5_55UHbqNRqd50aem5Ry5d2Ysx1brnGeBOjX0hb-Gj6ERBxOI",
+     "mac": "6c966e2128a550a1bc112b582782776d7d6ab78a54b0d6e3fe09cb7bb153ef99"
+    }
+   },
+   "expect": {
+    "ok": false,
+    "reason": "bad_signature"
+   }
+  },
+  {
+   "name": "answer_with_its_delegate_changed",
+   "status": "checked",
+   "case": "hostile",
+   "check": "pairing.answer",
+   "why": "And the delegate key the owner signs a delegation to.",
+   "input": {
+    "code": "splint-pair:host.example/ksisepy3tanomsgtjm2mfmbykm/gc3kwh5mf4wlkkfbcrk6eqknzy",
+    "answer": {
+     "agent_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJQWmlGMXhLWHVpMFFMZWprTFZRY1RXRHVKOFFVYnZ1ZmxjTHNlTnNFUlI5Szh4UFRPVWhQbGo1Qlg4TnBpQjUxYzlLcFZkeWRiZ2JKTEJmd3Y2NVVmUSIsInNlYWwiOiJCTzNlSnduZFNSSE9YTklPVUtVT2NSMmxfT0NjUFFhZ0dWZVJHLWNieEFpZmhpRGxsRW9iZHdyUVN1ZXZtZ19Sd2RBWTFYTU9BMm9LZXNqUmJLN1NpbkEiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiIyNDVmMGI4YThkY2ZlYWYxYWM0MTg1ZGNhMjIzOWVkZGRkMTdlMGExNWUxYTNjOWJlYjlkZmMyYzEwNWFiNzI2In19",
+     "address": "ana~host.example",
+     "delegate": "BDuut22N-qFGfZvdoymcRC37Nz7aS2FiUiPSIWUoNAwZoh45Eb3SKV6sNJyhaSyoqPPZRzjWu04zQQFm9WUo53k",
+     "mac": "6c966e2128a550a1bc112b582782776d7d6ab78a54b0d6e3fe09cb7bb153ef99"
+    }
+   },
+   "expect": {
+    "ok": false,
+    "reason": "bad_signature"
+   }
+  },
+  {
+   "name": "answer_with_its_id_changed",
+   "status": "checked",
+   "case": "hostile",
+   "check": "pairing.answer",
+   "why": "And the ID.",
+   "input": {
+    "code": "splint-pair:host.example/ksisepy3tanomsgtjm2mfmbykm/gc3kwh5mf4wlkkfbcrk6eqknzy",
+    "answer": {
+     "agent_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJEdXV0MjJOLXFGR2ZadmRveW1jUkMzN056N2FTMkZpVWlQU0lXVW9OQXdab2g0NUViM1NLVjZzTkp5aGFTeW9xUFBaUnpqV3UwNHpRUUZtOVdVbzUzayIsInNlYWwiOiJCT3pCbDR4aS1EU1g4bDVWTFNmSnh4TU5YdFJ6ZTRmQVJTQ0lHTTQxc3M4WTRCVnFNSWk1bnpNREd6S3BpT3FrQ0ljbjZGOFBRMi1DcXR5T3g4MkdhU3MiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiJmMjg2NDliODM1NDlmOWE5ZjYwYWZkMmE3M2JiOThkNjg2YTIzYWY2MTJmYjk0MGU1NTViZWNkY2MzOTkyZjgwIn19",
+     "address": "ana~host.example",
+     "delegate": "BP1iIEKxetCgWyGj2n-X4w6YgOpfsYuPKt4JVP5_55UHbqNRqd50aem5Ry5d2Ysx1brnGeBOjX0hb-Gj6ERBxOI",
+     "mac": "6c966e2128a550a1bc112b582782776d7d6ab78a54b0d6e3fe09cb7bb153ef99"
+    }
+   },
+   "expect": {
+    "ok": false,
+    "reason": "bad_signature"
+   }
+  },
+  {
+   "name": "answer_with_a_mac_in_capitals",
+   "status": "checked",
+   "case": "hostile",
+   "check": "pairing.answer",
+   "why": "A MAC is lowercase hex.",
+   "input": {
+    "code": "splint-pair:host.example/ksisepy3tanomsgtjm2mfmbykm/gc3kwh5mf4wlkkfbcrk6eqknzy",
+    "answer": {
+     "agent_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJQWmlGMXhLWHVpMFFMZWprTFZRY1RXRHVKOFFVYnZ1ZmxjTHNlTnNFUlI5Szh4UFRPVWhQbGo1Qlg4TnBpQjUxYzlLcFZkeWRiZ2JKTEJmd3Y2NVVmUSIsInNlYWwiOiJCTzNlSnduZFNSSE9YTklPVUtVT2NSMmxfT0NjUFFhZ0dWZVJHLWNieEFpZmhpRGxsRW9iZHdyUVN1ZXZtZ19Sd2RBWTFYTU9BMm9LZXNqUmJLN1NpbkEiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiIyNDVmMGI4YThkY2ZlYWYxYWM0MTg1ZGNhMjIzOWVkZGRkMTdlMGExNWUxYTNjOWJlYjlkZmMyYzEwNWFiNzI2In19",
+     "address": "ana~host.example",
+     "delegate": "BP1iIEKxetCgWyGj2n-X4w6YgOpfsYuPKt4JVP5_55UHbqNRqd50aem5Ry5d2Ysx1brnGeBOjX0hb-Gj6ERBxOI",
+     "mac": "6C966E2128A550A1BC112B582782776D7D6AB78A54B0D6E3FE09CB7BB153EF99"
+    }
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "answer_with_an_address_in_another_spelling",
+   "status": "checked",
+   "case": "hostile",
+   "check": "pairing.answer",
+   "why": "An address has one spelling.",
+   "input": {
+    "code": "splint-pair:host.example/ksisepy3tanomsgtjm2mfmbykm/gc3kwh5mf4wlkkfbcrk6eqknzy",
+    "answer": {
+     "agent_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJQWmlGMXhLWHVpMFFMZWprTFZRY1RXRHVKOFFVYnZ1ZmxjTHNlTnNFUlI5Szh4UFRPVWhQbGo1Qlg4TnBpQjUxYzlLcFZkeWRiZ2JKTEJmd3Y2NVVmUSIsInNlYWwiOiJCTzNlSnduZFNSSE9YTklPVUtVT2NSMmxfT0NjUFFhZ0dWZVJHLWNieEFpZmhpRGxsRW9iZHdyUVN1ZXZtZ19Sd2RBWTFYTU9BMm9LZXNqUmJLN1NpbkEiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiIyNDVmMGI4YThkY2ZlYWYxYWM0MTg1ZGNhMjIzOWVkZGRkMTdlMGExNWUxYTNjOWJlYjlkZmMyYzEwNWFiNzI2In19",
+     "address": "ANA~host.example",
+     "delegate": "BP1iIEKxetCgWyGj2n-X4w6YgOpfsYuPKt4JVP5_55UHbqNRqd50aem5Ry5d2Ysx1brnGeBOjX0hb-Gj6ERBxOI",
+     "mac": "17f8e0bcb842b317c00d4ac651260e0fb3f06346ed8fca092ab2d3c9ed466280"
+    }
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "answer_from_an_agent_whose_key_is_a_passkey",
+   "status": "checked",
+   "case": "hostile",
+   "check": "pairing.answer",
+   "why": "Only an owner's key can be a passkey.",
+   "input": {
+    "code": "splint-pair:host.example/ksisepy3tanomsgtjm2mfmbykm/gc3kwh5mf4wlkkfbcrk6eqknzy",
+    "answer": {
+     "agent_identity": "eyJ2Ijo1LCJhbGciOiJ3ZWJhdXRobi1lczI1NiIsImtleSI6IkJQWmlGMXhLWHVpMFFMZWprTFZRY1RXRHVKOFFVYnZ1ZmxjTHNlTnNFUlI5Szh4UFRPVWhQbGo1Qlg4TnBpQjUxYzlLcFZkeWRiZ2JKTEJmd3Y2NVVmUSIsInJwIjoiaG9zdC5leGFtcGxlIiwic2VhbCI6IkJPM2VKd25kU1JIT1hOSU9VS1VPY1IybF9PQ2NQUWFnR1ZlUkctY2J4QWlmaGlEbGxFb2Jkd3JRU3Vldm1nX1J3ZEFZMVhNT0Eyb0tlc2pSYks3U2luQSIsInJlY292ZXJ5Ijp7InJ1bGUiOiJiYWNrdXBfa2V5IiwiY29tbWl0bWVudCI6IjI0NWYwYjhhOGRjZmVhZjFhYzQxODVkY2EyMjM5ZWRkZGQxN2UwYTE1ZTFhM2M5YmViOWRmYzJjMTA1YWI3MjYifX0",
+     "address": "ana~host.example",
+     "delegate": "BP1iIEKxetCgWyGj2n-X4w6YgOpfsYuPKt4JVP5_55UHbqNRqd50aem5Ry5d2Ysx1brnGeBOjX0hb-Gj6ERBxOI",
+     "mac": "57415f2ad1ce40207ffaeb10171dfa3ea97b860fa30caf3049ec317f18f5de5c"
+    }
+   },
+   "expect": {
+    "ok": false,
+    "reason": "wrong_signer"
+   }
+  }
+ ]
+}

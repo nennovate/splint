@@ -1,0 +1,166 @@
+name: check
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, edited]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    # An edit counts only when it moves the PR to a new base, as when the PR below it merges.
+    if: github.event.action != 'edited' || github.event.changes.base
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions-rust-lang/setup-rust-toolchain@a188e68d0fd2bd36ad51dccb2b07ba6e75105f30 # v2.0.1
+        with:
+          rust-src-dir: packages
+      - uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39 # v2
+        with:
+          tool: cargo-deny
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: packages/verifier/go.mod
+          cache: false
+      - run: make rules rust deps verifier
+
+  # What a person runs on Windows: splint, Signet and owner-key, linted and tested there. The host
+  # runs on Linux, so it isn't built here. Arm runners are free only for public repositories, so a
+  # private one has no Arm job at all, rather than one that shows as passed having checked nothing.
+  windows:
+    if: github.event.action != 'edited' || github.event.changes.base
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: ${{ github.event.repository.private && fromJSON('["windows-latest"]') || fromJSON('["windows-latest", "windows-11-arm"]') }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    env:
+      # The crypto library's assembly comes prebuilt in its crate, so no assembler is needed.
+      AWS_LC_SYS_PREBUILT_NASM: 1
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions-rust-lang/setup-rust-toolchain@a188e68d0fd2bd36ad51dccb2b07ba6e75105f30 # v2.0.1
+        with:
+          rust-src-dir: packages
+      # Clippy has a folder of its own: on Windows, a test build after it in the same folder once
+      # failed with "crate rustls required to be available in rlib format", from what clippy left.
+      - working-directory: packages
+        run: |
+          CARGO_TARGET_DIR=target/clippy cargo clippy --all-targets --quiet -p splint-core -p signet -p splint -p owner-key -- -D warnings
+          cargo test --quiet --no-fail-fast -p splint-core -p signet -p splint -p owner-key
+
+  # Decides once, for all the jobs below, whether the suites are needed and how many shards they take.
+  e2e-plan:
+    if: github.event.action != 'edited' || github.event.changes.base
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      needed: ${{ steps.needed.outputs.needed }}
+      shards: ${{ steps.shards.outputs.shards }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      # Runs for code that a running system depends on, once a PR is ready. The two docs are the ones
+      # the sims follow or ship, so a change to either runs them.
+      - id: needed
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          DRAFT: ${{ github.event.pull_request.draft }}
+        run: |
+          changed=$(git diff --name-only "$BASE_SHA...$HEAD_SHA")
+          needed=true
+          if ! grep -qE '^(packages|sim|adapters|deploy|make|spec|tools/ci)/|^docs/(agents|getting-started)\.md$|^Makefile$|^\.github/workflows/' <<<"$changed"; then
+            needed=false; echo "No product code changed."
+          elif [ "$DRAFT" = true ]; then
+            needed=false; echo "Still a draft."
+          fi
+          echo "needed=$needed" >> "$GITHUB_OUTPUT"
+      - id: shards
+        if: steps.needed.outputs.needed == 'true'
+        run: echo "shards=$(python3 tools/ci/shards.py matrix)" >> "$GITHUB_OUTPUT"
+
+  # Compiles once what every shard needs and saves it to the cache, so the shards don't each pay for
+  # the dependencies. Cargo still rebuilds this repository's own crates after a fresh checkout, which
+  # costs a shard about a minute. This builds far less than filled a runner's disk, so it frees none.
+  e2e-build:
+    needs: e2e-plan
+    if: needs.e2e-plan.outputs.needed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions-rust-lang/setup-rust-toolchain@a188e68d0fd2bd36ad51dccb2b07ba6e75105f30 # v2.0.1
+        with:
+          rust-src-dir: packages
+          cache-shared-key: e2e
+      - run: python3 tools/ci/shards.py build
+
+  # The suites, split by tools/ci/shards.py across runners that each run their part one sim at a time.
+  e2e-shard:
+    name: e2e shard ${{ matrix.shard }}
+    needs: [e2e-plan, e2e-build]
+    if: needs.e2e-plan.outputs.needed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJSON(needs.e2e-plan.outputs.shards) }}
+    steps:
+      # The whole history, as sim/host_id.py builds a host from an older commit.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      # The suites build the workspace several times over, a release build, a debug one and a second
+      # copy of the host and Signet, which together passed what a hosted runner starts with free and
+      # ended a run with no result. These are toolchains the image ships that nothing here uses.
+      - run: |
+          df -h /
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          df -h /
+      # Only e2e-build saves, so the shards don't race to write the same cache.
+      - uses: actions-rust-lang/setup-rust-toolchain@a188e68d0fd2bd36ad51dccb2b07ba6e75105f30 # v2.0.1
+        with:
+          rust-src-dir: packages
+          cache-shared-key: e2e
+          cache-save-if: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      # A user manager that outlasts logging out, as on a server someone set up to keep their agent
+      # running, so sim/install.py takes the systemd path and sees a killed Signet come back.
+      - run: |
+          sudo loginctl enable-linger "$USER"
+          runtime="/run/user/$(id -u)"
+          for _ in $(seq 100); do [ -S "$runtime/systemd/private" ] && break; sleep 0.1; done
+          echo "XDG_RUNTIME_DIR=$runtime" >> "$GITHUB_ENV"
+          XDG_RUNTIME_DIR="$runtime" systemctl --user show-environment > /dev/null
+      - run: python3 tools/ci/shards.py run ${{ matrix.shard }}
+      # Said whatever happened, so a run that fills the disk again shows how close it came.
+      - if: always()
+        run: df -h / && du -sh packages/target 2>/dev/null || true
+
+  # The check a PR reports, under the name it has always had. A plan that failed counts as a failure
+  # here rather than a skip, since a skipped check passes.
+  e2e:
+    needs: [e2e-plan, e2e-build, e2e-shard]
+    if: always() && needs.e2e-plan.result != 'skipped' && (needs.e2e-plan.result != 'success' || needs.e2e-plan.outputs.needed == 'true')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - env:
+          PLAN: ${{ needs.e2e-plan.result }}
+          BUILD: ${{ needs.e2e-build.result }}
+          SHARDS: ${{ needs.e2e-shard.result }}
+        run: |
+          echo "Plan: $PLAN. Build: $BUILD. Shards: $SHARDS."
+          [ "$PLAN" = success ] && [ "$BUILD" = success ] && [ "$SHARDS" = success ]

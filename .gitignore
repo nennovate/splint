@@ -1,0 +1,12 @@
+/packages/target/
+.env
+.env.*
+!.env.example
+node_modules/
+__pycache__/
+.venv/
+.DS_Store
+.claude/settings.local.json
+.claude/worktrees/
+pr_summary.md
+sim/runs/

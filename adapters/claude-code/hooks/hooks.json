@@ -1,0 +1,26 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -x \"$HOME/.splint/bin/splint\" ] && \"$HOME/.splint/bin/splint\" check --here 2>/dev/null; exit 0"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/wake.sh\"",
+            "asyncRewake": true,
+            "timeout": 3600
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,33 @@
+# Gets and renews the certificate, and is the only thing on this machine that talks to the internet
+# for the host. The host itself only listens on loopback, and refuses to start otherwise.
+{
+	# Anything on this machine could otherwise rewrite this config through Caddy's local API.
+	admin off
+	# Caddy has no deadlines of its own for a caller, so one sending a byte a minute would stay for good.
+	servers {
+		timeouts {
+			read_header 10s
+			read_body 15s
+			write 60s
+			idle 90s
+		}
+		max_header_size 64KB
+	}
+}
+
+@DOMAIN@ {
+	# What a host takes, with room for the framing, so a bigger body goes no further than this.
+	request_body {
+		max_size 1MB
+	}
+	# Writes X-Forwarded-For itself from the connection and ignores what a caller sent, so the host
+	# can tell callers apart for its limits.
+	reverse_proxy 127.0.0.1:8080 {
+		transport http {
+			dial_timeout 5s
+			response_header_timeout 40s
+			# Less than the host keeps an idle connection, so this side closes one first.
+			keepalive 30s
+		}
+	}
+}

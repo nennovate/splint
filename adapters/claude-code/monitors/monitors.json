@@ -1,0 +1,7 @@
+[
+  {
+    "name": "splint",
+    "command": "[ -x \"$HOME/.splint/bin/splint\" ] && exec \"$HOME/.splint/bin/splint\" listen --here",
+    "description": "Splint: changes for this agent"
+  }
+]

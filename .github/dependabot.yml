@@ -1,0 +1,32 @@
+# Weekly version updates, grouped so a week's minor and patch bumps arrive as one PR per ecosystem.
+# A new direct dependency still needs a reason in tools/checks/allowed-dependencies.toml.
+version: 2
+updates:
+  - package-ecosystem: cargo
+    directory: /packages
+    schedule:
+      interval: weekly
+    groups:
+      cargo:
+        update-types: [minor, patch]
+  - package-ecosystem: gomod
+    directory: /packages/verifier
+    schedule:
+      interval: weekly
+    groups:
+      gomod:
+        update-types: [minor, patch]
+  - package-ecosystem: npm
+    directory: /adapters/mcp
+    schedule:
+      interval: weekly
+    groups:
+      npm:
+        update-types: [minor, patch]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        update-types: [minor, patch]

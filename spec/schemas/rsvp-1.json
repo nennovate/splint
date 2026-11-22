@@ -1,0 +1,12 @@
+{
+ "type": "rsvp/1",
+ "kind": "request",
+ "offer": {
+  "event": {"word": ["dinner", "party", "workshop", "other"]},
+  "seats": {"range": {"min": 1, "max": 20}}
+ },
+ "fixed": ["event"],
+ "clarify": ["when", "where"],
+ "decline": ["cant_come"],
+ "sign": "requester"
+}

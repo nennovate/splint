@@ -1,0 +1,641 @@
+{
+ "contract": "protocol.md#addresses",
+ "vectors": [
+  {
+   "name": "ana~host.example",
+   "status": "checked",
+   "case": "valid",
+   "check": "address.parse",
+   "why": "Handles are lowercase letters, digits and hyphens, and ~ separates the name from the domain.",
+   "input": {
+    "address": "ana~host.example"
+   },
+   "expect": {
+    "ok": true,
+    "name": "ana",
+    "domain": "host.example"
+   }
+  },
+  {
+   "name": "ana.jeff~host.example",
+   "status": "checked",
+   "case": "valid",
+   "check": "address.parse",
+   "why": "An owner part after one dot: ana, acting for jeff.",
+   "input": {
+    "address": "ana.jeff~host.example"
+   },
+   "expect": {
+    "ok": true,
+    "name": "ana.jeff",
+    "domain": "host.example"
+   }
+  },
+  {
+   "name": "a-1~host.example:7001",
+   "status": "checked",
+   "case": "valid",
+   "check": "address.parse",
+   "why": "A domain can carry a port.",
+   "input": {
+    "address": "a-1~host.example:7001"
+   },
+   "expect": {
+    "ok": true,
+    "name": "a-1",
+    "domain": "host.example:7001"
+   }
+  },
+  {
+   "name": "ana~127.0.0.1:53124",
+   "status": "checked",
+   "case": "valid",
+   "check": "address.parse",
+   "why": "Or be an IPv4 address.",
+   "input": {
+    "address": "ana~127.0.0.1:53124"
+   },
+   "expect": {
+    "ok": true,
+    "name": "ana",
+    "domain": "127.0.0.1:53124"
+   }
+  },
+  {
+   "name": "ana~[::1]:7001",
+   "status": "checked",
+   "case": "valid",
+   "check": "address.parse",
+   "why": "Or an IPv6 address in brackets, which a name can't be confused with.",
+   "input": {
+    "address": "ana~[::1]:7001"
+   },
+   "expect": {
+    "ok": true,
+    "name": "ana",
+    "domain": "[::1]:7001"
+   }
+  },
+  {
+   "name": "a_63_character_name",
+   "status": "checked",
+   "case": "valid",
+   "check": "address.parse",
+   "why": "A name stops at 63 characters, so with the ~ it fits an email's local part.",
+   "input": {
+    "address": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa~host"
+   },
+   "expect": {
+    "ok": true,
+    "name": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "domain": "host"
+   }
+  },
+  {
+   "name": "ana",
+   "status": "checked",
+   "case": "hostile",
+   "check": "address.parse",
+   "why": "No domain.",
+   "input": {
+    "address": "ana"
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "~host",
+   "status": "checked",
+   "case": "hostile",
+   "check": "address.parse",
+   "why": "No name.",
+   "input": {
+    "address": "~host"
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "ana~",
+   "status": "checked",
+   "case": "hostile",
+   "check": "address.parse",
+   "why": "Empty domain.",
+   "input": {
+    "address": "ana~"
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "ana::host.example",
+   "status": "checked",
+   "case": "hostile",
+   "check": "address.parse",
+   "why": "Two colons are only typed input: they're turned into ~ before anything is signed or stored.",
+   "input": {
+    "address": "ana::host.example"
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "splint:ana~host.example",
+   "status": "checked",
+   "case": "hostile",
+   "check": "address.parse",
+   "why": "So is the link form.",
+   "input": {
+    "address": "splint:ana~host.example"
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "ana~@host.example",
+   "status": "checked",
+   "case": "hostile",
+   "check": "address.parse",
+   "why": "And the email form.",
+   "input": {
+    "address": "ana~@host.example"
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "ana~~host",
+   "status": "checked",
+   "case": "hostile",
+   "check": "address.parse",
+   "why": "One ~ only.",
+   "input": {
+    "address": "ana~~host"
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "ana~host~x",
+   "status": "checked",
+   "case": "hostile",
+   "check": "address.parse",
+   "why": "Which a domain can't hold either.",
+   "input": {
+    "address": "ana~host~x"
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "ana:host",
+   "status": "checked",
+   "case": "hostile",
+   "check": "address.parse",
+   "why": "One colon isn't the separator.",
+   "input": {
+    "address": "ana:host"
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "a:b~host",
+   "status": "checked",
+   "case": "hostile",
+   "check": "address.parse",
+   "why": "A name can't hold a colon.",
+   "input": {
+    "address": "a:b~host"
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "ana~a::b",
+   "status": "checked",
+   "case": "hostile",
+   "check": "address.parse",
+   "why": "Nor can a domain hold ::.",
+   "input": {
+    "address": "ana~a::b"
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "x~host/admin?a=",
+   "status": "checked",
+   "case": "hostile",
+   "check": "address.parse",
+   "why": "A domain becomes part of a URL, so a path can't be smuggled in.",
+   "input": {
+    "address": "x~host/admin?a="
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "x~host#y",
+   "status": "checked",
+   "case": "hostile",
+   "check": "address.parse",
+   "why": "Or a fragment.",
+   "input": {
+    "address": "x~host#y"
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "x~user@host",
+   "status": "checked",
+   "case": "hostile",
+   "check": "address.parse",
+   "why": "Or a user.",
+   "input": {
+    "address": "x~user@host"
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "A~host",
+   "status": "checked",
+   "case": "hostile",
+   "check": "address.parse",
+   "why": "Handles are lowercase, so one name has one spelling.",
+   "input": {
+    "address": "A~host"
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "ana.Jeff~host",
+   "status": "checked",
+   "case": "hostile",
+   "check": "address.parse",
+   "why": "Owner parts too.",
+   "input": {
+    "address": "ana.Jeff~host"
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": ".ana~host",
+   "status": "checked",
+   "case": "hostile",
+   "check": "address.parse",
+   "why": "A name doesn't start with a dot.",
+   "input": {
+    "address": ".ana~host"
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "ana.~host",
+   "status": "checked",
+   "case": "hostile",
+   "check": "address.parse",
+   "why": "Or end with one.",
+   "input": {
+    "address": "ana.~host"
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "ana..jeff~host",
+   "status": "checked",
+   "case": "hostile",
+   "check": "address.parse",
+   "why": "Or hold two together.",
+   "input": {
+    "address": "ana..jeff~host"
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "ana.jeff.bob~host",
+   "status": "checked",
+   "case": "hostile",
+   "check": "address.parse",
+   "why": "One owner part at most.",
+   "input": {
+    "address": "ana.jeff.bob~host"
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "ana~Host.example",
+   "status": "checked",
+   "case": "hostile",
+   "check": "address.parse",
+   "why": "Domains are lowercase too: a capital is another spelling.",
+   "input": {
+    "address": "ana~Host.example"
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "ana~host.example.",
+   "status": "checked",
+   "case": "hostile",
+   "check": "address.parse",
+   "why": "So is a trailing dot.",
+   "input": {
+    "address": "ana~host.example."
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "ana~host:07001",
+   "status": "checked",
+   "case": "hostile",
+   "check": "address.parse",
+   "why": "And a port's leading zero.",
+   "input": {
+    "address": "ana~host:07001"
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "ana~host:0",
+   "status": "checked",
+   "case": "hostile",
+   "check": "address.parse",
+   "why": "Port 0 names nothing.",
+   "input": {
+    "address": "ana~host:0"
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "ana~host.example:443",
+   "status": "checked",
+   "case": "hostile",
+   "check": "address.parse",
+   "why": "Port 443 is where a domain with no port is called, so saying it is another spelling.",
+   "input": {
+    "address": "ana~host.example:443"
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "ana~[::1]:443",
+   "status": "checked",
+   "case": "hostile",
+   "check": "address.parse",
+   "why": "For an IPv6 address too.",
+   "input": {
+    "address": "ana~[::1]:443"
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "ana~2130706433",
+   "status": "checked",
+   "case": "hostile",
+   "check": "address.parse",
+   "why": "A URL reads this as 127.0.0.1, so it's another spelling of that address.",
+   "input": {
+    "address": "ana~2130706433"
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "ana~127.1",
+   "status": "checked",
+   "case": "hostile",
+   "check": "address.parse",
+   "why": "So does this.",
+   "input": {
+    "address": "ana~127.1"
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "ana~0x7f.0.0.1",
+   "status": "checked",
+   "case": "hostile",
+   "check": "address.parse",
+   "why": "And this, in hex.",
+   "input": {
+    "address": "ana~0x7f.0.0.1"
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "ana~0177.0.0.1",
+   "status": "checked",
+   "case": "hostile",
+   "check": "address.parse",
+   "why": "And this, in octal.",
+   "input": {
+    "address": "ana~0177.0.0.1"
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "ana~host.123",
+   "status": "checked",
+   "case": "hostile",
+   "check": "address.parse",
+   "why": "A name can't end in a number, or a URL takes it for an address.",
+   "input": {
+    "address": "ana~host.123"
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "ana~[::ffff:127.0.0.1]",
+   "status": "checked",
+   "case": "hostile",
+   "check": "address.parse",
+   "why": "An IPv4 address is written as one, not inside an IPv6 address.",
+   "input": {
+    "address": "ana~[::ffff:127.0.0.1]"
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "ana~[0::1]",
+   "status": "checked",
+   "case": "hostile",
+   "check": "address.parse",
+   "why": "An IPv6 address is written the standard way.",
+   "input": {
+    "address": "ana~[0::1]"
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "ana~[::1%eth0]",
+   "status": "checked",
+   "case": "hostile",
+   "check": "address.parse",
+   "why": "With no zone.",
+   "input": {
+    "address": "ana~[::1%eth0]"
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "ana~host..example",
+   "status": "checked",
+   "case": "hostile",
+   "check": "address.parse",
+   "why": "No empty label.",
+   "input": {
+    "address": "ana~host..example"
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "x+y~host",
+   "status": "checked",
+   "case": "hostile",
+   "check": "address.parse",
+   "why": "+ is reserved for later.",
+   "input": {
+    "address": "x+y~host"
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "x_y~host",
+   "status": "checked",
+   "case": "hostile",
+   "check": "address.parse",
+   "why": "As is anything else.",
+   "input": {
+    "address": "x_y~host"
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "a_64_character_name",
+   "status": "checked",
+   "case": "hostile",
+   "check": "address.parse",
+   "why": "A name stops at 63 characters.",
+   "input": {
+    "address": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa~host"
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "ana@host.example",
+   "status": "checked",
+   "case": "hostile",
+   "check": "address.parse",
+   "why": "The old handle@domain form is refused. Code that reads typed input says how addresses are written now.",
+   "input": {
+    "address": "ana@host.example"
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  }
+ ]
+}

@@ -1,0 +1,12 @@
+{
+  "name": "splint",
+  "description": "Splint's connector, from github.com/nennovate/splint.",
+  "owner": { "name": "Splint" },
+  "plugins": [
+    {
+      "name": "splint",
+      "source": "./",
+      "description": "Join Splint and deal with other people's agents, under rules your person signs."
+    }
+  ]
+}

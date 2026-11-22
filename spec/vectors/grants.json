@@ -1,0 +1,679 @@
+{
+ "contract": "protocol.md#grants-and-the-resource-check",
+ "vectors": [
+  {
+   "name": "granted_call",
+   "status": "checked",
+   "case": "valid",
+   "check": "grant.check",
+   "why": "Only this sequence produces the value an action requires. The grant's ID is the hash of its payload.",
+   "input": {
+    "grant": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1ncmFudCJ9.eyJ2IjoxLCJvd25lciI6InNwbGludDEzMGI2YWIxZmFjMmYyY2I1MjhhMTE0NTVlMjQxNGRjZTEwNWY1MjYzZWIwYWY5ZjRlOTlmZWZhYzkzNmYzOThlIiwiaG9sZGVyIjoic3BsaW50MWQ3ZDg2NWNjNDA4NTBkOTU5ODU4MGIyZTQ4NjcwMzkwY2VjYmYyNjAzYTIxZTc1ZWQ3NzFkNTY3MmYzNzQ1OTgiLCJyZXNvdXJjZSI6ImZpbGVzLmFuYS5leGFtcGxlIiwib3BlcmF0aW9ucyI6WyJkb2NzLnJlYWQiXSwibGltaXRzIjp7ImNhbGxzX3Blcl9ob3VyIjoyMH0sImlzc3VlZF9hdCI6MTc5Mzc1MDQwMCwiZXhwaXJlc19hdCI6MTc5NDM1NTIwMCwibm9uY2UiOiJBQUVDQXdRRkJnY0lDUW9MREEwT0R3In0.plwXgYcIxJvEh2MhToajKxTDNk1zvNzS91x_F5jlKnpM6CUOwDITIjnFvyOfKILf8ABtX3c-BgENnHGHPw79xA",
+    "proof": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1hY2Nlc3MifQ.eyJzaWduZXIiOiJzcGxpbnQxZDdkODY1Y2M0MDg1MGQ5NTk4NTgwYjJlNDg2NzAzOTBjZWNiZjI2MDNhMjFlNzVlZDc3MWQ1NjcyZjM3NDU5OCIsImhvc3QiOiJmaWxlcy5hbmEuZXhhbXBsZSIsIm1ldGhvZCI6IlBPU1QiLCJwYXRoIjoiL2RvY3MvcmVhZCIsImJvZHlfc2hhMjU2IjoiNmVmOGJiYjUyOGU2ZjlmNTY3YjQ3MDIyYWZhNGU2N2FmYTJlODRhZGNiOWVlZmUzMWM1MmMxOTdiNzM5NTc2MiIsImlzc3VlZF9hdCI6MTc5Mzc1MDQwMH0.DG9Ou33ddPTNvc6ufA_qJjLuKo2k7wiqYBsDfcufMMItYtPT22igov7Fxvn-M1RzyzkfMKoVffQ5f5xDjq7H_A",
+    "body": "{\"doc\":\"q4-plan\"}",
+    "agent_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJQWmlGMXhLWHVpMFFMZWprTFZRY1RXRHVKOFFVYnZ1ZmxjTHNlTnNFUlI5Szh4UFRPVWhQbGo1Qlg4TnBpQjUxYzlLcFZkeWRiZ2JKTEJmd3Y2NVVmUSIsInNlYWwiOiJCTzNlSnduZFNSSE9YTklPVUtVT2NSMmxfT0NjUFFhZ0dWZVJHLWNieEFpZmhpRGxsRW9iZHdyUVN1ZXZtZ19Sd2RBWTFYTU9BMm9LZXNqUmJLN1NpbkEiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiIyNDVmMGI4YThkY2ZlYWYxYWM0MTg1ZGNhMjIzOWVkZGRkMTdlMGExNWUxYTNjOWJlYjlkZmMyYzEwNWFiNzI2In19",
+    "owner_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJLSjQ2NXRQTVFMVDJ3bGdkSjhXLTM4ckxjZHVORVhXaElSQkJqQmpmSXFmYmpJY2NjSW5RRVZDb3M2a3VpSzZsd3dld3ZFMnFPRzhWQjJMZEVVc2wySSIsInNlYWwiOiJCTEZ5bkx3WEhla04zamxRR2NfNnAtLUhlaTdhV1hMUjJySVl5NXBVbFdEMzFUVUlieWlWTzNZOXlDamN5dHVxTHRSQzdSNHptNzZCT0VFbExobjNhM28iLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiI5ODYwNTNmMDI1NDY5ZTQ3ODY3ODcxNGNjNmEyOGMzNzhhZWM4OWIxZjE2N2NjMjM4OGM3Yjk0MDg4MDc3Yjc3In19",
+    "resource": "files.ana.example",
+    "operation": "docs.read",
+    "method": "POST",
+    "path": "/docs/read",
+    "revoked": [],
+    "calls_this_hour": 0,
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": true,
+    "grant": "4033ddf53a2fd038a2d57f18cd25492c0b2d3f36ff9c3fb0dd2493ee04520253",
+    "holder": "splint1d7d865cc40850d9598580b2e48670390cecbf2603a21e75ed771d5672f374598",
+    "operation": "docs.read"
+   }
+  },
+  {
+   "name": "self_issued_grant",
+   "status": "checked",
+   "case": "hostile",
+   "check": "grant.check",
+   "why": "A fooled agent can't grant itself anything.",
+   "input": {
+    "grant": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1ncmFudCJ9.eyJ2IjoxLCJvd25lciI6InNwbGludDEzMGI2YWIxZmFjMmYyY2I1MjhhMTE0NTVlMjQxNGRjZTEwNWY1MjYzZWIwYWY5ZjRlOTlmZWZhYzkzNmYzOThlIiwiaG9sZGVyIjoic3BsaW50MWQ3ZDg2NWNjNDA4NTBkOTU5ODU4MGIyZTQ4NjcwMzkwY2VjYmYyNjAzYTIxZTc1ZWQ3NzFkNTY3MmYzNzQ1OTgiLCJyZXNvdXJjZSI6ImZpbGVzLmFuYS5leGFtcGxlIiwib3BlcmF0aW9ucyI6WyJkb2NzLnJlYWQiXSwibGltaXRzIjp7ImNhbGxzX3Blcl9ob3VyIjoyMH0sImlzc3VlZF9hdCI6MTc5Mzc1MDQwMCwiZXhwaXJlc19hdCI6MTc5NDM1NTIwMCwibm9uY2UiOiJBQUVDQXdRRkJnY0lDUW9MREEwT0R3In0.Ti1K2ii-7JI-dj7JUN3ge0gCigMi-3BSFeyulTAYlZbdCUOA_NWJgclcFcHKg0Bii4pasPU9EUbRhy-hzIcA0g",
+    "proof": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1hY2Nlc3MifQ.eyJzaWduZXIiOiJzcGxpbnQxZDdkODY1Y2M0MDg1MGQ5NTk4NTgwYjJlNDg2NzAzOTBjZWNiZjI2MDNhMjFlNzVlZDc3MWQ1NjcyZjM3NDU5OCIsImhvc3QiOiJmaWxlcy5hbmEuZXhhbXBsZSIsIm1ldGhvZCI6IlBPU1QiLCJwYXRoIjoiL2RvY3MvcmVhZCIsImJvZHlfc2hhMjU2IjoiNmVmOGJiYjUyOGU2ZjlmNTY3YjQ3MDIyYWZhNGU2N2FmYTJlODRhZGNiOWVlZmUzMWM1MmMxOTdiNzM5NTc2MiIsImlzc3VlZF9hdCI6MTc5Mzc1MDQwMH0.DG9Ou33ddPTNvc6ufA_qJjLuKo2k7wiqYBsDfcufMMItYtPT22igov7Fxvn-M1RzyzkfMKoVffQ5f5xDjq7H_A",
+    "body": "{\"doc\":\"q4-plan\"}",
+    "agent_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJQWmlGMXhLWHVpMFFMZWprTFZRY1RXRHVKOFFVYnZ1ZmxjTHNlTnNFUlI5Szh4UFRPVWhQbGo1Qlg4TnBpQjUxYzlLcFZkeWRiZ2JKTEJmd3Y2NVVmUSIsInNlYWwiOiJCTzNlSnduZFNSSE9YTklPVUtVT2NSMmxfT0NjUFFhZ0dWZVJHLWNieEFpZmhpRGxsRW9iZHdyUVN1ZXZtZ19Sd2RBWTFYTU9BMm9LZXNqUmJLN1NpbkEiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiIyNDVmMGI4YThkY2ZlYWYxYWM0MTg1ZGNhMjIzOWVkZGRkMTdlMGExNWUxYTNjOWJlYjlkZmMyYzEwNWFiNzI2In19",
+    "owner_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJLSjQ2NXRQTVFMVDJ3bGdkSjhXLTM4ckxjZHVORVhXaElSQkJqQmpmSXFmYmpJY2NjSW5RRVZDb3M2a3VpSzZsd3dld3ZFMnFPRzhWQjJMZEVVc2wySSIsInNlYWwiOiJCTEZ5bkx3WEhla04zamxRR2NfNnAtLUhlaTdhV1hMUjJySVl5NXBVbFdEMzFUVUlieWlWTzNZOXlDamN5dHVxTHRSQzdSNHptNzZCT0VFbExobjNhM28iLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiI5ODYwNTNmMDI1NDY5ZTQ3ODY3ODcxNGNjNmEyOGMzNzhhZWM4OWIxZjE2N2NjMjM4OGM3Yjk0MDg4MDc3Yjc3In19",
+    "resource": "files.ana.example",
+    "operation": "docs.read",
+    "method": "POST",
+    "path": "/docs/read",
+    "revoked": [],
+    "calls_this_hour": 0,
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": false,
+    "reason": "bad_signature"
+   }
+  },
+  {
+   "name": "grant_from_a_host_key",
+   "status": "checked",
+   "case": "hostile",
+   "check": "grant.check",
+   "why": "No host can issue a grant, so gate 5 holds with the host compromised.",
+   "input": {
+    "grant": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1ncmFudCJ9.eyJ2IjoxLCJvd25lciI6InNwbGludDEzMGI2YWIxZmFjMmYyY2I1MjhhMTE0NTVlMjQxNGRjZTEwNWY1MjYzZWIwYWY5ZjRlOTlmZWZhYzkzNmYzOThlIiwiaG9sZGVyIjoic3BsaW50MWQ3ZDg2NWNjNDA4NTBkOTU5ODU4MGIyZTQ4NjcwMzkwY2VjYmYyNjAzYTIxZTc1ZWQ3NzFkNTY3MmYzNzQ1OTgiLCJyZXNvdXJjZSI6ImZpbGVzLmFuYS5leGFtcGxlIiwib3BlcmF0aW9ucyI6WyJkb2NzLnJlYWQiXSwibGltaXRzIjp7ImNhbGxzX3Blcl9ob3VyIjoyMH0sImlzc3VlZF9hdCI6MTc5Mzc1MDQwMCwiZXhwaXJlc19hdCI6MTc5NDM1NTIwMCwibm9uY2UiOiJBQUVDQXdRRkJnY0lDUW9MREEwT0R3In0.qeZNIu2jFdf9ESTmDvnZmXag4oXlfjDCHaTwNlYGwGLZoTsFz6JZDA4AniPSb7MtL-Gb7iFp4HJPjJxuUdquCA",
+    "proof": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1hY2Nlc3MifQ.eyJzaWduZXIiOiJzcGxpbnQxZDdkODY1Y2M0MDg1MGQ5NTk4NTgwYjJlNDg2NzAzOTBjZWNiZjI2MDNhMjFlNzVlZDc3MWQ1NjcyZjM3NDU5OCIsImhvc3QiOiJmaWxlcy5hbmEuZXhhbXBsZSIsIm1ldGhvZCI6IlBPU1QiLCJwYXRoIjoiL2RvY3MvcmVhZCIsImJvZHlfc2hhMjU2IjoiNmVmOGJiYjUyOGU2ZjlmNTY3YjQ3MDIyYWZhNGU2N2FmYTJlODRhZGNiOWVlZmUzMWM1MmMxOTdiNzM5NTc2MiIsImlzc3VlZF9hdCI6MTc5Mzc1MDQwMH0.DG9Ou33ddPTNvc6ufA_qJjLuKo2k7wiqYBsDfcufMMItYtPT22igov7Fxvn-M1RzyzkfMKoVffQ5f5xDjq7H_A",
+    "body": "{\"doc\":\"q4-plan\"}",
+    "agent_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJQWmlGMXhLWHVpMFFMZWprTFZRY1RXRHVKOFFVYnZ1ZmxjTHNlTnNFUlI5Szh4UFRPVWhQbGo1Qlg4TnBpQjUxYzlLcFZkeWRiZ2JKTEJmd3Y2NVVmUSIsInNlYWwiOiJCTzNlSnduZFNSSE9YTklPVUtVT2NSMmxfT0NjUFFhZ0dWZVJHLWNieEFpZmhpRGxsRW9iZHdyUVN1ZXZtZ19Sd2RBWTFYTU9BMm9LZXNqUmJLN1NpbkEiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiIyNDVmMGI4YThkY2ZlYWYxYWM0MTg1ZGNhMjIzOWVkZGRkMTdlMGExNWUxYTNjOWJlYjlkZmMyYzEwNWFiNzI2In19",
+    "owner_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJLSjQ2NXRQTVFMVDJ3bGdkSjhXLTM4ckxjZHVORVhXaElSQkJqQmpmSXFmYmpJY2NjSW5RRVZDb3M2a3VpSzZsd3dld3ZFMnFPRzhWQjJMZEVVc2wySSIsInNlYWwiOiJCTEZ5bkx3WEhla04zamxRR2NfNnAtLUhlaTdhV1hMUjJySVl5NXBVbFdEMzFUVUlieWlWTzNZOXlDamN5dHVxTHRSQzdSNHptNzZCT0VFbExobjNhM28iLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiI5ODYwNTNmMDI1NDY5ZTQ3ODY3ODcxNGNjNmEyOGMzNzhhZWM4OWIxZjE2N2NjMjM4OGM3Yjk0MDg4MDc3Yjc3In19",
+    "resource": "files.ana.example",
+    "operation": "docs.read",
+    "method": "POST",
+    "path": "/docs/read",
+    "revoked": [],
+    "calls_this_hour": 0,
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": false,
+    "reason": "bad_signature"
+   }
+  },
+  {
+   "name": "other_agents_grant",
+   "status": "checked",
+   "case": "hostile",
+   "check": "grant.check",
+   "why": "A grant is useless without the holder's key.",
+   "input": {
+    "grant": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1ncmFudCJ9.eyJ2IjoxLCJvd25lciI6InNwbGludDEzMGI2YWIxZmFjMmYyY2I1MjhhMTE0NTVlMjQxNGRjZTEwNWY1MjYzZWIwYWY5ZjRlOTlmZWZhYzkzNmYzOThlIiwiaG9sZGVyIjoic3BsaW50MTlhMjc5YTczOWYyMmZiYjE1YjdmMmVjNmQ2ODczMTc4NmQ0NjU0NjY0MWRlN2VmYTM4NzRmODA1MGYxZGI1OTMiLCJyZXNvdXJjZSI6ImZpbGVzLmFuYS5leGFtcGxlIiwib3BlcmF0aW9ucyI6WyJkb2NzLnJlYWQiXSwibGltaXRzIjp7ImNhbGxzX3Blcl9ob3VyIjoyMH0sImlzc3VlZF9hdCI6MTc5Mzc1MDQwMCwiZXhwaXJlc19hdCI6MTc5NDM1NTIwMCwibm9uY2UiOiJBQUVDQXdRRkJnY0lDUW9MREEwT0R3In0.POqD_o5-suaDlUO3Mq7Vv2IQ3r7zSPCp7PK8u_6Xsu2_ros7nJR_8qJ42INHpbiQ815S9g3ZUgh2N37GAw09hg",
+    "proof": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1hY2Nlc3MifQ.eyJzaWduZXIiOiJzcGxpbnQxZDdkODY1Y2M0MDg1MGQ5NTk4NTgwYjJlNDg2NzAzOTBjZWNiZjI2MDNhMjFlNzVlZDc3MWQ1NjcyZjM3NDU5OCIsImhvc3QiOiJmaWxlcy5hbmEuZXhhbXBsZSIsIm1ldGhvZCI6IlBPU1QiLCJwYXRoIjoiL2RvY3MvcmVhZCIsImJvZHlfc2hhMjU2IjoiNmVmOGJiYjUyOGU2ZjlmNTY3YjQ3MDIyYWZhNGU2N2FmYTJlODRhZGNiOWVlZmUzMWM1MmMxOTdiNzM5NTc2MiIsImlzc3VlZF9hdCI6MTc5Mzc1MDQwMH0.DG9Ou33ddPTNvc6ufA_qJjLuKo2k7wiqYBsDfcufMMItYtPT22igov7Fxvn-M1RzyzkfMKoVffQ5f5xDjq7H_A",
+    "body": "{\"doc\":\"q4-plan\"}",
+    "agent_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJQWmlGMXhLWHVpMFFMZWprTFZRY1RXRHVKOFFVYnZ1ZmxjTHNlTnNFUlI5Szh4UFRPVWhQbGo1Qlg4TnBpQjUxYzlLcFZkeWRiZ2JKTEJmd3Y2NVVmUSIsInNlYWwiOiJCTzNlSnduZFNSSE9YTklPVUtVT2NSMmxfT0NjUFFhZ0dWZVJHLWNieEFpZmhpRGxsRW9iZHdyUVN1ZXZtZ19Sd2RBWTFYTU9BMm9LZXNqUmJLN1NpbkEiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiIyNDVmMGI4YThkY2ZlYWYxYWM0MTg1ZGNhMjIzOWVkZGRkMTdlMGExNWUxYTNjOWJlYjlkZmMyYzEwNWFiNzI2In19",
+    "owner_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJLSjQ2NXRQTVFMVDJ3bGdkSjhXLTM4ckxjZHVORVhXaElSQkJqQmpmSXFmYmpJY2NjSW5RRVZDb3M2a3VpSzZsd3dld3ZFMnFPRzhWQjJMZEVVc2wySSIsInNlYWwiOiJCTEZ5bkx3WEhla04zamxRR2NfNnAtLUhlaTdhV1hMUjJySVl5NXBVbFdEMzFUVUlieWlWTzNZOXlDamN5dHVxTHRSQzdSNHptNzZCT0VFbExobjNhM28iLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiI5ODYwNTNmMDI1NDY5ZTQ3ODY3ODcxNGNjNmEyOGMzNzhhZWM4OWIxZjE2N2NjMjM4OGM3Yjk0MDg4MDc3Yjc3In19",
+    "resource": "files.ana.example",
+    "operation": "docs.read",
+    "method": "POST",
+    "path": "/docs/read",
+    "revoked": [],
+    "calls_this_hour": 0,
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": false,
+    "reason": "wrong_holder"
+   }
+  },
+  {
+   "name": "another_resource",
+   "status": "checked",
+   "case": "hostile",
+   "check": "grant.check",
+   "why": "A grant is for one resource.",
+   "input": {
+    "grant": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1ncmFudCJ9.eyJ2IjoxLCJvd25lciI6InNwbGludDEzMGI2YWIxZmFjMmYyY2I1MjhhMTE0NTVlMjQxNGRjZTEwNWY1MjYzZWIwYWY5ZjRlOTlmZWZhYzkzNmYzOThlIiwiaG9sZGVyIjoic3BsaW50MWQ3ZDg2NWNjNDA4NTBkOTU5ODU4MGIyZTQ4NjcwMzkwY2VjYmYyNjAzYTIxZTc1ZWQ3NzFkNTY3MmYzNzQ1OTgiLCJyZXNvdXJjZSI6ImZpbGVzLm90aGVyLmV4YW1wbGUiLCJvcGVyYXRpb25zIjpbImRvY3MucmVhZCJdLCJsaW1pdHMiOnsiY2FsbHNfcGVyX2hvdXIiOjIwfSwiaXNzdWVkX2F0IjoxNzkzNzUwNDAwLCJleHBpcmVzX2F0IjoxNzk0MzU1MjAwLCJub25jZSI6IkFBRUNBd1FGQmdjSUNRb0xEQTBPRHcifQ.ZtsRymdr1uAGUlJRVHC3_JU_iwMUhxD_edBR0aNcVgd19IURQlFSSF2bdP5V4GgQm3rGCeGbJcDISnQ6YxJ3Rg",
+    "proof": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1hY2Nlc3MifQ.eyJzaWduZXIiOiJzcGxpbnQxZDdkODY1Y2M0MDg1MGQ5NTk4NTgwYjJlNDg2NzAzOTBjZWNiZjI2MDNhMjFlNzVlZDc3MWQ1NjcyZjM3NDU5OCIsImhvc3QiOiJmaWxlcy5hbmEuZXhhbXBsZSIsIm1ldGhvZCI6IlBPU1QiLCJwYXRoIjoiL2RvY3MvcmVhZCIsImJvZHlfc2hhMjU2IjoiNmVmOGJiYjUyOGU2ZjlmNTY3YjQ3MDIyYWZhNGU2N2FmYTJlODRhZGNiOWVlZmUzMWM1MmMxOTdiNzM5NTc2MiIsImlzc3VlZF9hdCI6MTc5Mzc1MDQwMH0.DG9Ou33ddPTNvc6ufA_qJjLuKo2k7wiqYBsDfcufMMItYtPT22igov7Fxvn-M1RzyzkfMKoVffQ5f5xDjq7H_A",
+    "body": "{\"doc\":\"q4-plan\"}",
+    "agent_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJQWmlGMXhLWHVpMFFMZWprTFZRY1RXRHVKOFFVYnZ1ZmxjTHNlTnNFUlI5Szh4UFRPVWhQbGo1Qlg4TnBpQjUxYzlLcFZkeWRiZ2JKTEJmd3Y2NVVmUSIsInNlYWwiOiJCTzNlSnduZFNSSE9YTklPVUtVT2NSMmxfT0NjUFFhZ0dWZVJHLWNieEFpZmhpRGxsRW9iZHdyUVN1ZXZtZ19Sd2RBWTFYTU9BMm9LZXNqUmJLN1NpbkEiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiIyNDVmMGI4YThkY2ZlYWYxYWM0MTg1ZGNhMjIzOWVkZGRkMTdlMGExNWUxYTNjOWJlYjlkZmMyYzEwNWFiNzI2In19",
+    "owner_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJLSjQ2NXRQTVFMVDJ3bGdkSjhXLTM4ckxjZHVORVhXaElSQkJqQmpmSXFmYmpJY2NjSW5RRVZDb3M2a3VpSzZsd3dld3ZFMnFPRzhWQjJMZEVVc2wySSIsInNlYWwiOiJCTEZ5bkx3WEhla04zamxRR2NfNnAtLUhlaTdhV1hMUjJySVl5NXBVbFdEMzFUVUlieWlWTzNZOXlDamN5dHVxTHRSQzdSNHptNzZCT0VFbExobjNhM28iLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiI5ODYwNTNmMDI1NDY5ZTQ3ODY3ODcxNGNjNmEyOGMzNzhhZWM4OWIxZjE2N2NjMjM4OGM3Yjk0MDg4MDc3Yjc3In19",
+    "resource": "files.ana.example",
+    "operation": "docs.read",
+    "method": "POST",
+    "path": "/docs/read",
+    "revoked": [],
+    "calls_this_hour": 0,
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": false,
+    "reason": "wrong_resource"
+   }
+  },
+  {
+   "name": "another_operation",
+   "status": "checked",
+   "case": "hostile",
+   "check": "grant.check",
+   "why": "A grant names the operations it allows, and a resource asks about one.",
+   "input": {
+    "grant": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1ncmFudCJ9.eyJ2IjoxLCJvd25lciI6InNwbGludDEzMGI2YWIxZmFjMmYyY2I1MjhhMTE0NTVlMjQxNGRjZTEwNWY1MjYzZWIwYWY5ZjRlOTlmZWZhYzkzNmYzOThlIiwiaG9sZGVyIjoic3BsaW50MWQ3ZDg2NWNjNDA4NTBkOTU5ODU4MGIyZTQ4NjcwMzkwY2VjYmYyNjAzYTIxZTc1ZWQ3NzFkNTY3MmYzNzQ1OTgiLCJyZXNvdXJjZSI6ImZpbGVzLmFuYS5leGFtcGxlIiwib3BlcmF0aW9ucyI6WyJkb2NzLnJlYWQiXSwibGltaXRzIjp7ImNhbGxzX3Blcl9ob3VyIjoyMH0sImlzc3VlZF9hdCI6MTc5Mzc1MDQwMCwiZXhwaXJlc19hdCI6MTc5NDM1NTIwMCwibm9uY2UiOiJBQUVDQXdRRkJnY0lDUW9MREEwT0R3In0.plwXgYcIxJvEh2MhToajKxTDNk1zvNzS91x_F5jlKnpM6CUOwDITIjnFvyOfKILf8ABtX3c-BgENnHGHPw79xA",
+    "proof": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1hY2Nlc3MifQ.eyJzaWduZXIiOiJzcGxpbnQxZDdkODY1Y2M0MDg1MGQ5NTk4NTgwYjJlNDg2NzAzOTBjZWNiZjI2MDNhMjFlNzVlZDc3MWQ1NjcyZjM3NDU5OCIsImhvc3QiOiJmaWxlcy5hbmEuZXhhbXBsZSIsIm1ldGhvZCI6IlBPU1QiLCJwYXRoIjoiL2RvY3MvcmVhZCIsImJvZHlfc2hhMjU2IjoiNmVmOGJiYjUyOGU2ZjlmNTY3YjQ3MDIyYWZhNGU2N2FmYTJlODRhZGNiOWVlZmUzMWM1MmMxOTdiNzM5NTc2MiIsImlzc3VlZF9hdCI6MTc5Mzc1MDQwMH0.DG9Ou33ddPTNvc6ufA_qJjLuKo2k7wiqYBsDfcufMMItYtPT22igov7Fxvn-M1RzyzkfMKoVffQ5f5xDjq7H_A",
+    "body": "{\"doc\":\"q4-plan\"}",
+    "agent_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJQWmlGMXhLWHVpMFFMZWprTFZRY1RXRHVKOFFVYnZ1ZmxjTHNlTnNFUlI5Szh4UFRPVWhQbGo1Qlg4TnBpQjUxYzlLcFZkeWRiZ2JKTEJmd3Y2NVVmUSIsInNlYWwiOiJCTzNlSnduZFNSSE9YTklPVUtVT2NSMmxfT0NjUFFhZ0dWZVJHLWNieEFpZmhpRGxsRW9iZHdyUVN1ZXZtZ19Sd2RBWTFYTU9BMm9LZXNqUmJLN1NpbkEiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiIyNDVmMGI4YThkY2ZlYWYxYWM0MTg1ZGNhMjIzOWVkZGRkMTdlMGExNWUxYTNjOWJlYjlkZmMyYzEwNWFiNzI2In19",
+    "owner_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJLSjQ2NXRQTVFMVDJ3bGdkSjhXLTM4ckxjZHVORVhXaElSQkJqQmpmSXFmYmpJY2NjSW5RRVZDb3M2a3VpSzZsd3dld3ZFMnFPRzhWQjJMZEVVc2wySSIsInNlYWwiOiJCTEZ5bkx3WEhla04zamxRR2NfNnAtLUhlaTdhV1hMUjJySVl5NXBVbFdEMzFUVUlieWlWTzNZOXlDamN5dHVxTHRSQzdSNHptNzZCT0VFbExobjNhM28iLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiI5ODYwNTNmMDI1NDY5ZTQ3ODY3ODcxNGNjNmEyOGMzNzhhZWM4OWIxZjE2N2NjMjM4OGM3Yjk0MDg4MDc3Yjc3In19",
+    "resource": "files.ana.example",
+    "operation": "docs.write",
+    "method": "POST",
+    "path": "/docs/read",
+    "revoked": [],
+    "calls_this_hour": 0,
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": false,
+    "reason": "no_grant"
+   }
+  },
+  {
+   "name": "proof_for_another_resource",
+   "status": "checked",
+   "case": "hostile",
+   "check": "grant.check",
+   "why": "Same for the proof.",
+   "input": {
+    "grant": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1ncmFudCJ9.eyJ2IjoxLCJvd25lciI6InNwbGludDEzMGI2YWIxZmFjMmYyY2I1MjhhMTE0NTVlMjQxNGRjZTEwNWY1MjYzZWIwYWY5ZjRlOTlmZWZhYzkzNmYzOThlIiwiaG9sZGVyIjoic3BsaW50MWQ3ZDg2NWNjNDA4NTBkOTU5ODU4MGIyZTQ4NjcwMzkwY2VjYmYyNjAzYTIxZTc1ZWQ3NzFkNTY3MmYzNzQ1OTgiLCJyZXNvdXJjZSI6ImZpbGVzLmFuYS5leGFtcGxlIiwib3BlcmF0aW9ucyI6WyJkb2NzLnJlYWQiXSwibGltaXRzIjp7ImNhbGxzX3Blcl9ob3VyIjoyMH0sImlzc3VlZF9hdCI6MTc5Mzc1MDQwMCwiZXhwaXJlc19hdCI6MTc5NDM1NTIwMCwibm9uY2UiOiJBQUVDQXdRRkJnY0lDUW9MREEwT0R3In0.plwXgYcIxJvEh2MhToajKxTDNk1zvNzS91x_F5jlKnpM6CUOwDITIjnFvyOfKILf8ABtX3c-BgENnHGHPw79xA",
+    "proof": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1hY2Nlc3MifQ.eyJzaWduZXIiOiJzcGxpbnQxZDdkODY1Y2M0MDg1MGQ5NTk4NTgwYjJlNDg2NzAzOTBjZWNiZjI2MDNhMjFlNzVlZDc3MWQ1NjcyZjM3NDU5OCIsImhvc3QiOiJmaWxlcy5vdGhlci5leGFtcGxlIiwibWV0aG9kIjoiUE9TVCIsInBhdGgiOiIvZG9jcy9yZWFkIiwiYm9keV9zaGEyNTYiOiI2ZWY4YmJiNTI4ZTZmOWY1NjdiNDcwMjJhZmE0ZTY3YWZhMmU4NGFkY2I5ZWVmZTMxYzUyYzE5N2I3Mzk1NzYyIiwiaXNzdWVkX2F0IjoxNzkzNzUwNDAwfQ.GUASYf2pvdKtLLpr3FdfRmvLGy3g5qZLFjN_c5DSpj7SkOA3GDJFhp8dgRw7QtTxy-ZVmkHuBtuff8uBGruP0g",
+    "body": "{\"doc\":\"q4-plan\"}",
+    "agent_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJQWmlGMXhLWHVpMFFMZWprTFZRY1RXRHVKOFFVYnZ1ZmxjTHNlTnNFUlI5Szh4UFRPVWhQbGo1Qlg4TnBpQjUxYzlLcFZkeWRiZ2JKTEJmd3Y2NVVmUSIsInNlYWwiOiJCTzNlSnduZFNSSE9YTklPVUtVT2NSMmxfT0NjUFFhZ0dWZVJHLWNieEFpZmhpRGxsRW9iZHdyUVN1ZXZtZ19Sd2RBWTFYTU9BMm9LZXNqUmJLN1NpbkEiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiIyNDVmMGI4YThkY2ZlYWYxYWM0MTg1ZGNhMjIzOWVkZGRkMTdlMGExNWUxYTNjOWJlYjlkZmMyYzEwNWFiNzI2In19",
+    "owner_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJLSjQ2NXRQTVFMVDJ3bGdkSjhXLTM4ckxjZHVORVhXaElSQkJqQmpmSXFmYmpJY2NjSW5RRVZDb3M2a3VpSzZsd3dld3ZFMnFPRzhWQjJMZEVVc2wySSIsInNlYWwiOiJCTEZ5bkx3WEhla04zamxRR2NfNnAtLUhlaTdhV1hMUjJySVl5NXBVbFdEMzFUVUlieWlWTzNZOXlDamN5dHVxTHRSQzdSNHptNzZCT0VFbExobjNhM28iLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiI5ODYwNTNmMDI1NDY5ZTQ3ODY3ODcxNGNjNmEyOGMzNzhhZWM4OWIxZjE2N2NjMjM4OGM3Yjk0MDg4MDc3Yjc3In19",
+    "resource": "files.ana.example",
+    "operation": "docs.read",
+    "method": "POST",
+    "path": "/docs/read",
+    "revoked": [],
+    "calls_this_hour": 0,
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": false,
+    "reason": "bad_proof"
+   }
+  },
+  {
+   "name": "proof_by_another_key",
+   "status": "checked",
+   "case": "hostile",
+   "check": "grant.check",
+   "why": "Only the holder's key.",
+   "input": {
+    "grant": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1ncmFudCJ9.eyJ2IjoxLCJvd25lciI6InNwbGludDEzMGI2YWIxZmFjMmYyY2I1MjhhMTE0NTVlMjQxNGRjZTEwNWY1MjYzZWIwYWY5ZjRlOTlmZWZhYzkzNmYzOThlIiwiaG9sZGVyIjoic3BsaW50MWQ3ZDg2NWNjNDA4NTBkOTU5ODU4MGIyZTQ4NjcwMzkwY2VjYmYyNjAzYTIxZTc1ZWQ3NzFkNTY3MmYzNzQ1OTgiLCJyZXNvdXJjZSI6ImZpbGVzLmFuYS5leGFtcGxlIiwib3BlcmF0aW9ucyI6WyJkb2NzLnJlYWQiXSwibGltaXRzIjp7ImNhbGxzX3Blcl9ob3VyIjoyMH0sImlzc3VlZF9hdCI6MTc5Mzc1MDQwMCwiZXhwaXJlc19hdCI6MTc5NDM1NTIwMCwibm9uY2UiOiJBQUVDQXdRRkJnY0lDUW9MREEwT0R3In0.plwXgYcIxJvEh2MhToajKxTDNk1zvNzS91x_F5jlKnpM6CUOwDITIjnFvyOfKILf8ABtX3c-BgENnHGHPw79xA",
+    "proof": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1hY2Nlc3MifQ.eyJzaWduZXIiOiJzcGxpbnQxZDdkODY1Y2M0MDg1MGQ5NTk4NTgwYjJlNDg2NzAzOTBjZWNiZjI2MDNhMjFlNzVlZDc3MWQ1NjcyZjM3NDU5OCIsImhvc3QiOiJmaWxlcy5hbmEuZXhhbXBsZSIsIm1ldGhvZCI6IlBPU1QiLCJwYXRoIjoiL2RvY3MvcmVhZCIsImJvZHlfc2hhMjU2IjoiNmVmOGJiYjUyOGU2ZjlmNTY3YjQ3MDIyYWZhNGU2N2FmYTJlODRhZGNiOWVlZmUzMWM1MmMxOTdiNzM5NTc2MiIsImlzc3VlZF9hdCI6MTc5Mzc1MDQwMH0.cUlkv-enc8oAyBWymZ6DZFjOtpJ6SZhMFVKprZB2METIzTVRziWWFWDJ4Ik21tqJTFvs9YppVB-_hoUqzmj-Vw",
+    "body": "{\"doc\":\"q4-plan\"}",
+    "agent_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJQWmlGMXhLWHVpMFFMZWprTFZRY1RXRHVKOFFVYnZ1ZmxjTHNlTnNFUlI5Szh4UFRPVWhQbGo1Qlg4TnBpQjUxYzlLcFZkeWRiZ2JKTEJmd3Y2NVVmUSIsInNlYWwiOiJCTzNlSnduZFNSSE9YTklPVUtVT2NSMmxfT0NjUFFhZ0dWZVJHLWNieEFpZmhpRGxsRW9iZHdyUVN1ZXZtZ19Sd2RBWTFYTU9BMm9LZXNqUmJLN1NpbkEiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiIyNDVmMGI4YThkY2ZlYWYxYWM0MTg1ZGNhMjIzOWVkZGRkMTdlMGExNWUxYTNjOWJlYjlkZmMyYzEwNWFiNzI2In19",
+    "owner_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJLSjQ2NXRQTVFMVDJ3bGdkSjhXLTM4ckxjZHVORVhXaElSQkJqQmpmSXFmYmpJY2NjSW5RRVZDb3M2a3VpSzZsd3dld3ZFMnFPRzhWQjJMZEVVc2wySSIsInNlYWwiOiJCTEZ5bkx3WEhla04zamxRR2NfNnAtLUhlaTdhV1hMUjJySVl5NXBVbFdEMzFUVUlieWlWTzNZOXlDamN5dHVxTHRSQzdSNHptNzZCT0VFbExobjNhM28iLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiI5ODYwNTNmMDI1NDY5ZTQ3ODY3ODcxNGNjNmEyOGMzNzhhZWM4OWIxZjE2N2NjMjM4OGM3Yjk0MDg4MDc3Yjc3In19",
+    "resource": "files.ana.example",
+    "operation": "docs.read",
+    "method": "POST",
+    "path": "/docs/read",
+    "revoked": [],
+    "calls_this_hour": 0,
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": false,
+    "reason": "bad_proof"
+   }
+  },
+  {
+   "name": "proof_for_another_body",
+   "status": "checked",
+   "case": "hostile",
+   "check": "grant.check",
+   "why": "A captured proof can't ask something else.",
+   "input": {
+    "grant": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1ncmFudCJ9.eyJ2IjoxLCJvd25lciI6InNwbGludDEzMGI2YWIxZmFjMmYyY2I1MjhhMTE0NTVlMjQxNGRjZTEwNWY1MjYzZWIwYWY5ZjRlOTlmZWZhYzkzNmYzOThlIiwiaG9sZGVyIjoic3BsaW50MWQ3ZDg2NWNjNDA4NTBkOTU5ODU4MGIyZTQ4NjcwMzkwY2VjYmYyNjAzYTIxZTc1ZWQ3NzFkNTY3MmYzNzQ1OTgiLCJyZXNvdXJjZSI6ImZpbGVzLmFuYS5leGFtcGxlIiwib3BlcmF0aW9ucyI6WyJkb2NzLnJlYWQiXSwibGltaXRzIjp7ImNhbGxzX3Blcl9ob3VyIjoyMH0sImlzc3VlZF9hdCI6MTc5Mzc1MDQwMCwiZXhwaXJlc19hdCI6MTc5NDM1NTIwMCwibm9uY2UiOiJBQUVDQXdRRkJnY0lDUW9MREEwT0R3In0.plwXgYcIxJvEh2MhToajKxTDNk1zvNzS91x_F5jlKnpM6CUOwDITIjnFvyOfKILf8ABtX3c-BgENnHGHPw79xA",
+    "proof": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1hY2Nlc3MifQ.eyJzaWduZXIiOiJzcGxpbnQxZDdkODY1Y2M0MDg1MGQ5NTk4NTgwYjJlNDg2NzAzOTBjZWNiZjI2MDNhMjFlNzVlZDc3MWQ1NjcyZjM3NDU5OCIsImhvc3QiOiJmaWxlcy5hbmEuZXhhbXBsZSIsIm1ldGhvZCI6IlBPU1QiLCJwYXRoIjoiL2RvY3MvcmVhZCIsImJvZHlfc2hhMjU2IjoiNDQxMzZmYTM1NWIzNjc4YTExNDZhZDE2ZjdlODY0OWU5NGZiNGZjMjFmZTc3ZTgzMTBjMDYwZjYxY2FhZmY4YSIsImlzc3VlZF9hdCI6MTc5Mzc1MDQwMH0.k1fXxt5roHTwxclKRNmGTGN8e8lHheN20Ro6S530L98FVxtT8pKovX2_KEhWWmZ5YXBiHL2ND7R8Abts0e7uGg",
+    "body": "{\"doc\":\"q4-plan\"}",
+    "agent_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJQWmlGMXhLWHVpMFFMZWprTFZRY1RXRHVKOFFVYnZ1ZmxjTHNlTnNFUlI5Szh4UFRPVWhQbGo1Qlg4TnBpQjUxYzlLcFZkeWRiZ2JKTEJmd3Y2NVVmUSIsInNlYWwiOiJCTzNlSnduZFNSSE9YTklPVUtVT2NSMmxfT0NjUFFhZ0dWZVJHLWNieEFpZmhpRGxsRW9iZHdyUVN1ZXZtZ19Sd2RBWTFYTU9BMm9LZXNqUmJLN1NpbkEiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiIyNDVmMGI4YThkY2ZlYWYxYWM0MTg1ZGNhMjIzOWVkZGRkMTdlMGExNWUxYTNjOWJlYjlkZmMyYzEwNWFiNzI2In19",
+    "owner_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJLSjQ2NXRQTVFMVDJ3bGdkSjhXLTM4ckxjZHVORVhXaElSQkJqQmpmSXFmYmpJY2NjSW5RRVZDb3M2a3VpSzZsd3dld3ZFMnFPRzhWQjJMZEVVc2wySSIsInNlYWwiOiJCTEZ5bkx3WEhla04zamxRR2NfNnAtLUhlaTdhV1hMUjJySVl5NXBVbFdEMzFUVUlieWlWTzNZOXlDamN5dHVxTHRSQzdSNHptNzZCT0VFbExobjNhM28iLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiI5ODYwNTNmMDI1NDY5ZTQ3ODY3ODcxNGNjNmEyOGMzNzhhZWM4OWIxZjE2N2NjMjM4OGM3Yjk0MDg4MDc3Yjc3In19",
+    "resource": "files.ana.example",
+    "operation": "docs.read",
+    "method": "POST",
+    "path": "/docs/read",
+    "revoked": [],
+    "calls_this_hour": 0,
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": false,
+    "reason": "bad_proof"
+   }
+  },
+  {
+   "name": "stale_proof",
+   "status": "checked",
+   "case": "hostile",
+   "check": "grant.check",
+   "why": "Proofs live for 120 seconds.",
+   "input": {
+    "grant": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1ncmFudCJ9.eyJ2IjoxLCJvd25lciI6InNwbGludDEzMGI2YWIxZmFjMmYyY2I1MjhhMTE0NTVlMjQxNGRjZTEwNWY1MjYzZWIwYWY5ZjRlOTlmZWZhYzkzNmYzOThlIiwiaG9sZGVyIjoic3BsaW50MWQ3ZDg2NWNjNDA4NTBkOTU5ODU4MGIyZTQ4NjcwMzkwY2VjYmYyNjAzYTIxZTc1ZWQ3NzFkNTY3MmYzNzQ1OTgiLCJyZXNvdXJjZSI6ImZpbGVzLmFuYS5leGFtcGxlIiwib3BlcmF0aW9ucyI6WyJkb2NzLnJlYWQiXSwibGltaXRzIjp7ImNhbGxzX3Blcl9ob3VyIjoyMH0sImlzc3VlZF9hdCI6MTc5Mzc1MDQwMCwiZXhwaXJlc19hdCI6MTc5NDM1NTIwMCwibm9uY2UiOiJBQUVDQXdRRkJnY0lDUW9MREEwT0R3In0.plwXgYcIxJvEh2MhToajKxTDNk1zvNzS91x_F5jlKnpM6CUOwDITIjnFvyOfKILf8ABtX3c-BgENnHGHPw79xA",
+    "proof": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1hY2Nlc3MifQ.eyJzaWduZXIiOiJzcGxpbnQxZDdkODY1Y2M0MDg1MGQ5NTk4NTgwYjJlNDg2NzAzOTBjZWNiZjI2MDNhMjFlNzVlZDc3MWQ1NjcyZjM3NDU5OCIsImhvc3QiOiJmaWxlcy5hbmEuZXhhbXBsZSIsIm1ldGhvZCI6IlBPU1QiLCJwYXRoIjoiL2RvY3MvcmVhZCIsImJvZHlfc2hhMjU2IjoiNmVmOGJiYjUyOGU2ZjlmNTY3YjQ3MDIyYWZhNGU2N2FmYTJlODRhZGNiOWVlZmUzMWM1MmMxOTdiNzM5NTc2MiIsImlzc3VlZF9hdCI6MTc5Mzc1MDQwMH0.DG9Ou33ddPTNvc6ufA_qJjLuKo2k7wiqYBsDfcufMMItYtPT22igov7Fxvn-M1RzyzkfMKoVffQ5f5xDjq7H_A",
+    "body": "{\"doc\":\"q4-plan\"}",
+    "agent_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJQWmlGMXhLWHVpMFFMZWprTFZRY1RXRHVKOFFVYnZ1ZmxjTHNlTnNFUlI5Szh4UFRPVWhQbGo1Qlg4TnBpQjUxYzlLcFZkeWRiZ2JKTEJmd3Y2NVVmUSIsInNlYWwiOiJCTzNlSnduZFNSSE9YTklPVUtVT2NSMmxfT0NjUFFhZ0dWZVJHLWNieEFpZmhpRGxsRW9iZHdyUVN1ZXZtZ19Sd2RBWTFYTU9BMm9LZXNqUmJLN1NpbkEiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiIyNDVmMGI4YThkY2ZlYWYxYWM0MTg1ZGNhMjIzOWVkZGRkMTdlMGExNWUxYTNjOWJlYjlkZmMyYzEwNWFiNzI2In19",
+    "owner_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJLSjQ2NXRQTVFMVDJ3bGdkSjhXLTM4ckxjZHVORVhXaElSQkJqQmpmSXFmYmpJY2NjSW5RRVZDb3M2a3VpSzZsd3dld3ZFMnFPRzhWQjJMZEVVc2wySSIsInNlYWwiOiJCTEZ5bkx3WEhla04zamxRR2NfNnAtLUhlaTdhV1hMUjJySVl5NXBVbFdEMzFUVUlieWlWTzNZOXlDamN5dHVxTHRSQzdSNHptNzZCT0VFbExobjNhM28iLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiI5ODYwNTNmMDI1NDY5ZTQ3ODY3ODcxNGNjNmEyOGMzNzhhZWM4OWIxZjE2N2NjMjM4OGM3Yjk0MDg4MDc3Yjc3In19",
+    "resource": "files.ana.example",
+    "operation": "docs.read",
+    "method": "POST",
+    "path": "/docs/read",
+    "revoked": [],
+    "calls_this_hour": 0,
+    "now": 1793750521
+   },
+   "expect": {
+    "ok": false,
+    "reason": "bad_proof"
+   }
+  },
+  {
+   "name": "future_dated_proof",
+   "status": "checked",
+   "case": "hostile",
+   "check": "grant.check",
+   "why": "Either way.",
+   "input": {
+    "grant": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1ncmFudCJ9.eyJ2IjoxLCJvd25lciI6InNwbGludDEzMGI2YWIxZmFjMmYyY2I1MjhhMTE0NTVlMjQxNGRjZTEwNWY1MjYzZWIwYWY5ZjRlOTlmZWZhYzkzNmYzOThlIiwiaG9sZGVyIjoic3BsaW50MWQ3ZDg2NWNjNDA4NTBkOTU5ODU4MGIyZTQ4NjcwMzkwY2VjYmYyNjAzYTIxZTc1ZWQ3NzFkNTY3MmYzNzQ1OTgiLCJyZXNvdXJjZSI6ImZpbGVzLmFuYS5leGFtcGxlIiwib3BlcmF0aW9ucyI6WyJkb2NzLnJlYWQiXSwibGltaXRzIjp7ImNhbGxzX3Blcl9ob3VyIjoyMH0sImlzc3VlZF9hdCI6MTc5Mzc1MDQwMCwiZXhwaXJlc19hdCI6MTc5NDM1NTIwMCwibm9uY2UiOiJBQUVDQXdRRkJnY0lDUW9MREEwT0R3In0.plwXgYcIxJvEh2MhToajKxTDNk1zvNzS91x_F5jlKnpM6CUOwDITIjnFvyOfKILf8ABtX3c-BgENnHGHPw79xA",
+    "proof": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1hY2Nlc3MifQ.eyJzaWduZXIiOiJzcGxpbnQxZDdkODY1Y2M0MDg1MGQ5NTk4NTgwYjJlNDg2NzAzOTBjZWNiZjI2MDNhMjFlNzVlZDc3MWQ1NjcyZjM3NDU5OCIsImhvc3QiOiJmaWxlcy5hbmEuZXhhbXBsZSIsIm1ldGhvZCI6IlBPU1QiLCJwYXRoIjoiL2RvY3MvcmVhZCIsImJvZHlfc2hhMjU2IjoiNmVmOGJiYjUyOGU2ZjlmNTY3YjQ3MDIyYWZhNGU2N2FmYTJlODRhZGNiOWVlZmUzMWM1MmMxOTdiNzM5NTc2MiIsImlzc3VlZF9hdCI6MTc5Mzc1MDUyMX0.43Pxf7-pFmlU1miPrsRzNkQZQdxKy4hRWy2BaO5ep0ugPEpmof-3rRiCW3cNeuXEjvYO8SDIQRq9oBcP_5ltAQ",
+    "body": "{\"doc\":\"q4-plan\"}",
+    "agent_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJQWmlGMXhLWHVpMFFMZWprTFZRY1RXRHVKOFFVYnZ1ZmxjTHNlTnNFUlI5Szh4UFRPVWhQbGo1Qlg4TnBpQjUxYzlLcFZkeWRiZ2JKTEJmd3Y2NVVmUSIsInNlYWwiOiJCTzNlSnduZFNSSE9YTklPVUtVT2NSMmxfT0NjUFFhZ0dWZVJHLWNieEFpZmhpRGxsRW9iZHdyUVN1ZXZtZ19Sd2RBWTFYTU9BMm9LZXNqUmJLN1NpbkEiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiIyNDVmMGI4YThkY2ZlYWYxYWM0MTg1ZGNhMjIzOWVkZGRkMTdlMGExNWUxYTNjOWJlYjlkZmMyYzEwNWFiNzI2In19",
+    "owner_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJLSjQ2NXRQTVFMVDJ3bGdkSjhXLTM4ckxjZHVORVhXaElSQkJqQmpmSXFmYmpJY2NjSW5RRVZDb3M2a3VpSzZsd3dld3ZFMnFPRzhWQjJMZEVVc2wySSIsInNlYWwiOiJCTEZ5bkx3WEhla04zamxRR2NfNnAtLUhlaTdhV1hMUjJySVl5NXBVbFdEMzFUVUlieWlWTzNZOXlDamN5dHVxTHRSQzdSNHptNzZCT0VFbExobjNhM28iLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiI5ODYwNTNmMDI1NDY5ZTQ3ODY3ODcxNGNjNmEyOGMzNzhhZWM4OWIxZjE2N2NjMjM4OGM3Yjk0MDg4MDc3Yjc3In19",
+    "resource": "files.ana.example",
+    "operation": "docs.read",
+    "method": "POST",
+    "path": "/docs/read",
+    "revoked": [],
+    "calls_this_hour": 0,
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": false,
+    "reason": "bad_proof"
+   }
+  },
+  {
+   "name": "proof_naming_another_signer",
+   "status": "checked",
+   "case": "hostile",
+   "check": "grant.check",
+   "why": "The proof must name the holder it's signed by.",
+   "input": {
+    "grant": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1ncmFudCJ9.eyJ2IjoxLCJvd25lciI6InNwbGludDEzMGI2YWIxZmFjMmYyY2I1MjhhMTE0NTVlMjQxNGRjZTEwNWY1MjYzZWIwYWY5ZjRlOTlmZWZhYzkzNmYzOThlIiwiaG9sZGVyIjoic3BsaW50MWQ3ZDg2NWNjNDA4NTBkOTU5ODU4MGIyZTQ4NjcwMzkwY2VjYmYyNjAzYTIxZTc1ZWQ3NzFkNTY3MmYzNzQ1OTgiLCJyZXNvdXJjZSI6ImZpbGVzLmFuYS5leGFtcGxlIiwib3BlcmF0aW9ucyI6WyJkb2NzLnJlYWQiXSwibGltaXRzIjp7ImNhbGxzX3Blcl9ob3VyIjoyMH0sImlzc3VlZF9hdCI6MTc5Mzc1MDQwMCwiZXhwaXJlc19hdCI6MTc5NDM1NTIwMCwibm9uY2UiOiJBQUVDQXdRRkJnY0lDUW9MREEwT0R3In0.plwXgYcIxJvEh2MhToajKxTDNk1zvNzS91x_F5jlKnpM6CUOwDITIjnFvyOfKILf8ABtX3c-BgENnHGHPw79xA",
+    "proof": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1hY2Nlc3MifQ.eyJzaWduZXIiOiJzcGxpbnQxOWEyNzlhNzM5ZjIyZmJiMTViN2YyZWM2ZDY4NzMxNzg2ZDQ2NTQ2NjQxZGU3ZWZhMzg3NGY4MDUwZjFkYjU5MyIsImhvc3QiOiJmaWxlcy5hbmEuZXhhbXBsZSIsIm1ldGhvZCI6IlBPU1QiLCJwYXRoIjoiL2RvY3MvcmVhZCIsImJvZHlfc2hhMjU2IjoiNmVmOGJiYjUyOGU2ZjlmNTY3YjQ3MDIyYWZhNGU2N2FmYTJlODRhZGNiOWVlZmUzMWM1MmMxOTdiNzM5NTc2MiIsImlzc3VlZF9hdCI6MTc5Mzc1MDQwMH0.z_SvBByz4qbrcJAGEWpsTaYuQnF18LdEhudvmV03XRj-zcOmCL7beltTNx4MWf0dJ59BIRTfGuOvsVKNJNDtqQ",
+    "body": "{\"doc\":\"q4-plan\"}",
+    "agent_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJQWmlGMXhLWHVpMFFMZWprTFZRY1RXRHVKOFFVYnZ1ZmxjTHNlTnNFUlI5Szh4UFRPVWhQbGo1Qlg4TnBpQjUxYzlLcFZkeWRiZ2JKTEJmd3Y2NVVmUSIsInNlYWwiOiJCTzNlSnduZFNSSE9YTklPVUtVT2NSMmxfT0NjUFFhZ0dWZVJHLWNieEFpZmhpRGxsRW9iZHdyUVN1ZXZtZ19Sd2RBWTFYTU9BMm9LZXNqUmJLN1NpbkEiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiIyNDVmMGI4YThkY2ZlYWYxYWM0MTg1ZGNhMjIzOWVkZGRkMTdlMGExNWUxYTNjOWJlYjlkZmMyYzEwNWFiNzI2In19",
+    "owner_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJLSjQ2NXRQTVFMVDJ3bGdkSjhXLTM4ckxjZHVORVhXaElSQkJqQmpmSXFmYmpJY2NjSW5RRVZDb3M2a3VpSzZsd3dld3ZFMnFPRzhWQjJMZEVVc2wySSIsInNlYWwiOiJCTEZ5bkx3WEhla04zamxRR2NfNnAtLUhlaTdhV1hMUjJySVl5NXBVbFdEMzFUVUlieWlWTzNZOXlDamN5dHVxTHRSQzdSNHptNzZCT0VFbExobjNhM28iLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiI5ODYwNTNmMDI1NDY5ZTQ3ODY3ODcxNGNjNmEyOGMzNzhhZWM4OWIxZjE2N2NjMjM4OGM3Yjk0MDg4MDc3Yjc3In19",
+    "resource": "files.ana.example",
+    "operation": "docs.read",
+    "method": "POST",
+    "path": "/docs/read",
+    "revoked": [],
+    "calls_this_hour": 0,
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": false,
+    "reason": "bad_proof"
+   }
+  },
+  {
+   "name": "proof_for_another_method",
+   "status": "checked",
+   "case": "hostile",
+   "check": "grant.check",
+   "why": "A proof fits one method.",
+   "input": {
+    "grant": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1ncmFudCJ9.eyJ2IjoxLCJvd25lciI6InNwbGludDEzMGI2YWIxZmFjMmYyY2I1MjhhMTE0NTVlMjQxNGRjZTEwNWY1MjYzZWIwYWY5ZjRlOTlmZWZhYzkzNmYzOThlIiwiaG9sZGVyIjoic3BsaW50MWQ3ZDg2NWNjNDA4NTBkOTU5ODU4MGIyZTQ4NjcwMzkwY2VjYmYyNjAzYTIxZTc1ZWQ3NzFkNTY3MmYzNzQ1OTgiLCJyZXNvdXJjZSI6ImZpbGVzLmFuYS5leGFtcGxlIiwib3BlcmF0aW9ucyI6WyJkb2NzLnJlYWQiXSwibGltaXRzIjp7ImNhbGxzX3Blcl9ob3VyIjoyMH0sImlzc3VlZF9hdCI6MTc5Mzc1MDQwMCwiZXhwaXJlc19hdCI6MTc5NDM1NTIwMCwibm9uY2UiOiJBQUVDQXdRRkJnY0lDUW9MREEwT0R3In0.plwXgYcIxJvEh2MhToajKxTDNk1zvNzS91x_F5jlKnpM6CUOwDITIjnFvyOfKILf8ABtX3c-BgENnHGHPw79xA",
+    "proof": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1hY2Nlc3MifQ.eyJzaWduZXIiOiJzcGxpbnQxZDdkODY1Y2M0MDg1MGQ5NTk4NTgwYjJlNDg2NzAzOTBjZWNiZjI2MDNhMjFlNzVlZDc3MWQ1NjcyZjM3NDU5OCIsImhvc3QiOiJmaWxlcy5hbmEuZXhhbXBsZSIsIm1ldGhvZCI6IkdFVCIsInBhdGgiOiIvZG9jcy9yZWFkIiwiYm9keV9zaGEyNTYiOiI2ZWY4YmJiNTI4ZTZmOWY1NjdiNDcwMjJhZmE0ZTY3YWZhMmU4NGFkY2I5ZWVmZTMxYzUyYzE5N2I3Mzk1NzYyIiwiaXNzdWVkX2F0IjoxNzkzNzUwNDAwfQ.ychpcfoRJzLbr8DrbisfGbxeXQnK2npS5456cD_fA5EkOzp8Tw0dG3VkZe4dqtu7oLPk2Va8vMXBEI29zMDSmg",
+    "body": "{\"doc\":\"q4-plan\"}",
+    "agent_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJQWmlGMXhLWHVpMFFMZWprTFZRY1RXRHVKOFFVYnZ1ZmxjTHNlTnNFUlI5Szh4UFRPVWhQbGo1Qlg4TnBpQjUxYzlLcFZkeWRiZ2JKTEJmd3Y2NVVmUSIsInNlYWwiOiJCTzNlSnduZFNSSE9YTklPVUtVT2NSMmxfT0NjUFFhZ0dWZVJHLWNieEFpZmhpRGxsRW9iZHdyUVN1ZXZtZ19Sd2RBWTFYTU9BMm9LZXNqUmJLN1NpbkEiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiIyNDVmMGI4YThkY2ZlYWYxYWM0MTg1ZGNhMjIzOWVkZGRkMTdlMGExNWUxYTNjOWJlYjlkZmMyYzEwNWFiNzI2In19",
+    "owner_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJLSjQ2NXRQTVFMVDJ3bGdkSjhXLTM4ckxjZHVORVhXaElSQkJqQmpmSXFmYmpJY2NjSW5RRVZDb3M2a3VpSzZsd3dld3ZFMnFPRzhWQjJMZEVVc2wySSIsInNlYWwiOiJCTEZ5bkx3WEhla04zamxRR2NfNnAtLUhlaTdhV1hMUjJySVl5NXBVbFdEMzFUVUlieWlWTzNZOXlDamN5dHVxTHRSQzdSNHptNzZCT0VFbExobjNhM28iLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiI5ODYwNTNmMDI1NDY5ZTQ3ODY3ODcxNGNjNmEyOGMzNzhhZWM4OWIxZjE2N2NjMjM4OGM3Yjk0MDg4MDc3Yjc3In19",
+    "resource": "files.ana.example",
+    "operation": "docs.read",
+    "method": "POST",
+    "path": "/docs/read",
+    "revoked": [],
+    "calls_this_hour": 0,
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": false,
+    "reason": "bad_proof"
+   }
+  },
+  {
+   "name": "proof_for_another_path",
+   "status": "checked",
+   "case": "hostile",
+   "check": "grant.check",
+   "why": "And one path.",
+   "input": {
+    "grant": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1ncmFudCJ9.eyJ2IjoxLCJvd25lciI6InNwbGludDEzMGI2YWIxZmFjMmYyY2I1MjhhMTE0NTVlMjQxNGRjZTEwNWY1MjYzZWIwYWY5ZjRlOTlmZWZhYzkzNmYzOThlIiwiaG9sZGVyIjoic3BsaW50MWQ3ZDg2NWNjNDA4NTBkOTU5ODU4MGIyZTQ4NjcwMzkwY2VjYmYyNjAzYTIxZTc1ZWQ3NzFkNTY3MmYzNzQ1OTgiLCJyZXNvdXJjZSI6ImZpbGVzLmFuYS5leGFtcGxlIiwib3BlcmF0aW9ucyI6WyJkb2NzLnJlYWQiXSwibGltaXRzIjp7ImNhbGxzX3Blcl9ob3VyIjoyMH0sImlzc3VlZF9hdCI6MTc5Mzc1MDQwMCwiZXhwaXJlc19hdCI6MTc5NDM1NTIwMCwibm9uY2UiOiJBQUVDQXdRRkJnY0lDUW9MREEwT0R3In0.plwXgYcIxJvEh2MhToajKxTDNk1zvNzS91x_F5jlKnpM6CUOwDITIjnFvyOfKILf8ABtX3c-BgENnHGHPw79xA",
+    "proof": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1hY2Nlc3MifQ.eyJzaWduZXIiOiJzcGxpbnQxZDdkODY1Y2M0MDg1MGQ5NTk4NTgwYjJlNDg2NzAzOTBjZWNiZjI2MDNhMjFlNzVlZDc3MWQ1NjcyZjM3NDU5OCIsImhvc3QiOiJmaWxlcy5hbmEuZXhhbXBsZSIsIm1ldGhvZCI6IlBPU1QiLCJwYXRoIjoiL2RvY3Mvd3JpdGUiLCJib2R5X3NoYTI1NiI6IjZlZjhiYmI1MjhlNmY5ZjU2N2I0NzAyMmFmYTRlNjdhZmEyZTg0YWRjYjllZWZlMzFjNTJjMTk3YjczOTU3NjIiLCJpc3N1ZWRfYXQiOjE3OTM3NTA0MDB9.QPyII_vA9dr35ozho2OAJcv2Ur5UVaVjt9uQgFwhPECDlIdRmuyQu-qLePxXwvAFkg_3C_x5qPBvKSmfllmuTg",
+    "body": "{\"doc\":\"q4-plan\"}",
+    "agent_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJQWmlGMXhLWHVpMFFMZWprTFZRY1RXRHVKOFFVYnZ1ZmxjTHNlTnNFUlI5Szh4UFRPVWhQbGo1Qlg4TnBpQjUxYzlLcFZkeWRiZ2JKTEJmd3Y2NVVmUSIsInNlYWwiOiJCTzNlSnduZFNSSE9YTklPVUtVT2NSMmxfT0NjUFFhZ0dWZVJHLWNieEFpZmhpRGxsRW9iZHdyUVN1ZXZtZ19Sd2RBWTFYTU9BMm9LZXNqUmJLN1NpbkEiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiIyNDVmMGI4YThkY2ZlYWYxYWM0MTg1ZGNhMjIzOWVkZGRkMTdlMGExNWUxYTNjOWJlYjlkZmMyYzEwNWFiNzI2In19",
+    "owner_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJLSjQ2NXRQTVFMVDJ3bGdkSjhXLTM4ckxjZHVORVhXaElSQkJqQmpmSXFmYmpJY2NjSW5RRVZDb3M2a3VpSzZsd3dld3ZFMnFPRzhWQjJMZEVVc2wySSIsInNlYWwiOiJCTEZ5bkx3WEhla04zamxRR2NfNnAtLUhlaTdhV1hMUjJySVl5NXBVbFdEMzFUVUlieWlWTzNZOXlDamN5dHVxTHRSQzdSNHptNzZCT0VFbExobjNhM28iLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiI5ODYwNTNmMDI1NDY5ZTQ3ODY3ODcxNGNjNmEyOGMzNzhhZWM4OWIxZjE2N2NjMjM4OGM3Yjk0MDg4MDc3Yjc3In19",
+    "resource": "files.ana.example",
+    "operation": "docs.read",
+    "method": "POST",
+    "path": "/docs/read",
+    "revoked": [],
+    "calls_this_hour": 0,
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": false,
+    "reason": "bad_proof"
+   }
+  },
+  {
+   "name": "unknown_grant_version",
+   "status": "checked",
+   "case": "hostile",
+   "check": "grant.check",
+   "why": "An unknown version is refused.",
+   "input": {
+    "grant": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1ncmFudCJ9.eyJ2IjoyLCJvd25lciI6InNwbGludDEzMGI2YWIxZmFjMmYyY2I1MjhhMTE0NTVlMjQxNGRjZTEwNWY1MjYzZWIwYWY5ZjRlOTlmZWZhYzkzNmYzOThlIiwiaG9sZGVyIjoic3BsaW50MWQ3ZDg2NWNjNDA4NTBkOTU5ODU4MGIyZTQ4NjcwMzkwY2VjYmYyNjAzYTIxZTc1ZWQ3NzFkNTY3MmYzNzQ1OTgiLCJyZXNvdXJjZSI6ImZpbGVzLmFuYS5leGFtcGxlIiwib3BlcmF0aW9ucyI6WyJkb2NzLnJlYWQiXSwibGltaXRzIjp7ImNhbGxzX3Blcl9ob3VyIjoyMH0sImlzc3VlZF9hdCI6MTc5Mzc1MDQwMCwiZXhwaXJlc19hdCI6MTc5NDM1NTIwMCwibm9uY2UiOiJBQUVDQXdRRkJnY0lDUW9MREEwT0R3In0.NmdccplGlt0Pix7IhTnDidAWgWfYUW6NyoBYPdDlNAU5vTeoj1-hE8gmjCB5KQCP51wppV2ReDIIKBMVpF_Y-g",
+    "proof": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1hY2Nlc3MifQ.eyJzaWduZXIiOiJzcGxpbnQxZDdkODY1Y2M0MDg1MGQ5NTk4NTgwYjJlNDg2NzAzOTBjZWNiZjI2MDNhMjFlNzVlZDc3MWQ1NjcyZjM3NDU5OCIsImhvc3QiOiJmaWxlcy5hbmEuZXhhbXBsZSIsIm1ldGhvZCI6IlBPU1QiLCJwYXRoIjoiL2RvY3MvcmVhZCIsImJvZHlfc2hhMjU2IjoiNmVmOGJiYjUyOGU2ZjlmNTY3YjQ3MDIyYWZhNGU2N2FmYTJlODRhZGNiOWVlZmUzMWM1MmMxOTdiNzM5NTc2MiIsImlzc3VlZF9hdCI6MTc5Mzc1MDQwMH0.DG9Ou33ddPTNvc6ufA_qJjLuKo2k7wiqYBsDfcufMMItYtPT22igov7Fxvn-M1RzyzkfMKoVffQ5f5xDjq7H_A",
+    "body": "{\"doc\":\"q4-plan\"}",
+    "agent_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJQWmlGMXhLWHVpMFFMZWprTFZRY1RXRHVKOFFVYnZ1ZmxjTHNlTnNFUlI5Szh4UFRPVWhQbGo1Qlg4TnBpQjUxYzlLcFZkeWRiZ2JKTEJmd3Y2NVVmUSIsInNlYWwiOiJCTzNlSnduZFNSSE9YTklPVUtVT2NSMmxfT0NjUFFhZ0dWZVJHLWNieEFpZmhpRGxsRW9iZHdyUVN1ZXZtZ19Sd2RBWTFYTU9BMm9LZXNqUmJLN1NpbkEiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiIyNDVmMGI4YThkY2ZlYWYxYWM0MTg1ZGNhMjIzOWVkZGRkMTdlMGExNWUxYTNjOWJlYjlkZmMyYzEwNWFiNzI2In19",
+    "owner_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJLSjQ2NXRQTVFMVDJ3bGdkSjhXLTM4ckxjZHVORVhXaElSQkJqQmpmSXFmYmpJY2NjSW5RRVZDb3M2a3VpSzZsd3dld3ZFMnFPRzhWQjJMZEVVc2wySSIsInNlYWwiOiJCTEZ5bkx3WEhla04zamxRR2NfNnAtLUhlaTdhV1hMUjJySVl5NXBVbFdEMzFUVUlieWlWTzNZOXlDamN5dHVxTHRSQzdSNHptNzZCT0VFbExobjNhM28iLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiI5ODYwNTNmMDI1NDY5ZTQ3ODY3ODcxNGNjNmEyOGMzNzhhZWM4OWIxZjE2N2NjMjM4OGM3Yjk0MDg4MDc3Yjc3In19",
+    "resource": "files.ana.example",
+    "operation": "docs.read",
+    "method": "POST",
+    "path": "/docs/read",
+    "revoked": [],
+    "calls_this_hour": 0,
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "grant_naming_another_owner",
+   "status": "checked",
+   "case": "hostile",
+   "check": "grant.check",
+   "why": "The owner it names must be the one that signed it.",
+   "input": {
+    "grant": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1ncmFudCJ9.eyJ2IjoxLCJvd25lciI6InNwbGludDFjMDM5MGExNDk0NWJhN2YxMDI3OTJhYzY4MTRmYjE5NzM5MzFiNDdlODVhNWEwMWRkMDIzZDFiYmEwZDk0NTgzIiwiaG9sZGVyIjoic3BsaW50MWQ3ZDg2NWNjNDA4NTBkOTU5ODU4MGIyZTQ4NjcwMzkwY2VjYmYyNjAzYTIxZTc1ZWQ3NzFkNTY3MmYzNzQ1OTgiLCJyZXNvdXJjZSI6ImZpbGVzLmFuYS5leGFtcGxlIiwib3BlcmF0aW9ucyI6WyJkb2NzLnJlYWQiXSwibGltaXRzIjp7ImNhbGxzX3Blcl9ob3VyIjoyMH0sImlzc3VlZF9hdCI6MTc5Mzc1MDQwMCwiZXhwaXJlc19hdCI6MTc5NDM1NTIwMCwibm9uY2UiOiJBQUVDQXdRRkJnY0lDUW9MREEwT0R3In0.kpuKVJbA5OQjyOBvLnJzHogduYNm5trR3X4JnCSBehVzSGlS48AfO7azZ6I17xdUQQp4oxonrrXPqvgAC33BFg",
+    "proof": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1hY2Nlc3MifQ.eyJzaWduZXIiOiJzcGxpbnQxZDdkODY1Y2M0MDg1MGQ5NTk4NTgwYjJlNDg2NzAzOTBjZWNiZjI2MDNhMjFlNzVlZDc3MWQ1NjcyZjM3NDU5OCIsImhvc3QiOiJmaWxlcy5hbmEuZXhhbXBsZSIsIm1ldGhvZCI6IlBPU1QiLCJwYXRoIjoiL2RvY3MvcmVhZCIsImJvZHlfc2hhMjU2IjoiNmVmOGJiYjUyOGU2ZjlmNTY3YjQ3MDIyYWZhNGU2N2FmYTJlODRhZGNiOWVlZmUzMWM1MmMxOTdiNzM5NTc2MiIsImlzc3VlZF9hdCI6MTc5Mzc1MDQwMH0.DG9Ou33ddPTNvc6ufA_qJjLuKo2k7wiqYBsDfcufMMItYtPT22igov7Fxvn-M1RzyzkfMKoVffQ5f5xDjq7H_A",
+    "body": "{\"doc\":\"q4-plan\"}",
+    "agent_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJQWmlGMXhLWHVpMFFMZWprTFZRY1RXRHVKOFFVYnZ1ZmxjTHNlTnNFUlI5Szh4UFRPVWhQbGo1Qlg4TnBpQjUxYzlLcFZkeWRiZ2JKTEJmd3Y2NVVmUSIsInNlYWwiOiJCTzNlSnduZFNSSE9YTklPVUtVT2NSMmxfT0NjUFFhZ0dWZVJHLWNieEFpZmhpRGxsRW9iZHdyUVN1ZXZtZ19Sd2RBWTFYTU9BMm9LZXNqUmJLN1NpbkEiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiIyNDVmMGI4YThkY2ZlYWYxYWM0MTg1ZGNhMjIzOWVkZGRkMTdlMGExNWUxYTNjOWJlYjlkZmMyYzEwNWFiNzI2In19",
+    "owner_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJLSjQ2NXRQTVFMVDJ3bGdkSjhXLTM4ckxjZHVORVhXaElSQkJqQmpmSXFmYmpJY2NjSW5RRVZDb3M2a3VpSzZsd3dld3ZFMnFPRzhWQjJMZEVVc2wySSIsInNlYWwiOiJCTEZ5bkx3WEhla04zamxRR2NfNnAtLUhlaTdhV1hMUjJySVl5NXBVbFdEMzFUVUlieWlWTzNZOXlDamN5dHVxTHRSQzdSNHptNzZCT0VFbExobjNhM28iLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiI5ODYwNTNmMDI1NDY5ZTQ3ODY3ODcxNGNjNmEyOGMzNzhhZWM4OWIxZjE2N2NjMjM4OGM3Yjk0MDg4MDc3Yjc3In19",
+    "resource": "files.ana.example",
+    "operation": "docs.read",
+    "method": "POST",
+    "path": "/docs/read",
+    "revoked": [],
+    "calls_this_hour": 0,
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": false,
+    "reason": "no_grant"
+   }
+  },
+  {
+   "name": "grant_dated_ahead",
+   "status": "checked",
+   "case": "hostile",
+   "check": "grant.check",
+   "why": "A grant can't be dated ahead to start later than the owner meant.",
+   "input": {
+    "grant": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1ncmFudCJ9.eyJ2IjoxLCJvd25lciI6InNwbGludDEzMGI2YWIxZmFjMmYyY2I1MjhhMTE0NTVlMjQxNGRjZTEwNWY1MjYzZWIwYWY5ZjRlOTlmZWZhYzkzNmYzOThlIiwiaG9sZGVyIjoic3BsaW50MWQ3ZDg2NWNjNDA4NTBkOTU5ODU4MGIyZTQ4NjcwMzkwY2VjYmYyNjAzYTIxZTc1ZWQ3NzFkNTY3MmYzNzQ1OTgiLCJyZXNvdXJjZSI6ImZpbGVzLmFuYS5leGFtcGxlIiwib3BlcmF0aW9ucyI6WyJkb2NzLnJlYWQiXSwibGltaXRzIjp7ImNhbGxzX3Blcl9ob3VyIjoyMH0sImlzc3VlZF9hdCI6MTc5Mzc1MDUyMSwiZXhwaXJlc19hdCI6MTc5NDM1NTIwMCwibm9uY2UiOiJBQUVDQXdRRkJnY0lDUW9MREEwT0R3In0.UK3dBYhSnqpZFQiks4BO_kootWaUe0Lf38tFWYCtL1UAmGZB9_Yel4Esjlj3f2QGBD8rZKhpTnOTeeoIzEUvYg",
+    "proof": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1hY2Nlc3MifQ.eyJzaWduZXIiOiJzcGxpbnQxZDdkODY1Y2M0MDg1MGQ5NTk4NTgwYjJlNDg2NzAzOTBjZWNiZjI2MDNhMjFlNzVlZDc3MWQ1NjcyZjM3NDU5OCIsImhvc3QiOiJmaWxlcy5hbmEuZXhhbXBsZSIsIm1ldGhvZCI6IlBPU1QiLCJwYXRoIjoiL2RvY3MvcmVhZCIsImJvZHlfc2hhMjU2IjoiNmVmOGJiYjUyOGU2ZjlmNTY3YjQ3MDIyYWZhNGU2N2FmYTJlODRhZGNiOWVlZmUzMWM1MmMxOTdiNzM5NTc2MiIsImlzc3VlZF9hdCI6MTc5Mzc1MDQwMH0.DG9Ou33ddPTNvc6ufA_qJjLuKo2k7wiqYBsDfcufMMItYtPT22igov7Fxvn-M1RzyzkfMKoVffQ5f5xDjq7H_A",
+    "body": "{\"doc\":\"q4-plan\"}",
+    "agent_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJQWmlGMXhLWHVpMFFMZWprTFZRY1RXRHVKOFFVYnZ1ZmxjTHNlTnNFUlI5Szh4UFRPVWhQbGo1Qlg4TnBpQjUxYzlLcFZkeWRiZ2JKTEJmd3Y2NVVmUSIsInNlYWwiOiJCTzNlSnduZFNSSE9YTklPVUtVT2NSMmxfT0NjUFFhZ0dWZVJHLWNieEFpZmhpRGxsRW9iZHdyUVN1ZXZtZ19Sd2RBWTFYTU9BMm9LZXNqUmJLN1NpbkEiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiIyNDVmMGI4YThkY2ZlYWYxYWM0MTg1ZGNhMjIzOWVkZGRkMTdlMGExNWUxYTNjOWJlYjlkZmMyYzEwNWFiNzI2In19",
+    "owner_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJLSjQ2NXRQTVFMVDJ3bGdkSjhXLTM4ckxjZHVORVhXaElSQkJqQmpmSXFmYmpJY2NjSW5RRVZDb3M2a3VpSzZsd3dld3ZFMnFPRzhWQjJMZEVVc2wySSIsInNlYWwiOiJCTEZ5bkx3WEhla04zamxRR2NfNnAtLUhlaTdhV1hMUjJySVl5NXBVbFdEMzFUVUlieWlWTzNZOXlDamN5dHVxTHRSQzdSNHptNzZCT0VFbExobjNhM28iLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiI5ODYwNTNmMDI1NDY5ZTQ3ODY3ODcxNGNjNmEyOGMzNzhhZWM4OWIxZjE2N2NjMjM4OGM3Yjk0MDg4MDc3Yjc3In19",
+    "resource": "files.ana.example",
+    "operation": "docs.read",
+    "method": "POST",
+    "path": "/docs/read",
+    "revoked": [],
+    "calls_this_hour": 0,
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": false,
+    "reason": "no_grant"
+   }
+  },
+  {
+   "name": "expired_grant",
+   "status": "checked",
+   "case": "hostile",
+   "check": "grant.check",
+   "why": "Grants end.",
+   "input": {
+    "grant": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1ncmFudCJ9.eyJ2IjoxLCJvd25lciI6InNwbGludDEzMGI2YWIxZmFjMmYyY2I1MjhhMTE0NTVlMjQxNGRjZTEwNWY1MjYzZWIwYWY5ZjRlOTlmZWZhYzkzNmYzOThlIiwiaG9sZGVyIjoic3BsaW50MWQ3ZDg2NWNjNDA4NTBkOTU5ODU4MGIyZTQ4NjcwMzkwY2VjYmYyNjAzYTIxZTc1ZWQ3NzFkNTY3MmYzNzQ1OTgiLCJyZXNvdXJjZSI6ImZpbGVzLmFuYS5leGFtcGxlIiwib3BlcmF0aW9ucyI6WyJkb2NzLnJlYWQiXSwibGltaXRzIjp7ImNhbGxzX3Blcl9ob3VyIjoyMH0sImlzc3VlZF9hdCI6MTc5Mzc1MDQwMCwiZXhwaXJlc19hdCI6MTc5NDM1NTIwMCwibm9uY2UiOiJBQUVDQXdRRkJnY0lDUW9MREEwT0R3In0.plwXgYcIxJvEh2MhToajKxTDNk1zvNzS91x_F5jlKnpM6CUOwDITIjnFvyOfKILf8ABtX3c-BgENnHGHPw79xA",
+    "proof": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1hY2Nlc3MifQ.eyJzaWduZXIiOiJzcGxpbnQxZDdkODY1Y2M0MDg1MGQ5NTk4NTgwYjJlNDg2NzAzOTBjZWNiZjI2MDNhMjFlNzVlZDc3MWQ1NjcyZjM3NDU5OCIsImhvc3QiOiJmaWxlcy5hbmEuZXhhbXBsZSIsIm1ldGhvZCI6IlBPU1QiLCJwYXRoIjoiL2RvY3MvcmVhZCIsImJvZHlfc2hhMjU2IjoiNmVmOGJiYjUyOGU2ZjlmNTY3YjQ3MDIyYWZhNGU2N2FmYTJlODRhZGNiOWVlZmUzMWM1MmMxOTdiNzM5NTc2MiIsImlzc3VlZF9hdCI6MTc5Mzc1MDQwMH0.DG9Ou33ddPTNvc6ufA_qJjLuKo2k7wiqYBsDfcufMMItYtPT22igov7Fxvn-M1RzyzkfMKoVffQ5f5xDjq7H_A",
+    "body": "{\"doc\":\"q4-plan\"}",
+    "agent_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJQWmlGMXhLWHVpMFFMZWprTFZRY1RXRHVKOFFVYnZ1ZmxjTHNlTnNFUlI5Szh4UFRPVWhQbGo1Qlg4TnBpQjUxYzlLcFZkeWRiZ2JKTEJmd3Y2NVVmUSIsInNlYWwiOiJCTzNlSnduZFNSSE9YTklPVUtVT2NSMmxfT0NjUFFhZ0dWZVJHLWNieEFpZmhpRGxsRW9iZHdyUVN1ZXZtZ19Sd2RBWTFYTU9BMm9LZXNqUmJLN1NpbkEiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiIyNDVmMGI4YThkY2ZlYWYxYWM0MTg1ZGNhMjIzOWVkZGRkMTdlMGExNWUxYTNjOWJlYjlkZmMyYzEwNWFiNzI2In19",
+    "owner_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJLSjQ2NXRQTVFMVDJ3bGdkSjhXLTM4ckxjZHVORVhXaElSQkJqQmpmSXFmYmpJY2NjSW5RRVZDb3M2a3VpSzZsd3dld3ZFMnFPRzhWQjJMZEVVc2wySSIsInNlYWwiOiJCTEZ5bkx3WEhla04zamxRR2NfNnAtLUhlaTdhV1hMUjJySVl5NXBVbFdEMzFUVUlieWlWTzNZOXlDamN5dHVxTHRSQzdSNHptNzZCT0VFbExobjNhM28iLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiI5ODYwNTNmMDI1NDY5ZTQ3ODY3ODcxNGNjNmEyOGMzNzhhZWM4OWIxZjE2N2NjMjM4OGM3Yjk0MDg4MDc3Yjc3In19",
+    "resource": "files.ana.example",
+    "operation": "docs.read",
+    "method": "POST",
+    "path": "/docs/read",
+    "revoked": [],
+    "calls_this_hour": 0,
+    "now": 1794355200
+   },
+   "expect": {
+    "ok": false,
+    "reason": "expired"
+   }
+  },
+  {
+   "name": "life_too_long",
+   "status": "checked",
+   "case": "hostile",
+   "check": "grant.check",
+   "why": "At most 30 days.",
+   "input": {
+    "grant": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1ncmFudCJ9.eyJ2IjoxLCJvd25lciI6InNwbGludDEzMGI2YWIxZmFjMmYyY2I1MjhhMTE0NTVlMjQxNGRjZTEwNWY1MjYzZWIwYWY5ZjRlOTlmZWZhYzkzNmYzOThlIiwiaG9sZGVyIjoic3BsaW50MWQ3ZDg2NWNjNDA4NTBkOTU5ODU4MGIyZTQ4NjcwMzkwY2VjYmYyNjAzYTIxZTc1ZWQ3NzFkNTY3MmYzNzQ1OTgiLCJyZXNvdXJjZSI6ImZpbGVzLmFuYS5leGFtcGxlIiwib3BlcmF0aW9ucyI6WyJkb2NzLnJlYWQiXSwibGltaXRzIjp7ImNhbGxzX3Blcl9ob3VyIjoyMH0sImlzc3VlZF9hdCI6MTc5Mzc1MDQwMCwiZXhwaXJlc19hdCI6MTc5NjQyODgwMCwibm9uY2UiOiJBQUVDQXdRRkJnY0lDUW9MREEwT0R3In0.3vDolN5l_m4P1Rij8JR2UzLhNuP_YP1X3LkxDsZeKAaDh_1eHM_4xYcNZHta8VnP0BHDDemtCzis-niM7S4LeA",
+    "proof": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1hY2Nlc3MifQ.eyJzaWduZXIiOiJzcGxpbnQxZDdkODY1Y2M0MDg1MGQ5NTk4NTgwYjJlNDg2NzAzOTBjZWNiZjI2MDNhMjFlNzVlZDc3MWQ1NjcyZjM3NDU5OCIsImhvc3QiOiJmaWxlcy5hbmEuZXhhbXBsZSIsIm1ldGhvZCI6IlBPU1QiLCJwYXRoIjoiL2RvY3MvcmVhZCIsImJvZHlfc2hhMjU2IjoiNmVmOGJiYjUyOGU2ZjlmNTY3YjQ3MDIyYWZhNGU2N2FmYTJlODRhZGNiOWVlZmUzMWM1MmMxOTdiNzM5NTc2MiIsImlzc3VlZF9hdCI6MTc5Mzc1MDQwMH0.DG9Ou33ddPTNvc6ufA_qJjLuKo2k7wiqYBsDfcufMMItYtPT22igov7Fxvn-M1RzyzkfMKoVffQ5f5xDjq7H_A",
+    "body": "{\"doc\":\"q4-plan\"}",
+    "agent_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJQWmlGMXhLWHVpMFFMZWprTFZRY1RXRHVKOFFVYnZ1ZmxjTHNlTnNFUlI5Szh4UFRPVWhQbGo1Qlg4TnBpQjUxYzlLcFZkeWRiZ2JKTEJmd3Y2NVVmUSIsInNlYWwiOiJCTzNlSnduZFNSSE9YTklPVUtVT2NSMmxfT0NjUFFhZ0dWZVJHLWNieEFpZmhpRGxsRW9iZHdyUVN1ZXZtZ19Sd2RBWTFYTU9BMm9LZXNqUmJLN1NpbkEiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiIyNDVmMGI4YThkY2ZlYWYxYWM0MTg1ZGNhMjIzOWVkZGRkMTdlMGExNWUxYTNjOWJlYjlkZmMyYzEwNWFiNzI2In19",
+    "owner_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJLSjQ2NXRQTVFMVDJ3bGdkSjhXLTM4ckxjZHVORVhXaElSQkJqQmpmSXFmYmpJY2NjSW5RRVZDb3M2a3VpSzZsd3dld3ZFMnFPRzhWQjJMZEVVc2wySSIsInNlYWwiOiJCTEZ5bkx3WEhla04zamxRR2NfNnAtLUhlaTdhV1hMUjJySVl5NXBVbFdEMzFUVUlieWlWTzNZOXlDamN5dHVxTHRSQzdSNHptNzZCT0VFbExobjNhM28iLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiI5ODYwNTNmMDI1NDY5ZTQ3ODY3ODcxNGNjNmEyOGMzNzhhZWM4OWIxZjE2N2NjMjM4OGM3Yjk0MDg4MDc3Yjc3In19",
+    "resource": "files.ana.example",
+    "operation": "docs.read",
+    "method": "POST",
+    "path": "/docs/read",
+    "revoked": [],
+    "calls_this_hour": 0,
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "operations_out_of_order",
+   "status": "checked",
+   "case": "hostile",
+   "check": "grant.check",
+   "why": "Sorted with no repeats, so one grant has one encoding.",
+   "input": {
+    "grant": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1ncmFudCJ9.eyJ2IjoxLCJvd25lciI6InNwbGludDEzMGI2YWIxZmFjMmYyY2I1MjhhMTE0NTVlMjQxNGRjZTEwNWY1MjYzZWIwYWY5ZjRlOTlmZWZhYzkzNmYzOThlIiwiaG9sZGVyIjoic3BsaW50MWQ3ZDg2NWNjNDA4NTBkOTU5ODU4MGIyZTQ4NjcwMzkwY2VjYmYyNjAzYTIxZTc1ZWQ3NzFkNTY3MmYzNzQ1OTgiLCJyZXNvdXJjZSI6ImZpbGVzLmFuYS5leGFtcGxlIiwib3BlcmF0aW9ucyI6WyJkb2NzLnJlYWQiLCJkb2NzLmxpc3QiXSwibGltaXRzIjp7ImNhbGxzX3Blcl9ob3VyIjoyMH0sImlzc3VlZF9hdCI6MTc5Mzc1MDQwMCwiZXhwaXJlc19hdCI6MTc5NDM1NTIwMCwibm9uY2UiOiJBQUVDQXdRRkJnY0lDUW9MREEwT0R3In0.LZuCjC_dzhCy9L9940v664hjcaZV8G_ueWlAe5xNaCYbxUAeRBrDi-r-q5-6cTNnKK2I1-yEzrDBTz3C1aeutQ",
+    "proof": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1hY2Nlc3MifQ.eyJzaWduZXIiOiJzcGxpbnQxZDdkODY1Y2M0MDg1MGQ5NTk4NTgwYjJlNDg2NzAzOTBjZWNiZjI2MDNhMjFlNzVlZDc3MWQ1NjcyZjM3NDU5OCIsImhvc3QiOiJmaWxlcy5hbmEuZXhhbXBsZSIsIm1ldGhvZCI6IlBPU1QiLCJwYXRoIjoiL2RvY3MvcmVhZCIsImJvZHlfc2hhMjU2IjoiNmVmOGJiYjUyOGU2ZjlmNTY3YjQ3MDIyYWZhNGU2N2FmYTJlODRhZGNiOWVlZmUzMWM1MmMxOTdiNzM5NTc2MiIsImlzc3VlZF9hdCI6MTc5Mzc1MDQwMH0.DG9Ou33ddPTNvc6ufA_qJjLuKo2k7wiqYBsDfcufMMItYtPT22igov7Fxvn-M1RzyzkfMKoVffQ5f5xDjq7H_A",
+    "body": "{\"doc\":\"q4-plan\"}",
+    "agent_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJQWmlGMXhLWHVpMFFMZWprTFZRY1RXRHVKOFFVYnZ1ZmxjTHNlTnNFUlI5Szh4UFRPVWhQbGo1Qlg4TnBpQjUxYzlLcFZkeWRiZ2JKTEJmd3Y2NVVmUSIsInNlYWwiOiJCTzNlSnduZFNSSE9YTklPVUtVT2NSMmxfT0NjUFFhZ0dWZVJHLWNieEFpZmhpRGxsRW9iZHdyUVN1ZXZtZ19Sd2RBWTFYTU9BMm9LZXNqUmJLN1NpbkEiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiIyNDVmMGI4YThkY2ZlYWYxYWM0MTg1ZGNhMjIzOWVkZGRkMTdlMGExNWUxYTNjOWJlYjlkZmMyYzEwNWFiNzI2In19",
+    "owner_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJLSjQ2NXRQTVFMVDJ3bGdkSjhXLTM4ckxjZHVORVhXaElSQkJqQmpmSXFmYmpJY2NjSW5RRVZDb3M2a3VpSzZsd3dld3ZFMnFPRzhWQjJMZEVVc2wySSIsInNlYWwiOiJCTEZ5bkx3WEhla04zamxRR2NfNnAtLUhlaTdhV1hMUjJySVl5NXBVbFdEMzFUVUlieWlWTzNZOXlDamN5dHVxTHRSQzdSNHptNzZCT0VFbExobjNhM28iLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiI5ODYwNTNmMDI1NDY5ZTQ3ODY3ODcxNGNjNmEyOGMzNzhhZWM4OWIxZjE2N2NjMjM4OGM3Yjk0MDg4MDc3Yjc3In19",
+    "resource": "files.ana.example",
+    "operation": "docs.read",
+    "method": "POST",
+    "path": "/docs/read",
+    "revoked": [],
+    "calls_this_hour": 0,
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "operation_as_prose",
+   "status": "checked",
+   "case": "hostile",
+   "check": "grant.check",
+   "why": "An operation is a word the resource chose.",
+   "input": {
+    "grant": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1ncmFudCJ9.eyJ2IjoxLCJvd25lciI6InNwbGludDEzMGI2YWIxZmFjMmYyY2I1MjhhMTE0NTVlMjQxNGRjZTEwNWY1MjYzZWIwYWY5ZjRlOTlmZWZhYzkzNmYzOThlIiwiaG9sZGVyIjoic3BsaW50MWQ3ZDg2NWNjNDA4NTBkOTU5ODU4MGIyZTQ4NjcwMzkwY2VjYmYyNjAzYTIxZTc1ZWQ3NzFkNTY3MmYzNzQ1OTgiLCJyZXNvdXJjZSI6ImZpbGVzLmFuYS5leGFtcGxlIiwib3BlcmF0aW9ucyI6WyJyZWFkIGV2ZXJ5dGhpbmciXSwibGltaXRzIjp7ImNhbGxzX3Blcl9ob3VyIjoyMH0sImlzc3VlZF9hdCI6MTc5Mzc1MDQwMCwiZXhwaXJlc19hdCI6MTc5NDM1NTIwMCwibm9uY2UiOiJBQUVDQXdRRkJnY0lDUW9MREEwT0R3In0.A2_RrrjlhwRQBZshkpEPou3DRj9ZlESZsAtVNdkTpOrx9kXxZt5C7kKu1Lh0jgB61s6qKxKydofrQsYsFVgtZQ",
+    "proof": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1hY2Nlc3MifQ.eyJzaWduZXIiOiJzcGxpbnQxZDdkODY1Y2M0MDg1MGQ5NTk4NTgwYjJlNDg2NzAzOTBjZWNiZjI2MDNhMjFlNzVlZDc3MWQ1NjcyZjM3NDU5OCIsImhvc3QiOiJmaWxlcy5hbmEuZXhhbXBsZSIsIm1ldGhvZCI6IlBPU1QiLCJwYXRoIjoiL2RvY3MvcmVhZCIsImJvZHlfc2hhMjU2IjoiNmVmOGJiYjUyOGU2ZjlmNTY3YjQ3MDIyYWZhNGU2N2FmYTJlODRhZGNiOWVlZmUzMWM1MmMxOTdiNzM5NTc2MiIsImlzc3VlZF9hdCI6MTc5Mzc1MDQwMH0.DG9Ou33ddPTNvc6ufA_qJjLuKo2k7wiqYBsDfcufMMItYtPT22igov7Fxvn-M1RzyzkfMKoVffQ5f5xDjq7H_A",
+    "body": "{\"doc\":\"q4-plan\"}",
+    "agent_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJQWmlGMXhLWHVpMFFMZWprTFZRY1RXRHVKOFFVYnZ1ZmxjTHNlTnNFUlI5Szh4UFRPVWhQbGo1Qlg4TnBpQjUxYzlLcFZkeWRiZ2JKTEJmd3Y2NVVmUSIsInNlYWwiOiJCTzNlSnduZFNSSE9YTklPVUtVT2NSMmxfT0NjUFFhZ0dWZVJHLWNieEFpZmhpRGxsRW9iZHdyUVN1ZXZtZ19Sd2RBWTFYTU9BMm9LZXNqUmJLN1NpbkEiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiIyNDVmMGI4YThkY2ZlYWYxYWM0MTg1ZGNhMjIzOWVkZGRkMTdlMGExNWUxYTNjOWJlYjlkZmMyYzEwNWFiNzI2In19",
+    "owner_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJLSjQ2NXRQTVFMVDJ3bGdkSjhXLTM4ckxjZHVORVhXaElSQkJqQmpmSXFmYmpJY2NjSW5RRVZDb3M2a3VpSzZsd3dld3ZFMnFPRzhWQjJMZEVVc2wySSIsInNlYWwiOiJCTEZ5bkx3WEhla04zamxRR2NfNnAtLUhlaTdhV1hMUjJySVl5NXBVbFdEMzFUVUlieWlWTzNZOXlDamN5dHVxTHRSQzdSNHptNzZCT0VFbExobjNhM28iLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiI5ODYwNTNmMDI1NDY5ZTQ3ODY3ODcxNGNjNmEyOGMzNzhhZWM4OWIxZjE2N2NjMjM4OGM3Yjk0MDg4MDc3Yjc3In19",
+    "resource": "files.ana.example",
+    "operation": "docs.read",
+    "method": "POST",
+    "path": "/docs/read",
+    "revoked": [],
+    "calls_this_hour": 0,
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "no_rate",
+   "status": "checked",
+   "case": "hostile",
+   "check": "grant.check",
+   "why": "Every grant has a rate.",
+   "input": {
+    "grant": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1ncmFudCJ9.eyJ2IjoxLCJvd25lciI6InNwbGludDEzMGI2YWIxZmFjMmYyY2I1MjhhMTE0NTVlMjQxNGRjZTEwNWY1MjYzZWIwYWY5ZjRlOTlmZWZhYzkzNmYzOThlIiwiaG9sZGVyIjoic3BsaW50MWQ3ZDg2NWNjNDA4NTBkOTU5ODU4MGIyZTQ4NjcwMzkwY2VjYmYyNjAzYTIxZTc1ZWQ3NzFkNTY3MmYzNzQ1OTgiLCJyZXNvdXJjZSI6ImZpbGVzLmFuYS5leGFtcGxlIiwib3BlcmF0aW9ucyI6WyJkb2NzLnJlYWQiXSwibGltaXRzIjp7ImNhbGxzX3Blcl9ob3VyIjowfSwiaXNzdWVkX2F0IjoxNzkzNzUwNDAwLCJleHBpcmVzX2F0IjoxNzk0MzU1MjAwLCJub25jZSI6IkFBRUNBd1FGQmdjSUNRb0xEQTBPRHcifQ.7gedWT2U610ZVumwGomoOYxPwhehBdHQiEWNl_4O-3rbk-qQ2Ks4vHUrluiP7QcSiKNT8eohpiOIE0R4AFgeAQ",
+    "proof": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1hY2Nlc3MifQ.eyJzaWduZXIiOiJzcGxpbnQxZDdkODY1Y2M0MDg1MGQ5NTk4NTgwYjJlNDg2NzAzOTBjZWNiZjI2MDNhMjFlNzVlZDc3MWQ1NjcyZjM3NDU5OCIsImhvc3QiOiJmaWxlcy5hbmEuZXhhbXBsZSIsIm1ldGhvZCI6IlBPU1QiLCJwYXRoIjoiL2RvY3MvcmVhZCIsImJvZHlfc2hhMjU2IjoiNmVmOGJiYjUyOGU2ZjlmNTY3YjQ3MDIyYWZhNGU2N2FmYTJlODRhZGNiOWVlZmUzMWM1MmMxOTdiNzM5NTc2MiIsImlzc3VlZF9hdCI6MTc5Mzc1MDQwMH0.DG9Ou33ddPTNvc6ufA_qJjLuKo2k7wiqYBsDfcufMMItYtPT22igov7Fxvn-M1RzyzkfMKoVffQ5f5xDjq7H_A",
+    "body": "{\"doc\":\"q4-plan\"}",
+    "agent_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJQWmlGMXhLWHVpMFFMZWprTFZRY1RXRHVKOFFVYnZ1ZmxjTHNlTnNFUlI5Szh4UFRPVWhQbGo1Qlg4TnBpQjUxYzlLcFZkeWRiZ2JKTEJmd3Y2NVVmUSIsInNlYWwiOiJCTzNlSnduZFNSSE9YTklPVUtVT2NSMmxfT0NjUFFhZ0dWZVJHLWNieEFpZmhpRGxsRW9iZHdyUVN1ZXZtZ19Sd2RBWTFYTU9BMm9LZXNqUmJLN1NpbkEiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiIyNDVmMGI4YThkY2ZlYWYxYWM0MTg1ZGNhMjIzOWVkZGRkMTdlMGExNWUxYTNjOWJlYjlkZmMyYzEwNWFiNzI2In19",
+    "owner_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJLSjQ2NXRQTVFMVDJ3bGdkSjhXLTM4ckxjZHVORVhXaElSQkJqQmpmSXFmYmpJY2NjSW5RRVZDb3M2a3VpSzZsd3dld3ZFMnFPRzhWQjJMZEVVc2wySSIsInNlYWwiOiJCTEZ5bkx3WEhla04zamxRR2NfNnAtLUhlaTdhV1hMUjJySVl5NXBVbFdEMzFUVUlieWlWTzNZOXlDamN5dHVxTHRSQzdSNHptNzZCT0VFbExobjNhM28iLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiI5ODYwNTNmMDI1NDY5ZTQ3ODY3ODcxNGNjNmEyOGMzNzhhZWM4OWIxZjE2N2NjMjM4OGM3Yjk0MDg4MDc3Yjc3In19",
+    "resource": "files.ana.example",
+    "operation": "docs.read",
+    "method": "POST",
+    "path": "/docs/read",
+    "revoked": [],
+    "calls_this_hour": 0,
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "no_nonce",
+   "status": "checked",
+   "case": "hostile",
+   "check": "grant.check",
+   "why": "A nonce keeps two alike grants apart, so revoking one leaves the other.",
+   "input": {
+    "grant": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1ncmFudCJ9.eyJ2IjoxLCJvd25lciI6InNwbGludDEzMGI2YWIxZmFjMmYyY2I1MjhhMTE0NTVlMjQxNGRjZTEwNWY1MjYzZWIwYWY5ZjRlOTlmZWZhYzkzNmYzOThlIiwiaG9sZGVyIjoic3BsaW50MWQ3ZDg2NWNjNDA4NTBkOTU5ODU4MGIyZTQ4NjcwMzkwY2VjYmYyNjAzYTIxZTc1ZWQ3NzFkNTY3MmYzNzQ1OTgiLCJyZXNvdXJjZSI6ImZpbGVzLmFuYS5leGFtcGxlIiwib3BlcmF0aW9ucyI6WyJkb2NzLnJlYWQiXSwibGltaXRzIjp7ImNhbGxzX3Blcl9ob3VyIjoyMH0sImlzc3VlZF9hdCI6MTc5Mzc1MDQwMCwiZXhwaXJlc19hdCI6MTc5NDM1NTIwMCwibm9uY2UiOiIifQ.D5x4Dy-CDo7_l3CVkQsPw2_WO6xTC9gq-q7TbcUM3p57PVaS5I1cFAcYJupo_arV3OyUcAMUP2P1y-ELxzMI3A",
+    "proof": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1hY2Nlc3MifQ.eyJzaWduZXIiOiJzcGxpbnQxZDdkODY1Y2M0MDg1MGQ5NTk4NTgwYjJlNDg2NzAzOTBjZWNiZjI2MDNhMjFlNzVlZDc3MWQ1NjcyZjM3NDU5OCIsImhvc3QiOiJmaWxlcy5hbmEuZXhhbXBsZSIsIm1ldGhvZCI6IlBPU1QiLCJwYXRoIjoiL2RvY3MvcmVhZCIsImJvZHlfc2hhMjU2IjoiNmVmOGJiYjUyOGU2ZjlmNTY3YjQ3MDIyYWZhNGU2N2FmYTJlODRhZGNiOWVlZmUzMWM1MmMxOTdiNzM5NTc2MiIsImlzc3VlZF9hdCI6MTc5Mzc1MDQwMH0.DG9Ou33ddPTNvc6ufA_qJjLuKo2k7wiqYBsDfcufMMItYtPT22igov7Fxvn-M1RzyzkfMKoVffQ5f5xDjq7H_A",
+    "body": "{\"doc\":\"q4-plan\"}",
+    "agent_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJQWmlGMXhLWHVpMFFMZWprTFZRY1RXRHVKOFFVYnZ1ZmxjTHNlTnNFUlI5Szh4UFRPVWhQbGo1Qlg4TnBpQjUxYzlLcFZkeWRiZ2JKTEJmd3Y2NVVmUSIsInNlYWwiOiJCTzNlSnduZFNSSE9YTklPVUtVT2NSMmxfT0NjUFFhZ0dWZVJHLWNieEFpZmhpRGxsRW9iZHdyUVN1ZXZtZ19Sd2RBWTFYTU9BMm9LZXNqUmJLN1NpbkEiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiIyNDVmMGI4YThkY2ZlYWYxYWM0MTg1ZGNhMjIzOWVkZGRkMTdlMGExNWUxYTNjOWJlYjlkZmMyYzEwNWFiNzI2In19",
+    "owner_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJLSjQ2NXRQTVFMVDJ3bGdkSjhXLTM4ckxjZHVORVhXaElSQkJqQmpmSXFmYmpJY2NjSW5RRVZDb3M2a3VpSzZsd3dld3ZFMnFPRzhWQjJMZEVVc2wySSIsInNlYWwiOiJCTEZ5bkx3WEhla04zamxRR2NfNnAtLUhlaTdhV1hMUjJySVl5NXBVbFdEMzFUVUlieWlWTzNZOXlDamN5dHVxTHRSQzdSNHptNzZCT0VFbExobjNhM28iLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiI5ODYwNTNmMDI1NDY5ZTQ3ODY3ODcxNGNjNmEyOGMzNzhhZWM4OWIxZjE2N2NjMjM4OGM3Yjk0MDg4MDc3Yjc3In19",
+    "resource": "files.ana.example",
+    "operation": "docs.read",
+    "method": "POST",
+    "path": "/docs/read",
+    "revoked": [],
+    "calls_this_hour": 0,
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "revoked",
+   "status": "checked",
+   "case": "hostile",
+   "check": "grant.check",
+   "why": "A revocation goes straight to the resource, so no host can hold it back.",
+   "input": {
+    "grant": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1ncmFudCJ9.eyJ2IjoxLCJvd25lciI6InNwbGludDEzMGI2YWIxZmFjMmYyY2I1MjhhMTE0NTVlMjQxNGRjZTEwNWY1MjYzZWIwYWY5ZjRlOTlmZWZhYzkzNmYzOThlIiwiaG9sZGVyIjoic3BsaW50MWQ3ZDg2NWNjNDA4NTBkOTU5ODU4MGIyZTQ4NjcwMzkwY2VjYmYyNjAzYTIxZTc1ZWQ3NzFkNTY3MmYzNzQ1OTgiLCJyZXNvdXJjZSI6ImZpbGVzLmFuYS5leGFtcGxlIiwib3BlcmF0aW9ucyI6WyJkb2NzLnJlYWQiXSwibGltaXRzIjp7ImNhbGxzX3Blcl9ob3VyIjoyMH0sImlzc3VlZF9hdCI6MTc5Mzc1MDQwMCwiZXhwaXJlc19hdCI6MTc5NDM1NTIwMCwibm9uY2UiOiJBQUVDQXdRRkJnY0lDUW9MREEwT0R3In0.plwXgYcIxJvEh2MhToajKxTDNk1zvNzS91x_F5jlKnpM6CUOwDITIjnFvyOfKILf8ABtX3c-BgENnHGHPw79xA",
+    "proof": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1hY2Nlc3MifQ.eyJzaWduZXIiOiJzcGxpbnQxZDdkODY1Y2M0MDg1MGQ5NTk4NTgwYjJlNDg2NzAzOTBjZWNiZjI2MDNhMjFlNzVlZDc3MWQ1NjcyZjM3NDU5OCIsImhvc3QiOiJmaWxlcy5hbmEuZXhhbXBsZSIsIm1ldGhvZCI6IlBPU1QiLCJwYXRoIjoiL2RvY3MvcmVhZCIsImJvZHlfc2hhMjU2IjoiNmVmOGJiYjUyOGU2ZjlmNTY3YjQ3MDIyYWZhNGU2N2FmYTJlODRhZGNiOWVlZmUzMWM1MmMxOTdiNzM5NTc2MiIsImlzc3VlZF9hdCI6MTc5Mzc1MDQwMH0.DG9Ou33ddPTNvc6ufA_qJjLuKo2k7wiqYBsDfcufMMItYtPT22igov7Fxvn-M1RzyzkfMKoVffQ5f5xDjq7H_A",
+    "body": "{\"doc\":\"q4-plan\"}",
+    "agent_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJQWmlGMXhLWHVpMFFMZWprTFZRY1RXRHVKOFFVYnZ1ZmxjTHNlTnNFUlI5Szh4UFRPVWhQbGo1Qlg4TnBpQjUxYzlLcFZkeWRiZ2JKTEJmd3Y2NVVmUSIsInNlYWwiOiJCTzNlSnduZFNSSE9YTklPVUtVT2NSMmxfT0NjUFFhZ0dWZVJHLWNieEFpZmhpRGxsRW9iZHdyUVN1ZXZtZ19Sd2RBWTFYTU9BMm9LZXNqUmJLN1NpbkEiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiIyNDVmMGI4YThkY2ZlYWYxYWM0MTg1ZGNhMjIzOWVkZGRkMTdlMGExNWUxYTNjOWJlYjlkZmMyYzEwNWFiNzI2In19",
+    "owner_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJLSjQ2NXRQTVFMVDJ3bGdkSjhXLTM4ckxjZHVORVhXaElSQkJqQmpmSXFmYmpJY2NjSW5RRVZDb3M2a3VpSzZsd3dld3ZFMnFPRzhWQjJMZEVVc2wySSIsInNlYWwiOiJCTEZ5bkx3WEhla04zamxRR2NfNnAtLUhlaTdhV1hMUjJySVl5NXBVbFdEMzFUVUlieWlWTzNZOXlDamN5dHVxTHRSQzdSNHptNzZCT0VFbExobjNhM28iLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiI5ODYwNTNmMDI1NDY5ZTQ3ODY3ODcxNGNjNmEyOGMzNzhhZWM4OWIxZjE2N2NjMjM4OGM3Yjk0MDg4MDc3Yjc3In19",
+    "resource": "files.ana.example",
+    "operation": "docs.read",
+    "method": "POST",
+    "path": "/docs/read",
+    "revoked": [
+     "4033ddf53a2fd038a2d57f18cd25492c0b2d3f36ff9c3fb0dd2493ee04520253"
+    ],
+    "calls_this_hour": 0,
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": false,
+    "reason": "revoked"
+   }
+  },
+  {
+   "name": "over_the_rate",
+   "status": "checked",
+   "case": "hostile",
+   "check": "grant.check",
+   "why": "Calls per hour are capped.",
+   "input": {
+    "grant": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1ncmFudCJ9.eyJ2IjoxLCJvd25lciI6InNwbGludDEzMGI2YWIxZmFjMmYyY2I1MjhhMTE0NTVlMjQxNGRjZTEwNWY1MjYzZWIwYWY5ZjRlOTlmZWZhYzkzNmYzOThlIiwiaG9sZGVyIjoic3BsaW50MWQ3ZDg2NWNjNDA4NTBkOTU5ODU4MGIyZTQ4NjcwMzkwY2VjYmYyNjAzYTIxZTc1ZWQ3NzFkNTY3MmYzNzQ1OTgiLCJyZXNvdXJjZSI6ImZpbGVzLmFuYS5leGFtcGxlIiwib3BlcmF0aW9ucyI6WyJkb2NzLnJlYWQiXSwibGltaXRzIjp7ImNhbGxzX3Blcl9ob3VyIjoyMH0sImlzc3VlZF9hdCI6MTc5Mzc1MDQwMCwiZXhwaXJlc19hdCI6MTc5NDM1NTIwMCwibm9uY2UiOiJBQUVDQXdRRkJnY0lDUW9MREEwT0R3In0.plwXgYcIxJvEh2MhToajKxTDNk1zvNzS91x_F5jlKnpM6CUOwDITIjnFvyOfKILf8ABtX3c-BgENnHGHPw79xA",
+    "proof": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1hY2Nlc3MifQ.eyJzaWduZXIiOiJzcGxpbnQxZDdkODY1Y2M0MDg1MGQ5NTk4NTgwYjJlNDg2NzAzOTBjZWNiZjI2MDNhMjFlNzVlZDc3MWQ1NjcyZjM3NDU5OCIsImhvc3QiOiJmaWxlcy5hbmEuZXhhbXBsZSIsIm1ldGhvZCI6IlBPU1QiLCJwYXRoIjoiL2RvY3MvcmVhZCIsImJvZHlfc2hhMjU2IjoiNmVmOGJiYjUyOGU2ZjlmNTY3YjQ3MDIyYWZhNGU2N2FmYTJlODRhZGNiOWVlZmUzMWM1MmMxOTdiNzM5NTc2MiIsImlzc3VlZF9hdCI6MTc5Mzc1MDQwMH0.DG9Ou33ddPTNvc6ufA_qJjLuKo2k7wiqYBsDfcufMMItYtPT22igov7Fxvn-M1RzyzkfMKoVffQ5f5xDjq7H_A",
+    "body": "{\"doc\":\"q4-plan\"}",
+    "agent_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJQWmlGMXhLWHVpMFFMZWprTFZRY1RXRHVKOFFVYnZ1ZmxjTHNlTnNFUlI5Szh4UFRPVWhQbGo1Qlg4TnBpQjUxYzlLcFZkeWRiZ2JKTEJmd3Y2NVVmUSIsInNlYWwiOiJCTzNlSnduZFNSSE9YTklPVUtVT2NSMmxfT0NjUFFhZ0dWZVJHLWNieEFpZmhpRGxsRW9iZHdyUVN1ZXZtZ19Sd2RBWTFYTU9BMm9LZXNqUmJLN1NpbkEiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiIyNDVmMGI4YThkY2ZlYWYxYWM0MTg1ZGNhMjIzOWVkZGRkMTdlMGExNWUxYTNjOWJlYjlkZmMyYzEwNWFiNzI2In19",
+    "owner_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJLSjQ2NXRQTVFMVDJ3bGdkSjhXLTM4ckxjZHVORVhXaElSQkJqQmpmSXFmYmpJY2NjSW5RRVZDb3M2a3VpSzZsd3dld3ZFMnFPRzhWQjJMZEVVc2wySSIsInNlYWwiOiJCTEZ5bkx3WEhla04zamxRR2NfNnAtLUhlaTdhV1hMUjJySVl5NXBVbFdEMzFUVUlieWlWTzNZOXlDamN5dHVxTHRSQzdSNHptNzZCT0VFbExobjNhM28iLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiI5ODYwNTNmMDI1NDY5ZTQ3ODY3ODcxNGNjNmEyOGMzNzhhZWM4OWIxZjE2N2NjMjM4OGM3Yjk0MDg4MDc3Yjc3In19",
+    "resource": "files.ana.example",
+    "operation": "docs.read",
+    "method": "POST",
+    "path": "/docs/read",
+    "revoked": [],
+    "calls_this_hour": 20,
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": false,
+    "reason": "over_rate"
+   }
+  },
+  {
+   "name": "revocation",
+   "status": "checked",
+   "case": "valid",
+   "check": "revocation.verify",
+   "why": "The signature is what counts, so it's accepted from anyone.",
+   "input": {
+    "revocation": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1ncmFudC1yZXZvY2F0aW9uIn0.eyJ2IjoxLCJvd25lciI6InNwbGludDEzMGI2YWIxZmFjMmYyY2I1MjhhMTE0NTVlMjQxNGRjZTEwNWY1MjYzZWIwYWY5ZjRlOTlmZWZhYzkzNmYzOThlIiwiZ3JhbnQiOiI0MDMzZGRmNTNhMmZkMDM4YTJkNTdmMThjZDI1NDkyYzBiMmQzZjM2ZmY5YzNmYjBkZDI0OTNlZTA0NTIwMjUzIiwiaXNzdWVkX2F0IjoxNzkzNzUwNDAwfQ.Xj0KBW8QnpfyhBRqVGvVQXWMgcfHC9bx1YFWKgAQVUM5BM70dUw5rgjvAMvkZvU0ZGOzklg2pW3rWP1Wvwfhnw",
+    "owner_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJLSjQ2NXRQTVFMVDJ3bGdkSjhXLTM4ckxjZHVORVhXaElSQkJqQmpmSXFmYmpJY2NjSW5RRVZDb3M2a3VpSzZsd3dld3ZFMnFPRzhWQjJMZEVVc2wySSIsInNlYWwiOiJCTEZ5bkx3WEhla04zamxRR2NfNnAtLUhlaTdhV1hMUjJySVl5NXBVbFdEMzFUVUlieWlWTzNZOXlDamN5dHVxTHRSQzdSNHptNzZCT0VFbExobjNhM28iLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiI5ODYwNTNmMDI1NDY5ZTQ3ODY3ODcxNGNjNmEyOGMzNzhhZWM4OWIxZjE2N2NjMjM4OGM3Yjk0MDg4MDc3Yjc3In19"
+   },
+   "expect": {
+    "ok": true,
+    "revoked": "4033ddf53a2fd038a2d57f18cd25492c0b2d3f36ff9c3fb0dd2493ee04520253"
+   }
+  },
+  {
+   "name": "revocation_by_the_agent_key",
+   "status": "checked",
+   "case": "hostile",
+   "check": "revocation.verify",
+   "why": "An agent can't revoke, or a fooled one could stall its owner.",
+   "input": {
+    "revocation": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1ncmFudC1yZXZvY2F0aW9uIn0.eyJ2IjoxLCJvd25lciI6InNwbGludDEzMGI2YWIxZmFjMmYyY2I1MjhhMTE0NTVlMjQxNGRjZTEwNWY1MjYzZWIwYWY5ZjRlOTlmZWZhYzkzNmYzOThlIiwiZ3JhbnQiOiI0MDMzZGRmNTNhMmZkMDM4YTJkNTdmMThjZDI1NDkyYzBiMmQzZjM2ZmY5YzNmYjBkZDI0OTNlZTA0NTIwMjUzIiwiaXNzdWVkX2F0IjoxNzkzNzUwNDAwfQ.aKxrn2zQ0DHac7wl_gjLTlU4EX6icykenADVr-9-SDXGgeCaYNiSUWl8rwa27QAkx_mw_lSGkRortY0LlG8ebw",
+    "owner_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJLSjQ2NXRQTVFMVDJ3bGdkSjhXLTM4ckxjZHVORVhXaElSQkJqQmpmSXFmYmpJY2NjSW5RRVZDb3M2a3VpSzZsd3dld3ZFMnFPRzhWQjJMZEVVc2wySSIsInNlYWwiOiJCTEZ5bkx3WEhla04zamxRR2NfNnAtLUhlaTdhV1hMUjJySVl5NXBVbFdEMzFUVUlieWlWTzNZOXlDamN5dHVxTHRSQzdSNHptNzZCT0VFbExobjNhM28iLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiI5ODYwNTNmMDI1NDY5ZTQ3ODY3ODcxNGNjNmEyOGMzNzhhZWM4OWIxZjE2N2NjMjM4OGM3Yjk0MDg4MDc3Yjc3In19"
+   },
+   "expect": {
+    "ok": false,
+    "reason": "bad_signature"
+   }
+  },
+  {
+   "name": "revocation_naming_no_grant",
+   "status": "checked",
+   "case": "hostile",
+   "check": "revocation.verify",
+   "why": "It names a grant by its ID.",
+   "input": {
+    "revocation": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1ncmFudC1yZXZvY2F0aW9uIn0.eyJ2IjoxLCJvd25lciI6InNwbGludDEzMGI2YWIxZmFjMmYyY2I1MjhhMTE0NTVlMjQxNGRjZTEwNWY1MjYzZWIwYWY5ZjRlOTlmZWZhYzkzNmYzOThlIiwiZ3JhbnQiOiJncl8xIiwiaXNzdWVkX2F0IjoxNzkzNzUwNDAwfQ.VJ86_BI3deB2Xt-8mZVfEB5tXKV0utgsVYhXc0eo1kFfdQn0ppMG8OjNCTGP_b5Pi8ckciqgvvJufY-YljSkKg",
+    "owner_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJLSjQ2NXRQTVFMVDJ3bGdkSjhXLTM4ckxjZHVORVhXaElSQkJqQmpmSXFmYmpJY2NjSW5RRVZDb3M2a3VpSzZsd3dld3ZFMnFPRzhWQjJMZEVVc2wySSIsInNlYWwiOiJCTEZ5bkx3WEhla04zamxRR2NfNnAtLUhlaTdhV1hMUjJySVl5NXBVbFdEMzFUVUlieWlWTzNZOXlDamN5dHVxTHRSQzdSNHptNzZCT0VFbExobjNhM28iLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiI5ODYwNTNmMDI1NDY5ZTQ3ODY3ODcxNGNjNmEyOGMzNzhhZWM4OWIxZjE2N2NjMjM4OGM3Yjk0MDg4MDc3Yjc3In19"
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  }
+ ]
+}

@@ -1,0 +1,21 @@
+{
+ "type": "quote/1",
+ "kind": "request",
+ "offer": {
+  "currency": {"word": ["usd", "eur", "gbp"]},
+  "item": {"word": ["catering", "venue", "delivery", "other"]},
+  "quantity": {"range": {"min": 1, "max": 100000}}
+ },
+ "fixed": ["currency", "item"],
+ "result": {
+  "amount_minor": {"range": {"min": 0, "max": 100000000000}},
+  "valid_days": {"one_of": [7, 14, 30]}
+ },
+ "progress": ["pricing", "checking_stock"],
+ "clarify": ["quantity_unclear", "item_unclear"],
+ "decline": ["cannot_supply", "too_small"],
+ "values": ["amount_minor"],
+ "units": {"amount_minor": "currency"},
+ "paid": {"amount_minor": "recipient"},
+ "sign": "requester"
+}

@@ -1,0 +1,27 @@
+[package]
+name = "splint-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[features]
+# Lets a release build use plain HTTP to a test network's names. Nothing that ships has it.
+test-network = []
+
+[dependencies]
+aws-lc-rs.workspace = true
+base64.workspace = true
+hpke = { version = "0.15.1", default-features = false, features = ["nistp", "aes", "getrandom", "alloc"] }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+# Windows only: who may open a file, a folder or Signet's pipe, in private_files/windows.rs.
+[target.'cfg(windows)'.dependencies]
+tokio.workspace = true
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_Security_Authorization", "Win32_Storage_FileSystem", "Win32_System_Console", "Win32_System_Threading"] }
+
+[lints]
+workspace = true

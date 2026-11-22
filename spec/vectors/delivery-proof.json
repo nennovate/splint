@@ -1,0 +1,137 @@
+{
+ "contract": "protocol.md#host-api",
+ "vectors": [
+  {
+   "name": "valid",
+   "status": "checked",
+   "case": "valid",
+   "check": "delivery_proof.verify",
+   "why": "A sending host's proof fits one message on one route.",
+   "input": {
+    "compact": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1kZWxpdmVyeSJ9.eyJtZXNzYWdlIjoiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYiIsImZyb21faG9zdCI6Imhvc3QuZXhhbXBsZSIsInRvX2hvc3QiOiJvdGhlci5leGFtcGxlIiwiaXNzdWVkX2F0IjoxNzkzNzUwNDAwfQ.zV1HVTGkVPDXBBUC_wX_1uR5ymGZ9YXtYhYjvHnyYD9rb-vz9GJG70rO30rkNEgEpPc7A7E1mMQK6hH1a3uvhQ",
+    "host_key": "BOF_p1TrUgZTuxq-5qWhNCMImKc8reQogTyRyziPOoYRWIz6b_eOo_90AdJYwpINP4bXG5YDJITcopshBwKEL8k",
+    "message": "abababababababababababababababababababababababababababababababab",
+    "from_host": "host.example",
+    "to_host": "other.example",
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": true
+   }
+  },
+  {
+   "name": "other_message",
+   "status": "checked",
+   "case": "hostile",
+   "check": "delivery_proof.verify",
+   "why": "It can't vouch for another message.",
+   "input": {
+    "compact": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1kZWxpdmVyeSJ9.eyJtZXNzYWdlIjoiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYiIsImZyb21faG9zdCI6Imhvc3QuZXhhbXBsZSIsInRvX2hvc3QiOiJvdGhlci5leGFtcGxlIiwiaXNzdWVkX2F0IjoxNzkzNzUwNDAwfQ.zV1HVTGkVPDXBBUC_wX_1uR5ymGZ9YXtYhYjvHnyYD9rb-vz9GJG70rO30rkNEgEpPc7A7E1mMQK6hH1a3uvhQ",
+    "host_key": "BOF_p1TrUgZTuxq-5qWhNCMImKc8reQogTyRyziPOoYRWIz6b_eOo_90AdJYwpINP4bXG5YDJITcopshBwKEL8k",
+    "message": "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+    "from_host": "host.example",
+    "to_host": "other.example",
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": false,
+    "reason": "proof_mismatch"
+   }
+  },
+  {
+   "name": "other_sender",
+   "status": "checked",
+   "case": "hostile",
+   "check": "delivery_proof.verify",
+   "why": "Or claim another sending host.",
+   "input": {
+    "compact": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1kZWxpdmVyeSJ9.eyJtZXNzYWdlIjoiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYiIsImZyb21faG9zdCI6Imhvc3QuZXhhbXBsZSIsInRvX2hvc3QiOiJvdGhlci5leGFtcGxlIiwiaXNzdWVkX2F0IjoxNzkzNzUwNDAwfQ.zV1HVTGkVPDXBBUC_wX_1uR5ymGZ9YXtYhYjvHnyYD9rb-vz9GJG70rO30rkNEgEpPc7A7E1mMQK6hH1a3uvhQ",
+    "host_key": "BOF_p1TrUgZTuxq-5qWhNCMImKc8reQogTyRyziPOoYRWIz6b_eOo_90AdJYwpINP4bXG5YDJITcopshBwKEL8k",
+    "message": "abababababababababababababababababababababababababababababababab",
+    "from_host": "evil.example",
+    "to_host": "other.example",
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": false,
+    "reason": "proof_mismatch"
+   }
+  },
+  {
+   "name": "other_receiver",
+   "status": "checked",
+   "case": "hostile",
+   "check": "delivery_proof.verify",
+   "why": "Or be replayed to another receiving host.",
+   "input": {
+    "compact": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1kZWxpdmVyeSJ9.eyJtZXNzYWdlIjoiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYiIsImZyb21faG9zdCI6Imhvc3QuZXhhbXBsZSIsInRvX2hvc3QiOiJvdGhlci5leGFtcGxlIiwiaXNzdWVkX2F0IjoxNzkzNzUwNDAwfQ.zV1HVTGkVPDXBBUC_wX_1uR5ymGZ9YXtYhYjvHnyYD9rb-vz9GJG70rO30rkNEgEpPc7A7E1mMQK6hH1a3uvhQ",
+    "host_key": "BOF_p1TrUgZTuxq-5qWhNCMImKc8reQogTyRyziPOoYRWIz6b_eOo_90AdJYwpINP4bXG5YDJITcopshBwKEL8k",
+    "message": "abababababababababababababababababababababababababababababababab",
+    "from_host": "host.example",
+    "to_host": "third.example",
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": false,
+    "reason": "proof_mismatch"
+   }
+  },
+  {
+   "name": "stale",
+   "status": "checked",
+   "case": "hostile",
+   "check": "delivery_proof.verify",
+   "why": "Older than the 120 second window.",
+   "input": {
+    "compact": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1kZWxpdmVyeSJ9.eyJtZXNzYWdlIjoiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYiIsImZyb21faG9zdCI6Imhvc3QuZXhhbXBsZSIsInRvX2hvc3QiOiJvdGhlci5leGFtcGxlIiwiaXNzdWVkX2F0IjoxNzkzNzUwNDAwfQ.zV1HVTGkVPDXBBUC_wX_1uR5ymGZ9YXtYhYjvHnyYD9rb-vz9GJG70rO30rkNEgEpPc7A7E1mMQK6hH1a3uvhQ",
+    "host_key": "BOF_p1TrUgZTuxq-5qWhNCMImKc8reQogTyRyziPOoYRWIz6b_eOo_90AdJYwpINP4bXG5YDJITcopshBwKEL8k",
+    "message": "abababababababababababababababababababababababababababababababab",
+    "from_host": "host.example",
+    "to_host": "other.example",
+    "now": 1793750521
+   },
+   "expect": {
+    "ok": false,
+    "reason": "expired"
+   }
+  },
+  {
+   "name": "another_hosts_key",
+   "status": "checked",
+   "case": "hostile",
+   "check": "delivery_proof.verify",
+   "why": "Signed by a different host than claimed.",
+   "input": {
+    "compact": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1kZWxpdmVyeSJ9.eyJtZXNzYWdlIjoiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYiIsImZyb21faG9zdCI6Imhvc3QuZXhhbXBsZSIsInRvX2hvc3QiOiJvdGhlci5leGFtcGxlIiwiaXNzdWVkX2F0IjoxNzkzNzUwNDAwfQ.aUhsj3CiuLwyIqCpYjH3-mRg8KUMEzSMz8m7vsZzkaEOMDWkU_IRSws6ajhyskjtkAvHPIuDvVyo72tGJ4_gfA",
+    "host_key": "BOF_p1TrUgZTuxq-5qWhNCMImKc8reQogTyRyziPOoYRWIz6b_eOo_90AdJYwpINP4bXG5YDJITcopshBwKEL8k",
+    "message": "abababababababababababababababababababababababababababababababab",
+    "from_host": "host.example",
+    "to_host": "other.example",
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": false,
+    "reason": "bad_signature"
+   }
+  },
+  {
+   "name": "typ_of_another_object",
+   "status": "checked",
+   "case": "hostile",
+   "check": "delivery_proof.verify",
+   "why": "Another object's signature can't pass as a delivery proof.",
+   "input": {
+    "compact": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1hY2Nlc3MifQ.eyJtZXNzYWdlIjoiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYiIsImZyb21faG9zdCI6Imhvc3QuZXhhbXBsZSIsInRvX2hvc3QiOiJvdGhlci5leGFtcGxlIiwiaXNzdWVkX2F0IjoxNzkzNzUwNDAwfQ.DLleo1MQ7JKJ7jXiNZ4hP5mQ_SSl1xnnPP9RjuhOhwzaHw3-mXrXhT-6pTUGBCPbuLQoqmoCSFIX8aGIyIkLWw",
+    "host_key": "BOF_p1TrUgZTuxq-5qWhNCMImKc8reQogTyRyziPOoYRWIz6b_eOo_90AdJYwpINP4bXG5YDJITcopshBwKEL8k",
+    "message": "abababababababababababababababababababababababababababababababab",
+    "from_host": "host.example",
+    "to_host": "other.example",
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  }
+ ]
+}

@@ -1,0 +1,21 @@
+[advisories]
+version = 2
+# Vulnerabilities and unsound code always fail. A yank or an unmaintained notice upstream would fail
+# every PR the day it lands, whatever the PR changed, so a yank warns and only a crate we depend on
+# directly fails on unmaintained.
+yanked = "warn"
+unmaintained = "workspace"
+
+[licenses]
+version = 2
+private = { ignore = true }
+allow = ["Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "CDLA-Permissive-2.0", "ISC", "MIT", "Unicode-3.0", "Zlib"]
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+allow-wildcard-paths = true
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
