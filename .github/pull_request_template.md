@@ -29,4 +29,6 @@ Closes #
 
 <!-- Only for a real choice that someone could have made differently: what was decided, who decided it, the alternative and what it changes. Delete this section if there wasn't one. -->
 
-By opening this pull request, I agree to the licensing terms in [CONTRIBUTING.md](https://github.com/nennovate/splint/blob/main/CONTRIBUTING.md), including that changes to `packages/host` are licensed to Nennovate, LLC under the Apache License 2.0.
+<!-- Tick this box yourself. A pull request from outside Nennovate isn't merged while it's unticked. -->
+
+- [ ] I agree to the terms in [CONTRIBUTING.md](https://github.com/nennovate/splint/blob/main/CONTRIBUTING.md), including that changes to `packages/host` are licensed to Nennovate, LLC under the Apache License 2.0.

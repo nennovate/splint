@@ -35,7 +35,7 @@ We look for these when we read a pull request or a report, and an agent can't do
 - Tell us which tool you used and what it did. One line is enough, for example "Cursor wrote the fix and its test. I read both and ran `make check`." It helps us decide where to look most carefully.
 - Write the first few lines yourself. A short summary in your own words at the top of a pull request, issue or report tells us more than a long generated one. Using a model to translate or tidy your writing is fine. Please answer review questions yourself too.
 - Reproduce a security report before you send it, so it shows the problem happening in Splint's own code. [`SECURITY.md`](SECURITY.md) explains how to report one privately.
-- Agree to the licence terms yourself. They're in `CONTRIBUTING.md`, and an agent can't accept them for you.
+- Agree to the licence terms yourself, by ticking the box in the pull request template. The terms are in `CONTRIBUTING.md`, and an agent can't accept them for you.
 
 ## If something is missing
 

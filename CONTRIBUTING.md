@@ -101,4 +101,4 @@ By opening a pull request, you agree that:
 - A contribution to anything outside `packages/host` is under the Apache License 2.0, as section 5 of that licence says.
 - A contribution to `packages/host` is licensed to Nennovate, LLC under the Apache License 2.0. Nennovate releases the host, with your contribution in it, under the AGPL-3.0-only. This keeps Nennovate free to move host code into the Apache parts, change the host's licence later, or offer the host under other terms.
 
-The pull request template repeats these terms in one sentence, so you see them before you open one. A pull request from outside Nennovate isn't merged with that sentence removed.
+The pull request template has a box to tick to confirm this. A pull request from outside Nennovate isn't merged while that box is unticked.
