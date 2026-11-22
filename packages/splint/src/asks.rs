@@ -103,9 +103,12 @@ fn waiting_words(
     controls: Option<u64>,
     waits: Waits,
     waited: Option<Duration>,
-    host: &str,
+    address: &str,
 ) -> String {
     let splint = home.command();
+    let host = splint_core::parse_address(address)
+        .map(|(_, domain)| domain)
+        .unwrap_or_default();
     let unanswered = match waited {
         Some(waited) => format!(" Nobody answered in {} seconds.", waited.as_secs()),
         None => String::new(),
@@ -151,7 +154,17 @@ fn waiting_words(
              {id} says where it stands."
         )
     };
-    format!("{here} {by_link} {then}")
+    // Agents can join on their own, so a person is told to check their agent's chat shows it joining
+    // at the address their controls name, rather than whether they asked: it has to be said there.
+    let say = if controls.is_some() {
+        format!(
+            " Tell your person in your chat that you joined Splint as {address}: their controls ask \
+             them to check that before they approve."
+        )
+    } else {
+        String::new()
+    };
+    format!("{here} {by_link} {then}{say}")
 }
 
 /// The changes the flags name, each with its value, in the protocol's own words.
@@ -437,9 +450,6 @@ pub async fn ask(home: &Home, flags: &[&str]) -> Result<Asking, Failure> {
     }
     let hours = hours.or(controls.then_some(CONTROLS_HOURS));
     let who = signet.who().await?;
-    let host = splint_core::parse_address(&who.address)
-        .map(|(_, domain)| domain.to_owned())
-        .unwrap_or_default();
     let body = json!({"changes": changes, "hours": hours});
     let signed: Signed = serde_json::from_value(signet.agent_post("/v0/asks", &body).await?)
         .map_err(|_| Failure::refused("Signet's answer can't be read"))?;
@@ -506,7 +516,7 @@ pub async fn ask(home: &Home, flags: &[&str]) -> Result<Asking, Failure> {
     }
     let controls = hours.filter(|_| controls);
     Ok(Asking {
-        said: waiting_words(home, &signed.id, controls, waits, waited, &host),
+        said: waiting_words(home, &signed.id, controls, waits, waited, &asked.address),
         id: signed.id,
         // What Signet said of one only it holds, and waiting for one Splint here just took.
         status: if here {
@@ -739,9 +749,19 @@ fn one_approval_in_words(asks: &[computer::Shown]) -> String {
         }
         if shown.from_link {
             lines.push(format!(
-                "  That came by a link, which any website can open: approve it only if you asked {}.",
+                "  That came by a link, which any website can open: approve it only if {} is your agent \
+                 and gave it to you in its chat.",
                 shown.address
             ));
+        } else if shown
+            .changes
+            .iter()
+            .any(|change| matches!(change, splint_core::asks::Change::Controls { .. }))
+        {
+            lines.push(
+                "  Approve this only if it's your agent and its chat shows it joining Splint."
+                    .to_owned(),
+            );
         }
     }
     let written: Vec<&str> = asks

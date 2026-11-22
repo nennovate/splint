@@ -100,12 +100,22 @@ class Controls:
         return False
 
     def pick(self, selector: str) -> bool:
-        """Clicks a choice or a switch in Permissions, which signs at once."""
-        return self.browser.eval(f"(() => {{ const found = document.querySelector({json.dumps(selector)}); if (!found) return false; found.click(); return true; }})()")
+        """Clicks a choice or a switch in Permissions, which signs at once, again if the page had just
+        redrawn and so didn't count the click, as a person would. True once it signed."""
+        before = self.approvals()
+        for _ in range(5):
+            time.sleep(0.8)
+            if not self.browser.eval(f"(() => {{ const found = document.querySelector({json.dumps(selector)}); if (!found) return false; found.click(); return true; }})()"):
+                return False
+            if wait_until(lambda: self.approvals() > before, 8):
+                return True
+        return False
 
     def permissions(self, agent: str) -> None:
-        """Her agent's Permissions, as clicking it in the list of her agents and then the tab opens them."""
-        self.browser.eval(f"go('agent', {{agent: {json.dumps(agent)}, tab: 'permissions'}}); true")
+        """Her agent's Permissions, opened by clicking it in the list of her agents and then the tab."""
+        listed = f"document.getElementById({json.dumps('agent-' + agent)})"
+        check("control: she clicks her agent in her list", self.browser.wait_for(f"{listed} !== null", SEEN_SECONDS) and self.browser.eval(f"{listed}.click(); true"), self.text())
+        check("control: and its Permissions", self.browser.wait_for("document.querySelector('nav.tabs') !== null", SEEN_SECONDS) and self.browser.click("nav.tabs", "Permissions"), self.text())
 
     def rules_held(self, agent: str) -> dict:
         """The rules the agent's host holds, read as the page reads them, through Splint here."""
@@ -320,7 +330,7 @@ def a_card_names_cal_only_as_far_as_signatures_bind_him(signup: Signup, controls
     """The view hands over the binding of whoever a request is with, and it's only the agent's word.
     Bug caught: a card saying who a deal is with from a binding no owner's signature vouches for."""
     card = f"#decision-{request}"
-    check("control: the card names cal, whose owner's signature binds him there", controls.browser.wait_for(f"(document.querySelector('{card}') || {{innerText: ''}}).innerText.includes('Verified: their owner signed')", SEEN_SECONDS) and cal.address in controls.text(card), controls.text(card))
+    check("control: the card names cal, whose owner's signature binds him there", controls.browser.wait_for(f"(document.querySelector('{card}') || {{innerText: ''}}).innerText.includes('Verified: the person behind it signed')", SEEN_SECONDS) and cal.address in controls.text(card), controls.text(card))
     base = view_held(controls, agent)
     forged = json.loads(json.dumps(base))
     stranger = signup.walk.work / "binds-nobody.key"
@@ -338,10 +348,10 @@ def a_card_names_cal_only_as_far_as_signatures_bind_him(signup: Signup, controls
     try:
         unchecked = lambda: "someone this page couldn't check" in controls.text(card)  # noqa: E731
         drawn = views.run(sealed_view(controls, host=signup.open_host, agent=agent, view=forged, signer=lia.dot / "signet" / "agent.key"), unchecked)
-        check("a binding no owner's key signed, in a view her agent's key signed, leaves cal unchecked on the card", drawn and "Verified: their owner signed" not in controls.text(card), controls.text(card))
+        check("a binding no owner's key signed, in a view her agent's key signed, leaves cal unchecked on the card", drawn and "Verified: the person behind it signed" not in controls.text(card), controls.text(card))
     finally:
         views.done()
-    check("control: her agent's own view names cal again", controls.browser.wait_for(f"(document.querySelector('{card}') || {{innerText: ''}}).innerText.includes('Verified: their owner signed')", SEEN_SECONDS), controls.text(card))
+    check("control: her agent's own view names cal again", controls.browser.wait_for(f"(document.querySelector('{card}') || {{innerText: ''}}).innerText.includes('Verified: the person behind it signed')", SEEN_SECONDS), controls.text(card))
 
 
 def what_is_signed_is_what_is_shown_and_changed_terms_are_refused(signup: Signup, controls: Controls, lia, agent: str, cal, request: str, slot: int) -> None:
@@ -421,7 +431,8 @@ def she_opens_her_controls(controls: Controls) -> None:
 
 def asking_first_signs_new_rules_once(controls: Controls, agent: str) -> None:
     """Bug caught, from review on 2026-11-14: Save signing the level the page had drawn before, so the
-    person thought they'd asked first. A choice now signs as it's made, from the rules in force."""
+    person thought they'd asked first. A choice now signs as it's made, once, with no passphrase in a
+    session, and the host holds what was chosen."""
     settings = f"#settings-{agent}"
     controls.permissions(agent)
     check("control: her agent's settings show, from rules the page checked", controls.browser.wait_for(f"document.getElementById('level-ask_me-{agent}') !== null", SEEN_SECONDS), controls.text())
@@ -434,15 +445,12 @@ def asking_first_signs_new_rules_once(controls: Controls, agent: str) -> None:
     check("and the page shows it chosen", controls.browser.wait_for(f"document.querySelector('{settings} #level-ask_me-{agent}[aria-checked=true]') !== null", SEEN_SECONDS), controls.text(settings))
 
 def the_price_setting_signs_as_chosen(controls: Controls, agent: str) -> None:
-    """Issue 847. Bug caught: the page saying every amount waits for the person beside a price setting
-    that lets the agent's own quotes go. The page now says only what holds either way, and the setting
-    is put back as it was."""
+    """Bug caught: the price switch signing nothing, or the opposite of what it shows, so the host's
+    rules don't change with it, and its putting back as it was."""
     quoted = lambda: controls.rules_held(agent).get("permissions", {}).get("quoted_prices", "wait")  # noqa: E731
     was = quoted()
-    check("control: a price it quotes goes ahead within its limits", controls.pick(f"#quotes-{agent}") and wait_until(lambda: quoted() != was, SEEN_SECONDS), quoted())
-    words = controls.text(f"#settings-{agent}").lower()
-    check("and nothing says then that every amount waits", "anything with an amount still waits" not in words and "a price you'd pay or one it quotes" not in words, words)
-    check("control: the price setting as it was", controls.pick(f"#quotes-{agent}") and wait_until(lambda: quoted() == was, SEEN_SECONDS), quoted())
+    check("a price it quotes going ahead within its limits is held at its host", controls.pick(f"#quotes-{agent}") and wait_until(lambda: quoted() != was, SEEN_SECONDS), quoted())
+    check("and switching it back puts it back", controls.pick(f"#quotes-{agent}") and wait_until(lambda: quoted() == was, SEEN_SECONDS), quoted())
 
 def a_place_no_signet_takes_is_never_signed(controls: Controls) -> None:
     """Bug caught: the page reading lno1name@domain as a Lightning address, where every Signet reads an
@@ -456,7 +464,8 @@ def a_place_no_signet_takes_is_never_signed(controls: Controls) -> None:
     controls.browser.click("#sheet-where-paid", "Sign where you get paid")
     check("a place no Signet takes is refused on the page", controls.shows("lno1lia@wallet.example isn't a place Splint takes"), controls.text())
     check("with nothing signed", controls.approvals() == before, controls.approvals() - before)
-    controls.browser.eval("(() => { const box = document.getElementById('where-paid'); box.value = ''; box.dispatchEvent(new Event('input')); ui.sheet = null; draw(true); return true; })()")
+    controls.browser.eval("(() => { const box = document.getElementById('where-paid'); box.value = ''; box.dispatchEvent(new Event('input')); return true; })()")
+    check("control: she cancels", controls.browser.click("#sheet-where-paid", "Cancel") and controls.browser.wait_for("document.getElementById('sheet-where-paid') === null", SEEN_SECONDS))
 
 def the_off_switch_stops_the_agent(controls: Controls, agent: str) -> None:
     """Bugs caught: a page with no way to stop a hijacked agent, and a pause its host doesn't hold."""

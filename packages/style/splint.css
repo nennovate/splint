@@ -72,10 +72,12 @@ a { color: var(--action-ink); }
 .page { max-width: 760px; margin: 0 auto; }
 .topbar { display: none; }
 
-/* A single purpose: setting up, unlocking, one request */
+/* A single purpose: setting up, unlocking, one request, centered in the window and growing past it */
 .solo {
-  max-width: 400px; margin: 9vh auto 0;
-  padding-bottom: 80px;
+  max-width: 400px; margin: 0 auto;
+  min-height: 100vh; min-height: 100dvh;
+  align-content: center;
+  padding-block: 48px;
   padding-left: max(16px, env(safe-area-inset-left, 0px));
   padding-right: max(16px, env(safe-area-inset-right, 0px));
   display: grid; gap: 18px;
@@ -322,7 +324,7 @@ table.tbl .hot { color: var(--waiting-ink); font-weight: 600; }
   .grabber { display: block; }
   .req-foot .btns { width: 100%; }
   .req-foot .btns .btn { flex: 1; height: 38px; }
-  .solo { margin-top: 5vh; }
+  .solo { padding-block: 32px; }
   .stat + .stat { border-left: 0; border-top: 1px solid var(--line); }
 }
 @media (prefers-reduced-motion: reduce) {

@@ -1268,9 +1268,11 @@ async fn prompt_as_asks_come(computer: Arc<Computer>) {
 /// How often the views at hosts are read for asks, which costs a read at each agent's host.
 const VIEWS_EVERY: Duration = Duration::from_secs(60);
 
-/// Reads the views agents set up here left at their hosts for asks waiting, while sessions last.
+/// Reads the views agents set up here left at their hosts for asks waiting, while sessions last, and
+/// forgets a signing session that has ended.
 async fn take_asks_as_they_wait(computer: Arc<Computer>) {
     loop {
+        computer.forget_ended_unlock().await;
         computer.follow_moves().await;
         computer.send_list_again().await;
         computer.take_asks_from_views().await;

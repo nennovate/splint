@@ -12,14 +12,18 @@
 //! typing it: that's the cost of not typing it each time. A chip holds nothing here, and asks for
 //! Touch ID or the login password for each change, as before.
 //!
-//! Some things ask again whatever the session. Where the person gets paid is a statement people are
-//! told to pay to, so it's never signed by a session. Setting the recovery code and approving an
-//! agent's ask take no session at all, by their own calls. A payment the person would make is the
-//! page's to ask again about: the owner key names objects a page prepared only by their kind, so this
-//! process can't tell a yes to $12 from a yes to $48,000.
+//! A session signs only what the controls change as a person goes: rules, the delegation they name,
+//! a yes or no to what an agent holds, and a contact's declared change. Anything else asks again
+//! whatever the session. Where the person gets paid is a statement people are told to pay to, and
+//! keys, recovery, retirement and the rest change who the person is, so a session never signs them.
+//! Setting the recovery code and approving an agent's ask take no session at all, by their own calls.
+//! A payment the person would make is the page's to ask again about: the owner key names objects a
+//! page prepared only by their kind, so this process can't tell a yes to $12 from a yes to $48,000.
 //!
-//! Unlocking needs no page key, as it's how a page with none gets one, so wrong tries are limited:
-//! after 5 in a row, each try waits a minute after the last.
+//! Unlocking with a passphrase needs no page key, as it's how a page with none gets one, so wrong
+//! tries are limited: after 5 in a row, each try waits a minute after the last, and tries are weighed
+//! one at a time, so sending many at once doesn't get past that. A chip's prompt turned down counts
+//! as a wrong try too.
 
 use std::fmt;
 
@@ -32,16 +36,22 @@ use crate::failure::Failure;
 use crate::owner_key::SignIn;
 use crate::secrets::Token;
 
-/// How long a signing session lasts with nothing signed or read through it.
+/// How long a signing session lasts with nothing signed through it.
 const IDLE_SECS: u64 = 30 * 60;
 /// How long one lasts whatever happens, as long as a session at a host can.
 const MOST_SECS: u64 = 12 * 60 * 60;
 /// Wrong tries in a row before each further one waits.
 const WRONG_BEFORE_WAITING: u32 = 5;
 const WAIT_SECS: u64 = 60;
-/// What a signing session never signs, by the owner type a page prepared: where the person gets
-/// paid, as people are told to pay there.
-const ALWAYS_ASKS: &[&str] = &["splint-where-paid"];
+/// What a signing session signs, by the owner type a page prepared: the changes the controls make as
+/// a person goes. Nothing else, so where the person gets paid, their keys, recovery and retirement
+/// always ask again.
+const SESSION_SIGNS: &[&str] = &[
+    "splint-rules",
+    "splint-delegation",
+    "splint-approval",
+    "splint-change-accept",
+];
 
 /// A signing session a page holds the token for.
 pub struct Unlocked {
@@ -74,15 +84,17 @@ pub struct Tries {
     next_at: u64,
 }
 
-const TOO_MANY: &str = "that passphrase was wrong several times, so wait a minute and try again";
+pub const TOO_MANY: &str =
+    "that passphrase was wrong several times, so wait a minute and try again";
 const NOTHING_YET: &str =
     "there's nothing to unlock yet: once an agent asks you, open its link here";
 
-/// Whether a signing session may sign these inputs: anything but what always asks again.
+/// Whether a signing session may sign these inputs: only what it's for, and something.
 pub fn session_signs(inputs: &[String]) -> bool {
-    inputs.iter().all(|input| {
-        Prepared::read(input).is_ok_and(|prepared| !ALWAYS_ASKS.contains(&prepared.typ()))
-    })
+    !inputs.is_empty()
+        && inputs.iter().all(|input| {
+            Prepared::read(input).is_ok_and(|prepared| SESSION_SIGNS.contains(&prepared.typ()))
+        })
 }
 
 impl Computer {
@@ -92,8 +104,10 @@ impl Computer {
         &self,
         passphrase: Option<String>,
     ) -> Result<(Vec<SessionShown>, String), Failure> {
+        // Held for the whole try, so tries are weighed one at a time and each sees the last one's.
+        let mut tries = self.tries.lock().await;
         let now = unix_now();
-        if now < self.tries.lock().await.next_at {
+        if now < tries.next_at {
             return Err(Failure::refused(TOO_MANY));
         }
         let hosts = self.unlock_hosts();
@@ -105,7 +119,7 @@ impl Computer {
             .flatten();
         match self.start_sessions(hosts, passphrase).await {
             Ok((sessions, _)) => {
-                *self.tries.lock().await = Tries::default();
+                *tries = Tries::default();
                 let token = Token::generate()?;
                 let shown = token.expose().to_owned();
                 *self.unlocked.lock().await = Some(Unlocked {
@@ -117,7 +131,6 @@ impl Computer {
                 Ok((sessions, shown))
             }
             Err(failure) => {
-                let mut tries = self.tries.lock().await;
                 tries.wrong = tries.wrong.saturating_add(1);
                 if tries.wrong >= WRONG_BEFORE_WAITING {
                     tries.next_at = unix_now().saturating_add(WAIT_SECS);
@@ -143,9 +156,24 @@ impl Computer {
         Some(one.passphrase.as_ref().map(|held| held.0.clone()))
     }
 
+    /// Whether an unlock now would wait, after too many wrong tries, so nothing is asked of the
+    /// sign-in first.
+    pub async fn unlock_waits(&self) -> bool {
+        unix_now() < self.tries.lock().await.next_at
+    }
+
     /// Ends the signing session, so the next change asks again.
     pub async fn lock(&self) {
         *self.unlocked.lock().await = None;
+    }
+
+    /// Forgets a session that has ended, and the passphrase it held, though nothing has used it since:
+    /// run every minute, so a key file's passphrase isn't kept here past its session.
+    pub async fn forget_ended_unlock(&self) {
+        let mut unlocked = self.unlocked.lock().await;
+        if unlocked.as_ref().is_some_and(|one| !one.live(unix_now())) {
+            *unlocked = None;
+        }
     }
 
     /// The hosts unlocking starts sessions at: the home host, and each agent's this computer set up.
@@ -184,18 +212,50 @@ mod tests {
         )
     }
 
-    /// The bug this catches: a session signing where the person gets paid, which people are told to
-    /// pay to, with nobody typing anything.
+    /// The bugs this catches: a session signing where the person gets paid, which people are told to
+    /// pay to, or a key or recovery rule of anyone's choosing, which takes their Splint ID for good,
+    /// with nobody typing anything.
     #[test]
-    fn a_session_never_signs_where_the_person_gets_paid() {
+    fn a_session_signs_only_what_the_controls_change() {
         assert!(session_signs(&[
             input("splint-rules"),
-            input("splint-approval")
+            input("splint-delegation"),
+            input("splint-approval"),
+            input("splint-change-accept"),
         ]));
-        assert!(!session_signs(&[
-            input("splint-rules"),
-            input("splint-where-paid")
-        ]));
+        for always_asks in [
+            "splint-where-paid",
+            "splint-key-add",
+            "splint-key-remove",
+            "splint-recovery-rule",
+            "splint-retirement",
+            "splint-release",
+            "splint-grant",
+            "splint-owner-agents",
+        ] {
+            assert!(
+                !session_signs(&[input("splint-rules"), input(always_asks)]),
+                "{always_asks}"
+            );
+        }
         assert!(!session_signs(&["not an input".to_owned()]));
+        assert!(!session_signs(&[]));
+    }
+
+    /// The bug this catches: a signing session, and the passphrase it holds, lasting past 30 minutes
+    /// unused or 12 hours in all, which no sim can wait for.
+    #[test]
+    fn a_session_ends_when_unused_or_old() {
+        let at = 1_000_000;
+        let one = |last_used| Unlocked {
+            token: Token::generate().expect("a token"),
+            passphrase: None,
+            started: at,
+            last_used,
+        };
+        assert!(one(at).live(at + IDLE_SECS - 1));
+        assert!(!one(at).live(at + IDLE_SECS));
+        assert!(one(at + MOST_SECS - 60).live(at + MOST_SECS - 1));
+        assert!(!one(at + MOST_SECS - 60).live(at + MOST_SECS));
     }
 }

@@ -258,7 +258,7 @@ async fn passphrase_for(
 }
 
 const LOCKED: &str = "your controls locked, so unlock them again";
-const ALWAYS_ASKS: &str = "where you get paid is signed only with your passphrase, so type it";
+const ALWAYS_ASKS: &str = "where you get paid, your keys and your recovery are signed only with your passphrase, so type it";
 
 /// What the page prepared, signed after the owner key's own prompt, written from exactly that.
 async fn sign(State(computer): State<Arc<Computer>>, Json(body): Json<ToSign>) -> Response {
@@ -408,10 +408,17 @@ async fn set_viewing(
 
 /// Unlocks the controls for the page that asks, with the passphrase or the chip's own prompt: sessions
 /// at the hosts this computer knows, the page key, and a signing session whose token only this page
-/// gets. It's how a page with no page key gets one, so it needs none, and wrong tries wait.
+/// gets. It's how a page with no page key gets one, so it needs none, and wrong tries wait. A
+/// chip's prompt turned down counts as a wrong try, so anything reaching this port can put the
+/// prompt up only so often. That it can at all is a known gap: a person who touches a prompt they
+/// didn't ask for gives the page key and reading, though each signature still asks again.
 async fn unlock(State(computer): State<Arc<Computer>>, Json(body): Json<Passphrase>) -> Response {
     if computer.owner.kept_identity().is_none() {
         return refused("there's no owner ID on this computer yet, so set it up first");
+    }
+    // Before anything asks the sign-in, which starts the owner key.
+    if computer.unlock_waits().await {
+        return refused(super::unlock::TOO_MANY);
     }
     if let Err(why) = gated(&computer, body.passphrase.as_deref()) {
         return refused(why);

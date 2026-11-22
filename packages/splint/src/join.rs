@@ -161,7 +161,7 @@ On your own device, not the machine I run on, in a terminal on a Mac or Linux:
 3. It ends with a line starting `splint finish`. Send me that line as it is.
 {code}
 What you're agreeing to: that whoever holds this key acts for you at this address, under rules you
-sign, until you change them. Say yes only if you asked me to join and this came from me. You can
+sign, until you change them. Say yes only if this came from me, in our chat. You can
 change the rules or stop me at any time from your device, without my help.
 
 Where your keys live: in ~/.splint/owner on your device. owner.key signs for you. backup.key, and one

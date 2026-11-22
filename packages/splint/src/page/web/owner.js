@@ -296,7 +296,7 @@ async function computerCall(path, body) {
   });
   const read = await response.json().catch(() => ({}));
   if (response.status === 403) throw NO_KEY;
-  if (response.status === 401 && path === "/local/sign") {
+  if (response.status === 401 && (path === "/local/sign" || path === "/local/session")) {
     me.unlock = null;
     throw LOCKED;
   }
@@ -388,7 +388,7 @@ function noteSignIns() {
   const removed = before.filter((name) => !now.includes(name)).length;
   if (!added && !removed) return;
   const words = [added ? `${added} added` : "", removed ? `${removed} removed` : ""].filter(Boolean).join(" and ");
-  say(`The sign-ins on your owner ID changed since this browser last saw them: ${words}. If that wasn't you, use your recovery code now.`, added > 0, true);
+  say(`The sign-ins on your Splint ID changed since this browser last saw them: ${words}. If that wasn't you, use your recovery code now.`, added > 0, true);
 }
 
 /** Starts the page afresh as this owner, so nothing of another it knew carries over to them. */
@@ -476,7 +476,7 @@ async function moreSessions(hosts) {
  */
 async function unlockCall(typed) {
   const response = await fetch("/local/unlock", {
-    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ passphrase: typed }), credentials: "omit", cache: "no-store",
+    method: "POST", headers: computerHeaders(), body: JSON.stringify({ passphrase: typed }), credentials: "omit", cache: "no-store",
   });
   const read = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(typeof read.error === "string" ? `${capital(read.error)}.` : "Splint on this computer didn't answer.");
@@ -520,7 +520,11 @@ async function loadList() {
   // On a computer whose agents haven't named a host yet, there's no list to read.
   if (!host) return;
   const holder = me.listAt || host;
-  const answers = await Promise.all([...new Set([holder, host, ...me.sessions.keys()])].map(async (at) => {
+  // Read only where Splint here has a session. With none at all, as after approving in a terminal or
+  // at a Mac's prompt, the page shows what waits here and offers to unlock for the rest.
+  const reading = [...new Set([holder, host, ...me.sessions.keys()])].filter((at) => me.sessions.get(at));
+  if (!reading.length) return;
+  const answers = await Promise.all(reading.map(async (at) => {
     try {
       return { at, held: await read(at, `/v0/owner-agents/${me.owner.id}`), error: null };
     } catch (error) {
@@ -812,13 +816,13 @@ function withWhom(agent, other) {
     el("p", {}, el("span", { class: `dot ${dot}` }), " ", el("strong", {}, who)), el("p", { class: "soft small" }, why));
   if (other.agent.startsWith("splint1g")) return line("warn", "With whoever holds your one-use link", "Not verified: anyone given the link can answer it.");
   const party = other.party;
-  if (!party) return line("stop", "With someone this page couldn't check", "Not verified: their agent's view gave no binding their owner signed. Their IDs are under Exact terms.");
+  if (!party) return line("stop", "With someone this page couldn't check", "Not verified: no signature from the person behind it came with it. Their IDs are under Exact terms.");
   const contact = ((agent.rules && agent.rules.contacts) || []).find((one) => one.agent === party.agent && !hasHiddenCharacters(one.label));
   const agreed = !contact && agreedWith(agent).some((held) => held.sender === party.agent);
   const who = `With ${contact ? `${contact.label} (${party.address})` : party.address}${agreed ? ", a contact your agent agreed with" : ""}`;
   if (party.owner === me.owner.id) return line("good", `${who}, your own agent too`, "Verified: your own signature binds it at that address.");
-  if (party.standIn) return line("warn", who, "Not verified: that agent's owner hasn't set up its controls yet.");
-  return line("good", who, "Verified: their owner signed that this agent acts for them at that address.");
+  if (party.standIn) return line("warn", who, "Not verified: nobody has set up that agent's controls yet.");
+  return line("good", who, "Verified: the person behind it signed that it acts for them at that address.");
 }
 
 /**
@@ -1723,8 +1727,8 @@ function withWhomView(agent, other) {
   const contact = ((agent.rules && agent.rules.contacts) || []).find((one) => one.agent === party.agent && !hasHiddenCharacters(one.label));
   const who = contact ? html`${contact.label} <span class="mono">${party.address}</span>` : html`<span class="mono">${party.address}</span>`;
   if (party.owner === me.owner.id) return html`<p class="from">With ${who}, your own agent <span class="verified">${icon.shield()}verified</span></p>`;
-  if (party.standIn) return html`<p class="from">With ${who} <span class="unverified">${icon.warn()}its owner hasn't set up controls yet</span></p>`;
-  return html`<p class="from">With ${who} <span class="verified" title="Their owner signed that this agent acts for them at that address.">${icon.shield()}Verified: their owner signed</span></p>`;
+  if (party.standIn) return html`<p class="from">With ${who} <span class="unverified">${icon.warn()}nobody has set up its controls yet</span></p>`;
+  return html`<p class="from">With ${who} <span class="verified" title="The person behind it signed that it acts for them at that address.">${icon.shield()}Verified: the person behind it signed</span></p>`;
 }
 
 /** One card for each draft: several can wait on one exchange, each its own yes to its own terms. */
@@ -1738,6 +1742,11 @@ function decisionCard(agent, draft, beside, first) {
   const toSign = { operation: frozen.operation, version: frozen.version, terms: frozen.terms, units: unitsOf(agent, frozen.terms.type), rows: rowsOf(frozen.terms, names, timesOf(agent, frozen.terms.type)), sign_by: frozen.latest_expiry };
   const pays = payingLines(agent, frozen, other);
   const youPay = Array.isArray(pays) && pays.some((line) => line.startsWith("You pay"));
+  // A yes asks again where the person would pay, and where this page has no schema it checked for the
+  // type, as then only the agent's Signet says whether anything is paid. Splint here can't tell either
+  // from what the page prepared, so this is the page's to ask.
+  const checked = Boolean(agent.schemas && agent.schemas.get(frozen.terms.type));
+  const asksAgain = youPay || !checked;
   const verb = VERBS[frozen.operation] || "Say yes to";
   const kind = typeName(frozen.terms.type);
   const answer = (decision) => async () => {
@@ -1749,6 +1758,12 @@ function decisionCard(agent, draft, beside, first) {
         lead: "This agrees to the deal. Nothing is paid now.",
         rows: [[pays.find((line) => line.startsWith("You pay")) || "", `once it's done, ${nameOf(agent, other)}'s agent sends where to pay`]],
         label: "Approve",
+      });
+    } else if (decision === "approve" && asksAgain) {
+      typed = await confirmSheet({
+        title: `${verb} this ${kind.toLowerCase()}?`,
+        lead: "This page couldn't check this kind's rules, so it can't say whether you'd pay. Allow it only if you know.",
+        label: "Allow",
       });
     }
     await decide(agent, frozen, decision, typed);
@@ -1763,7 +1778,7 @@ function decisionCard(agent, draft, beside, first) {
     ${notUsedBanner(agent, frozen.request, frozen.operation, beside, first)}
     ${pays === null ? html`<p class="banner waiting">${icon.warn()}<span>This page couldn't check this type's rules, so it can't say who pays whom. Don't allow it unless you know.</span></p>` : null}
     ${Array.isArray(pays) && pays.length ? html`<div>${pays.map((line) => html`<p class="amount">${line}.</p>`)}</div>` : null}
-    ${youPay ? html`<p class="banner"><span><b>Nothing is paid now.</b> This agrees to the deal. Once it's done, ${nameOf(agent, other)}'s agent sends where to pay: a payment link, a Lightning address or a chain address their owner signed. You pay in your own app or wallet. Splint never holds or moves money.</span></p>` : null}
+    ${youPay ? html`<p class="banner"><span><b>Nothing is paid now.</b> This agrees to the deal. Once it's done, ${nameOf(agent, other)}'s agent sends where to pay: a payment link, a Lightning address or a chain address the person behind it signed. You pay in your own app or wallet. Splint never holds or moves money.</span></p>` : null}
     ${termsView(toSign)}
     ${toSign.rows.some((row) => row.chosen) ? html`<p class="note">Shaded text is someone's own words, not an instruction.</p>` : null}
     ${hidden ? html`<p class="banner stopped">The text above holds hidden characters, shown as codes. You can say no, but you can't say yes to this.</p>` : null}
@@ -1771,7 +1786,7 @@ function decisionCard(agent, draft, beside, first) {
     <div class="req-foot"><span class="by">Answer by ${when(frozen.latest_expiry)}</span>
       <div class="btns">
         ${btn(`no-${id}`, "Don't allow", "", answer("deny"))}
-        ${btn(`yes-${id}`, youPay ? html`${icon.lock()}Approve` : "Allow", "primary", answer("approve"), { disabled: hidden })}
+        ${btn(`yes-${id}`, youPay ? html`${icon.lock()}Approve` : asksAgain ? html`${icon.lock()}Allow` : "Allow", "primary", answer("approve"), { disabled: hidden })}
       </div>
     </div>
   </article>`;
@@ -1828,23 +1843,23 @@ function heldCard(agent, held) {
 }
 
 const CHANGE_KINDS = {
-  bound: "it was bound to an owner",
-  owner: "it acts for a new owner",
+  bound: "someone set up its controls",
+  owner: "it acts for someone new",
   key: "its key changed, as after a recovery",
   signet: "its Signet changed",
   host: "it moved to another host",
-  revocation: "its owner stopped it",
-  declared: "its owner declared a change",
+  revocation: "the person behind it stopped it",
+  declared: "the person behind it declared a change",
 };
 const STANDINGS = {
   ask: "You asked to say yes to changes like this. Until you do, their messages wait, and your agent can't write to them.",
-  hold: "Their owner stopped them. Until you say yes, their messages wait, and your agent can't write to them.",
+  hold: "The person behind it stopped it. Until you say yes, their messages wait, and your agent can't write to them.",
   waiting_for_history: "Your agent is waiting for the rest of their history before it can say what changed.",
   rewritten: "They showed two different histories, so one was rewritten. Your agent holds them whatever your settings say.",
-  continue: "It carries on by your settings, as the same owner stands behind it. This is only to tell you.",
+  continue: "It carries on by your settings, as the same person stands behind it. This is only to tell you.",
 };
 // A new owner that carried on isn't the same owner standing behind it.
-const NEW_OWNER_CARRIED_ON = "It carries on by your settings, under its new owner. This is only to tell you.";
+const NEW_OWNER_CARRIED_ON = "It carries on by your settings, for the new person behind it. This is only to tell you.";
 
 /** A contact that changed, in the page's own words for each kind, with a yes signed for the exact head shown. */
 function changeCard(agent, notice) {
@@ -1898,6 +1913,37 @@ function askLines(ask) {
 }
 
 /**
+ * An ask's lines, less the one setting the agent up, which the title says already ("Lia wants to act
+ * for you", with its address). The owner key writes one line for each change, in order, so the line
+ * left out is exactly that change's; where they don't line up, every line shows.
+ */
+function linesBeyondJoining(ask) {
+  const said = Array.isArray(ask.said) ? ask.said.map(String) : [];
+  const changes = Array.isArray(ask.changes) ? ask.changes : [];
+  const kept = said.length === changes.length ? said.filter((_, index) => !(changes[index] && changes[index].change === "controls")) : said;
+  return [...kept, ...(ask.kinds || []).flatMap((kind) => (kind.lines || [])).map(String)];
+}
+
+/** Rows for lines, or nothing where there are none. */
+function linesView(lines) {
+  return lines.length ? html`<div class="surface list">${lines.map((line) => html`<div class="row"><div class="grow"><span class="t">${line}</span></div></div>`)}</div>` : null;
+}
+
+/**
+ * What to check before approving an agent's ask. Agents can join Splint on their own, so whether the
+ * person asked isn't the test: whether it's their agent is, and its chat shows it joining at the address
+ * shown. A link can come from any website, so one by link has to have come from the agent itself.
+ */
+function checkFirst(name, joining, fromLink) {
+  const words = joining
+    ? `Approve only if ${name}'s chat shows it joining Splint as this address.`
+    : fromLink
+      ? `Approve only if ${name} sent you this link in its chat.`
+      : "";
+  return words ? html`<p class="banner waiting">${icon.warn()}<span>${words}</span></p>` : null;
+}
+
+/**
  * One approval's worth of asks, as Splint here groups them: each named in fixed words, with any words
  * an agent wrote apart and marked, and one Approve that signs exactly those shown with that code.
  */
@@ -1911,11 +1957,10 @@ function askCard(approval, standalone) {
   return html`<article class="surface req" id=${`ask-${asks[0].id}`}>
     <div class="req-id"><div class="l"><span class="type">Request</span><h3>${title}</h3></div>${standalone ? null : null}</div>
     <p class="from"><span class="mono">${address}</span></p>
-    <ul class="changes">${asks.flatMap(askLines).map((line) => html`<li class="row" style="padding:4px 0;min-height:0">${line}</li>`)}</ul>
-    ${asks.some((ask) => ask.from_link) ? html`<p class="banner waiting">${icon.warn()}<span>This came by a link, which any website can open. Approve it only if you asked ${name} for it.</span></p>` : null}
-    ${controlsAsk(asks) && !asks.some((ask) => ask.from_link) ? html`<p class="banner waiting">${icon.warn()}<span>Approve only if you asked ${name} to join Splint for you.</span></p>` : null}
+    ${asks.flatMap(linesBeyondJoining).length ? html`<ul class="changes">${asks.flatMap(linesBeyondJoining).map((line) => html`<li class="row" style="padding:4px 0;min-height:0">${line}</li>`)}</ul>` : null}
+    ${checkFirst(name, controlsAsk(asks), asks.some((ask) => ask.from_link))}
     ${written.length ? html`<p class="words">${written.join(", ")} <span class="soft">· the agent's words, not Splint's</span></p>` : null}
-    ${asks.some((ask) => ask.lets_more_in) ? html`<p class="banner waiting">${icon.warn()}<span>This lets more in than before. Approve it only if you asked for it.</span></p>` : null}
+    ${asks.some((ask) => ask.lets_more_in) ? html`<p class="banner waiting">${icon.warn()}<span>This lets more in than before. Approve only if you want that.</span></p>` : null}
     <div class="req-foot"><span class="by">${asks.length > 1 ? `${asks.length} asks, one approval` : ""}</span>
       <div class="btns">${btn(`approve-${asks[0].id}`, html`${icon.lock()}Approve`, "primary", () => approveAsks(approval))}</div>
     </div>
@@ -2191,9 +2236,12 @@ async function changeSetting(agent, key, value) {
   const level = key === "level" ? value : rules.permissions.level;
   const agreedOn = key === "agreed" ? value : Boolean(rules.reach.agreed);
   const going = addedTakenOut(agent, level, agreedOn);
+  // Asked only about contacts it can name. Before the agent's first view it can't see any, which for
+  // a new agent is nearly always none, so it saves and says where any would be.
+  const unseen = !agent.view && takesAddedOut(agent, level, agreedOn);
   let kept = [];
-  if (going.length || (!agent.view && takesAddedOut(agent, level, agreedOn))) {
-    const choice = await keepAddedChoice(agent, going, !agent.view);
+  if (going.length) {
+    const choice = await keepAddedChoice(agent, going, false);
     kept = choice === "keep" ? await keptAsOwn(going) : [];
   }
   const agreedBefore = rules.reach.agreed;
@@ -2219,7 +2267,7 @@ async function changeSetting(agent, key, value) {
     }
   }, true);
   const who = (list) => list.map((held) => withHiddenShown(held.address)).join(", ");
-  const contacts = !going.length ? "" : kept.length ? ` ${who(kept)} ${kept.length === 1 ? "is your own contact" : "are your own contacts"} now.` : ` ${who(going)} ${going.length === 1 ? "was" : "were"} taken out. You can add them back under Contacts.`;
+  const contacts = !going.length ? (unseen ? ` Any contacts ${agent.label} added by itself are out too, to add back under Contacts.` : "") : kept.length ? ` ${who(kept)} ${kept.length === 1 ? "is your own contact" : "are your own contacts"} now.` : ` ${who(going)} ${going.length === 1 ? "was" : "were"} taken out. You can add them back under Contacts.`;
   say(`Saved.${contacts}${notRenewed.length ? ` ${NOT_RENEWED_WORDS}` : ""}`, false, Boolean(contacts || notRenewed.length));
 }
 
@@ -2375,31 +2423,36 @@ function setupView() {
     return html`<main class="solo" id="welcome">
       ${brand()}
       <div style="display:grid;gap:6px"><h1>${name} wants to act for you</h1><p class="lead mono">${ask.address}</p></div>
-      <div class="section" style="margin:0">
-        <div class="section-head"><h2>Approving lets it</h2><span class="aside">Change any time</span></div>
-        <div class="surface list">${waiting.asks.flatMap(askLines).map((line) => html`<div class="row"><div class="grow"><span class="t">${line}</span></div></div>`)}
-          <div class="row"><div class="grow"><span class="t">Start within limits, reached only by your contacts, its messages sealed</span></div></div></div>
-      </div>
-      <p class="banner waiting">${icon.warn()}<span>Approve only if you asked ${name} to join Splint for you.</span></p>
-      ${field("setup-name", "Your name", html`<input class="input" id="setup-name" autocomplete="name" placeholder="Only shown on this computer" value=${ui.typed["setup-name"] || ""} onInput=${(/** @type {any} */ event) => { ui.typed["setup-name"] = event.target.value; }} />`)}
-      ${chip ? html`<p class="hint">Your computer asks for Touch ID or your password next.</p>` : html`
-        ${field("new-passphrase", "Choose a passphrase", passwordInput("new-passphrase", { placeholder: `At least ${FEWEST_PASSPHRASE_CHARACTERS} characters`, autocomplete: "new-password" }))}
-        ${passwordInput("new-passphrase-again", { placeholder: "Type it again", "aria-label": "Type it again", autocomplete: "new-password" })}
-        <p class="hint">You'll use it to unlock your controls. Nothing can reset it.</p>`}
-      ${btn("make", html`${icon.lock()}Approve`, "primary block", make, { id: "approve-first" })}
+      ${linesView(waiting.asks.flatMap(linesBeyondJoining))}
+      ${checkFirst(name, true, waiting.asks.some((one) => one.from_link))}
+      ${nameField()}
+      ${chip ? null : passphraseFields()}
+      ${btn("make", html`${icon.lock()}${chip ? "Approve with Touch ID" : "Approve"}`, "primary block", make, { id: "approve-first" })}
+      <p class="hint">It starts within limits, reached only by your contacts. Change it any time.</p>
     </main>`;
   }
   return html`<main class="solo" id="welcome">
     ${brand()}
-    <div style="display:grid;gap:6px"><h1>Set up Splint on this computer</h1><p class="lead">Your agents ask you here before they do anything that commits you, and you set what they can do.</p></div>
-    ${field("setup-name", "Your name", html`<input class="input" id="setup-name" autocomplete="name" placeholder="Only shown on this computer" value=${ui.typed["setup-name"] || ""} onInput=${(/** @type {any} */ event) => { ui.typed["setup-name"] = event.target.value; }} />`)}
-    ${chip ? html`<p class="hint">This computer's security chip keeps your key. You approve with Touch ID or your password.</p>` : html`
-      ${field("new-passphrase", "Choose a passphrase", passwordInput("new-passphrase", { placeholder: `At least ${FEWEST_PASSPHRASE_CHARACTERS} characters`, autocomplete: "new-password" }))}
-      ${passwordInput("new-passphrase-again", { placeholder: "Type it again", "aria-label": "Type it again", autocomplete: "new-password" })}`}
-    ${btn("make", "Continue", "primary block", make)}
+    <div style="display:grid;gap:6px"><h1>Set up Splint on this computer</h1><p class="lead">Your agents ask you here before anything that commits you.</p></div>
+    ${nameField()}
+    ${chip ? null : passphraseFields()}
+    ${btn("make", chip ? "Set up with Touch ID" : "Continue", "primary block", make)}
     ${chip ? null : html`<button type="button" class="textlink" aria-expanded=${String(ui.open.has("why"))} onClick=${() => { ui.open.has("why") ? ui.open.delete("why") : ui.open.add("why"); draw(true); }}>Why a passphrase?</button>`}
     ${ui.open.has("why") ? html`<p class="hint">It locks your key on this computer, so nothing else running here, your agents included, can approve as you. Nothing can reset it, so keep it somewhere safe.</p>` : null}
   </main>`;
+}
+
+/** A name for the person, kept on this computer only. */
+function nameField() {
+  return field("setup-name", "Your name", html`<input class="input" id="setup-name" autocomplete="name" placeholder="Optional, kept on this computer" value=${ui.typed["setup-name"] || ""} onInput=${(/** @type {any} */ event) => { ui.typed["setup-name"] = event.target.value; }} />`);
+}
+
+/** A new passphrase, typed twice. */
+function passphraseFields() {
+  return html`
+    ${field("new-passphrase", "Choose a passphrase", passwordInput("new-passphrase", { placeholder: `At least ${FEWEST_PASSPHRASE_CHARACTERS} characters`, autocomplete: "new-password" }))}
+    ${passwordInput("new-passphrase-again", { placeholder: "Type it again", "aria-label": "Type it again", autocomplete: "new-password" })}
+    <p class="hint">Nothing can reset it, so keep it safe.</p>`;
 }
 
 /** The passphrase chosen for a new key file, typed twice so a slip doesn't lock the person out. */
@@ -2447,13 +2500,58 @@ function stoppedView() {
 }
 
 /** A link's ask, shown with a button to see it, as opening a link is all a website can do. */
+// What each kind of change a link asks for is, in the page's own words, before anything has checked
+// it: never a value from the link, as only the agent's host can say the link is the agent's.
+const LINKED_KINDS = {
+  controls: () => "Act for you on Splint",
+  level: () => "Change how much it does by itself",
+  quoted_prices: () => "Change whether its quotes wait for you",
+  reach: () => "Change who can reach it",
+  writes: () => "Change who it can write to",
+  paused: (/** @type {any} */ change) => (change.to === false ? "Turn it back on" : "Pause it"),
+  contact: () => "Add a contact, or change what one can do",
+  remove: () => "Remove a contact",
+  block: () => "Block someone",
+  step: () => "Say yes to something it's holding for you",
+  where_paid: () => "Change where you get paid",
+  host: () => "Move it to another host",
+};
+
+/**
+ * What a link says it asks, read from the link alone, before the person clicks and Splint here checks
+ * it with the agent's host: whose address it names and, in fixed words, the kinds of change. Nothing
+ * from it is shown as it was written, so a website making up a link can't put words here. `null`
+ * where the link can't be read, and the page then says only that an agent sent a request.
+ * @param {{ask: string, address: string}} offered
+ */
+function linkSays(offered) {
+  try {
+    if (!AN_ADDRESS.test(offered.address)) return null;
+    const payload = JSON.parse(DECODER.decode(fromB64url(String(offered.ask).split(".")[1] || "")));
+    const changes = Array.isArray(payload.changes) ? payload.changes.slice(0, 8) : [];
+    if (!changes.length) return null;
+    const lines = [...new Set(changes.map((change) => {
+      const kind = change && typeof change.change === "string" && Object.hasOwn(LINKED_KINDS, change.change) ? LINKED_KINDS[change.change] : null;
+      return kind ? kind(change) : "A change this page doesn't know";
+    }))];
+    return { name: capital(addressParts(offered.address).name), address: offered.address, controls: changes.some((change) => change && change.change === "controls"), changes, lines };
+  } catch {
+    return null;
+  }
+}
+
 function linkView() {
   if (ui.linked) {
     return html`<main class="solo wide" id="linked">${brand()}${askCardOrUnlock()}</main>`;
   }
+  const says = ui.offered ? linkSays(ui.offered) : null;
   return html`<main class="solo" id="offered">
     ${brand()}
-    <div style="display:grid;gap:6px"><h1>An agent sent you a request</h1><p class="lead">Open it to see which agent it is and what it asks.</p></div>
+    ${says ? html`
+      <div style="display:grid;gap:6px"><h1>${says.controls ? `${says.name} wants to act for you` : `${says.name} asks you for ${nounFor([{ changes: says.changes }])}`}</h1><p class="lead mono">${says.address}</p></div>
+      ${linesView(says.controls ? says.lines.filter((line) => line !== LINKED_KINDS.controls()) : says.lines)}
+      <p class="hint" id="link-unchecked">Opening it checks that ${says.name} sent it.</p>`
+    : html`<div style="display:grid;gap:6px"><h1>An agent sent you a request</h1><p class="lead">Open it to see which agent it is and what it asks.</p></div>`}
     ${btn("see", "Open request", "primary block", async () => {
       const offered = /** @type {{ask: string, address: string}} */ (ui.offered);
       const taken = await computerCall("/local/asks", { ask: offered.ask, address: offered.address });
@@ -2479,11 +2577,12 @@ function linkView() {
 /** The link's ask, and how to approve it: right here once the page has its key, or after unlocking. */
 function askCardOrUnlock() {
   const linked = ui.linked;
-  const lines = askLines(linked);
+  const lines = linesBeyondJoining(linked);
+  const name = capital(addressParts(linked.address).name);
   return html`${plainKeyFileBanner()}
-    <div style="display:grid;gap:6px"><h1>${controlsAsk([linked]) ? `${capital(addressParts(linked.address).name)} wants to act for you` : `${capital(addressParts(linked.address).name)} asks you for ${nounFor([linked])}`}</h1><p class="lead mono">${linked.address}</p></div>
-    <div class="surface list">${lines.map((line) => html`<div class="row"><div class="grow"><span class="t">${line}</span></div></div>`)}</div>
-    <p class="banner waiting">${icon.warn()}<span>This came by a link, which any website can open. Approve it only if you asked for it.</span></p>
+    <div style="display:grid;gap:6px"><h1>${controlsAsk([linked]) ? `${name} wants to act for you` : `${name} asks you for ${nounFor([linked])}`}</h1><p class="lead mono">${linked.address}</p></div>
+    ${linesView(lines)}
+    ${checkFirst(name, controlsAsk([linked]), true)}
     ${ui.linkSetUp ? html`
       ${chipHere() ? null : field("link-passphrase", "Passphrase", passwordInput("link-passphrase", { autocomplete: "current-password" }))}
       ${btn("link-unlock", "Unlock to approve", "primary block", async () => {
