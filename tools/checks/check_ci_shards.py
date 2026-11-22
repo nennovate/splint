@@ -18,7 +18,7 @@ FAST_HALF = {"rules", "rust", "deps", "verifier"}
 # Without these the workflow could run fewer shards than the plan splits the sims across.
 WORKFLOW_MUST_SAY = (
     "tools/ci/shards.py matrix",
-    "fromJSON(needs.e2e-plan.outputs.shards)",
+    "fromJSON(needs.plan.outputs.shards)",
     "tools/ci/shards.py run ${{ matrix.shard }}",
 )
 

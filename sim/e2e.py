@@ -755,6 +755,9 @@ class FloodingPeer:
 
     CHUNK = bytes(MIB)
     CHUNKS = 96
+    # Its own send buffer, set small so what it holds once the caller stops reading is the same on
+    # every machine, rather than whatever the kernel lets a socket grow to.
+    SEND_BUFFER = MIB
 
     def __init__(self) -> None:
         peer = self
@@ -763,6 +766,7 @@ class FloodingPeer:
 
         class Handler(BaseHTTPRequestHandler):
             def do_GET(self) -> None:
+                self.connection.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, peer.SEND_BUFFER)
                 self.send_response(200)
                 self.end_headers()
                 try:
@@ -2259,11 +2263,22 @@ def signet_calls_only_its_own_host(net: Network) -> None:
     check("control: Ana's host is open again", wait_until(lambda: net.takes_from("a", unnamed), 10))
 
 
+def most_a_socket_receives_unread() -> int:
+    """How much a caller's socket can hold that it never read: on Linux the kernel's limit, which some
+    machines set at 64 MiB, and elsewhere what a Mac's default comes to."""
+    try:
+        return int(Path("/proc/sys/net/ipv4/tcp_rmem").read_text().split()[2])
+    except (OSError, IndexError, ValueError):
+        return 16 * MIB
+
+
 def oversized_responses_are_refused(net: Network) -> None:
     peer = net.flooding_peer
-    # A socket's buffers hold some of what a server sends after the caller has stopped reading.
-    in_transit = 16 * MIB
+    # A socket's buffers hold some of what a server sends after the caller has stopped reading: the
+    # caller's, up to what its kernel allows, and the server's own, which the kernel may double.
+    in_transit = most_a_socket_receives_unread() + 2 * peer.SEND_BUFFER
     largest_page = 32 * MIB
+    peer.CHUNKS = (largest_page + in_transit) // MIB + 32
     too_much = len(peer.CHUNK) * peer.CHUNKS
     check("control: the server sends more than any limit allows", too_much > largest_page + in_transit)
 
