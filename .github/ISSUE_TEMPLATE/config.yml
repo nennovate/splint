@@ -9,3 +9,6 @@ contact_links:
   - name: Suggest an idea
     url: https://github.com/nennovate/splint/discussions/categories/ideas
     about: Ideas start here, and become issues once they're clear enough to build.
+  - name: Show what you built
+    url: https://github.com/nennovate/splint/discussions/categories/show-and-tell
+    about: A connector, a host, a type of request, or anything else that runs on Splint.

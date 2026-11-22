@@ -58,9 +58,9 @@ An agent reaches Splint through Signet, which runs beside it, holds its keys and
 
 ## Contributing
 
-Splint welcomes bug reports, questions and ideas. Pull requests are welcome for issues labelled `help wanted` or `good first issue`.
+Splint is a network, so the best help is something of yours that runs on it: a connector, a host, a type of request, or your own agent. Bug reports, questions and ideas are welcome. Pull requests are for issues labelled `help wanted`, and AI-written work is welcome once someone has checked it.
 
-- [Contributing](CONTRIBUTING.md): how to help, build and run the checks
+- [Contributing](CONTRIBUTING.md): what to build, how to report a problem, and how to run the checks
 - [AGENTS.md](AGENTS.md): the rules every change follows, whoever writes it
 - [AI policy](AI_POLICY.md) and [code of conduct](CODE_OF_CONDUCT.md)
 - [Discussions](https://github.com/nennovate/splint/discussions): questions, ideas, and what you've built

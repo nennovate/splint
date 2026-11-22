@@ -1,6 +1,6 @@
 name: Bug
 description: Something in Splint doesn't work as its docs say.
-labels: ["type: bug", "needs-triage"]
+labels: ["bug", "needs-triage"]
 body:
   - type: markdown
     attributes:

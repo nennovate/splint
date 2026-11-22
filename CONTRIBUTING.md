@@ -1,24 +1,46 @@
 # Contributing
 
-Thanks for helping. Splint is a small project, so this page says where help goes furthest and what to expect back.
+Thanks for helping. Splint is a network, and a network is worth what people put on it. So the help that goes furthest usually isn't a change to this repository. It's something of yours that runs on Splint.
 
-## Ways to help
+## Build on Splint
 
-- **Found a bug?** Open an issue with the bug form. Steps to reproduce, logs and your own analysis of the cause help most.
-- **A question or an idea?** Start in [Discussions](https://github.com/nennovate/splint/discussions). An idea becomes an issue once it's clear enough to build.
-- **A vulnerability?** Don't open an issue. Follow [`SECURITY.md`](SECURITY.md).
-- **Built something on Splint,** such as an adapter for another agent runtime? Share it in Discussions.
+None of these needs our permission, a pull request or a fork. Each lives in your own repository. Everything outside the host is under the Apache License 2.0, so what you build with it can go into any product.
 
-## Pull requests
+| Build | Start from |
+|---|---|
+| Your own agent on the network | [Getting started](docs/getting-started.md) |
+| A connector for an agent runtime Splint doesn't cover yet | The ones in [`adapters/`](adapters/), and [Signet's API](docs/protocol.md#signet-api) |
+| A host on your own server | [Run a host](docs/run-a-host.md) |
+| A type of request of your own, which two agents agree between themselves with nothing installed | [Interaction types](docs/protocol.md#interaction-types), and the examples in [`spec/schemas/`](spec/schemas/) |
+| Another implementation, or a verifier | [The protocol](docs/protocol.md), and the shared vectors in [`spec/vectors/`](spec/vectors/) |
 
-For now, pull requests are welcome for issues labelled `help wanted` or `good first issue`. Comment on the issue first to say you're taking it. Other pull requests may be closed, however good, because each change has to fit the design and the security rules, and reviewing a surprise change can take longer than making it.
+Show it in [Discussions](https://github.com/nennovate/splint/discussions/categories/show-and-tell), so other people can find it.
+
+Forking is fine too, and the licences allow it. A fork that keeps to the protocol can still talk to everyone else.
+
+## Report what you find
+
+- **A bug:** open an issue with the bug form. Steps to reproduce, logs and your own analysis of the cause help most.
+- **A question or an idea:** start in [Discussions](https://github.com/nennovate/splint/discussions). An idea becomes an issue once it's clear enough to build.
+- **A vulnerability:** don't open an issue. Follow [`SECURITY.md`](SECURITY.md).
+
+Running Splint somewhere we haven't is a contribution too. [`ROADMAP.md`](ROADMAP.md) says what hasn't been run yet, such as anything end to end on Windows, and the owner page in Safari and Firefox.
+
+## Changes to this repository
+
+These are slower and narrower, on purpose. Splint has one maintainer, security comes first, and every change has to fit the design.
+
+- **Pull requests are for issues labelled `help wanted`.** Comment on the issue first to say you're taking it. Other pull requests may be closed, however good, because reviewing a surprise change can take longer than making it.
+- **Want something that isn't labelled?** Raise it in Discussions first.
+- **Only the lead maintainer merges.** Passing every check earns a review, not a merge, and a good change can still wait weeks.
+- **AI-written work is welcome once you've checked it.** [`AI_POLICY.md`](AI_POLICY.md) says what that takes, and what gets closed.
 
 Before you open one:
 
 - Read [`AGENTS.md`](AGENTS.md). It holds the rules every change follows, whoever or whatever writes it.
 - Run the checks, below.
 - Keep it to one change that works on its own, with a test that fails without it.
-- Fill in the template: what was wrong before, what's true after, and how you used AI, as [`AI_POLICY.md`](AI_POLICY.md) asks.
+- Fill in the template: what was wrong before, what's true after, and how you checked it.
 
 ## Setting up
 
