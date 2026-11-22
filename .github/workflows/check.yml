@@ -7,11 +7,59 @@ on:
 permissions:
   contents: read
 
+# A new push to a PR cancels the run still going for its last one, as that result no longer counts. An
+# edit that doesn't move the PR to a new base runs nothing, so it gets a group of its own and cancels
+# nothing.
+concurrency:
+  group: check-${{ github.event.pull_request.number }}-${{ github.event.action == 'edited' && !github.event.changes.base && github.run_id || 'run' }}
+  cancel-in-progress: true
+
+# Which machines run the tests: the repository variables LINUX_TEST_RUNNER and WINDOWS_TEST_RUNNER
+# name a runner label, so the tests can move to other runners and back with no change here. Unset,
+# they run on GitHub's own. Releases always build on GitHub's own runners, in release.yml.
 jobs:
-  check:
-    # An edit counts only when it moves the PR to a new base, as when the PR below it merges.
+  # Decides once, from what the PR changes, which of the jobs below it needs, and how many shards the
+  # suites take. An edit counts only when it moves the PR to a new base, as when the PR below it merges.
+  plan:
     if: github.event.action != 'edited' || github.event.changes.base
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.LINUX_TEST_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 5
+    outputs:
+      e2e: ${{ steps.needed.outputs.e2e }}
+      windows: ${{ steps.needed.outputs.windows }}
+      shards: ${{ steps.shards.outputs.shards }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      # The suites run for code that a running system depends on, once a PR is ready. The two docs are
+      # the ones the sims follow or ship, so a change to either runs them. Windows runs for the crates
+      # it builds and for this workflow. A change to this workflow runs everything, so a change to CI is
+      # always tested by the CI it makes.
+      - id: needed
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          DRAFT: ${{ github.event.pull_request.draft }}
+        run: |
+          changed=$(git diff --name-only "$BASE_SHA...$HEAD_SHA")
+          e2e=false windows=false
+          if [ "$DRAFT" = true ]; then
+            echo "Still a draft, so only the quick checks run."
+          else
+            grep -qE '^(packages|sim|adapters|deploy|make|spec|tools/ci)/|^docs/(agents|getting-started)\.md$|^Makefile$|^\.github/workflows/check\.yml$' <<<"$changed" && e2e=true
+            grep -qE '^packages/|^\.github/workflows/check\.yml$' <<<"$changed" && windows=true
+          fi
+          echo "Suites: $e2e. Windows: $windows."
+          echo "e2e=$e2e" >> "$GITHUB_OUTPUT"
+          echo "windows=$windows" >> "$GITHUB_OUTPUT"
+      - id: shards
+        if: steps.needed.outputs.e2e == 'true'
+        run: echo "shards=$(python3 tools/ci/shards.py matrix)" >> "$GITHUB_OUTPUT"
+
+  check:
+    needs: plan
+    runs-on: ${{ vars.LINUX_TEST_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -31,11 +79,12 @@ jobs:
   # runs on Linux, so it isn't built here. Arm runners are free only for public repositories, so a
   # private one has no Arm job at all, rather than one that shows as passed having checked nothing.
   windows:
-    if: github.event.action != 'edited' || github.event.changes.base
+    needs: plan
+    if: needs.plan.outputs.windows == 'true'
     strategy:
       fail-fast: false
       matrix:
-        runner: ${{ github.event.repository.private && fromJSON('["windows-latest"]') || fromJSON('["windows-latest", "windows-11-arm"]') }}
+        runner: ${{ github.event.repository.private && fromJSON(format('["{0}"]', vars.WINDOWS_TEST_RUNNER || 'windows-latest')) || fromJSON(format('["{0}", "windows-11-arm"]', vars.WINDOWS_TEST_RUNNER || 'windows-latest')) }}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
     defaults:
@@ -56,45 +105,13 @@ jobs:
           CARGO_TARGET_DIR=target/clippy cargo clippy --all-targets --quiet -p splint-core -p signet -p splint -p owner-key -- -D warnings
           cargo test --quiet --no-fail-fast -p splint-core -p signet -p splint -p owner-key
 
-  # Decides once, for all the jobs below, whether the suites are needed and how many shards they take.
-  e2e-plan:
-    if: github.event.action != 'edited' || github.event.changes.base
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    outputs:
-      needed: ${{ steps.needed.outputs.needed }}
-      shards: ${{ steps.shards.outputs.shards }}
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-        with:
-          fetch-depth: 0
-      # Runs for code that a running system depends on, once a PR is ready. The two docs are the ones
-      # the sims follow or ship, so a change to either runs them.
-      - id: needed
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          DRAFT: ${{ github.event.pull_request.draft }}
-        run: |
-          changed=$(git diff --name-only "$BASE_SHA...$HEAD_SHA")
-          needed=true
-          if ! grep -qE '^(packages|sim|adapters|deploy|make|spec|tools/ci)/|^docs/(agents|getting-started)\.md$|^Makefile$|^\.github/workflows/' <<<"$changed"; then
-            needed=false; echo "No product code changed."
-          elif [ "$DRAFT" = true ]; then
-            needed=false; echo "Still a draft."
-          fi
-          echo "needed=$needed" >> "$GITHUB_OUTPUT"
-      - id: shards
-        if: steps.needed.outputs.needed == 'true'
-        run: echo "shards=$(python3 tools/ci/shards.py matrix)" >> "$GITHUB_OUTPUT"
-
   # Compiles once what every shard needs and saves it to the cache, so the shards don't each pay for
   # the dependencies. Cargo still rebuilds this repository's own crates after a fresh checkout, which
   # costs a shard about a minute. This builds far less than filled a runner's disk, so it frees none.
   e2e-build:
-    needs: e2e-plan
-    if: needs.e2e-plan.outputs.needed == 'true'
-    runs-on: ubuntu-latest
+    needs: plan
+    if: needs.plan.outputs.e2e == 'true'
+    runs-on: ${{ vars.LINUX_TEST_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -107,14 +124,14 @@ jobs:
   # The suites, split by tools/ci/shards.py across runners that each run their part one sim at a time.
   e2e-shard:
     name: e2e shard ${{ matrix.shard }}
-    needs: [e2e-plan, e2e-build]
-    if: needs.e2e-plan.outputs.needed == 'true'
-    runs-on: ubuntu-latest
+    needs: [plan, e2e-build]
+    if: needs.plan.outputs.e2e == 'true'
+    runs-on: ${{ vars.LINUX_TEST_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
-        shard: ${{ fromJSON(needs.e2e-plan.outputs.shards) }}
+        shard: ${{ fromJSON(needs.plan.outputs.shards) }}
     steps:
       # The whole history, as sim/host_id.py builds a host from an older commit.
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -122,8 +139,10 @@ jobs:
           fetch-depth: 0
       # The suites build the workspace several times over, a release build, a debug one and a second
       # copy of the host and Signet, which together passed what a hosted runner starts with free and
-      # ended a run with no result. These are toolchains the image ships that nothing here uses.
-      - run: |
+      # ended a run with no result. These are toolchains the image ships that nothing here uses. Other
+      # runners, named by LINUX_TEST_RUNNER, start with room enough.
+      - if: vars.LINUX_TEST_RUNNER == ''
+        run: |
           df -h /
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
           df -h /
@@ -149,18 +168,34 @@ jobs:
       - if: always()
         run: df -h / && du -sh packages/target 2>/dev/null || true
 
-  # The check a PR reports, under the name it has always had. A plan that failed counts as a failure
-  # here rather than a skip, since a skipped check passes.
-  e2e:
-    needs: [e2e-plan, e2e-build, e2e-shard]
-    if: always() && needs.e2e-plan.result != 'skipped' && (needs.e2e-plan.result != 'success' || needs.e2e-plan.outputs.needed == 'true')
-    runs-on: ubuntu-latest
+  # The one check a PR needs: every job the plan asked for passed. A job the plan didn't ask for counts
+  # as passed, but one it asked for and that was skipped, cancelled or failed doesn't, nor does a plan
+  # that failed, since a skipped check passes.
+  checks:
+    name: All checks
+    needs: [plan, check, windows, e2e-build, e2e-shard]
+    if: always() && needs.plan.result != 'skipped'
+    runs-on: ${{ vars.LINUX_TEST_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 5
     steps:
       - env:
-          PLAN: ${{ needs.e2e-plan.result }}
+          PLAN: ${{ needs.plan.result }}
+          E2E: ${{ needs.plan.outputs.e2e }}
+          WINDOWS: ${{ needs.plan.outputs.windows }}
+          CHECK: ${{ needs.check.result }}
+          WINDOWS_RESULT: ${{ needs.windows.result }}
           BUILD: ${{ needs.e2e-build.result }}
           SHARDS: ${{ needs.e2e-shard.result }}
         run: |
-          echo "Plan: $PLAN. Build: $BUILD. Shards: $SHARDS."
-          [ "$PLAN" = success ] && [ "$BUILD" = success ] && [ "$SHARDS" = success ]
+          {
+            echo "| Job | Needed | Result |"
+            echo "|---|---|---|"
+            echo "| Plan | yes | $PLAN |"
+            echo "| Rules, lint, unit tests | yes | $CHECK |"
+            echo "| Windows | $WINDOWS | $WINDOWS_RESULT |"
+            echo "| Suites: build | $E2E | $BUILD |"
+            echo "| Suites: shards | $E2E | $SHARDS |"
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+          [ "$PLAN" = success ] && [ "$CHECK" = success ] || exit 1
+          [ "$WINDOWS" != true ] || [ "$WINDOWS_RESULT" = success ] || exit 1
+          [ "$E2E" != true ] || { [ "$BUILD" = success ] && [ "$SHARDS" = success ]; } || exit 1

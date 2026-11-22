@@ -4,15 +4,24 @@ name: release
 # folder and checks every program is byte for byte the same, signs what it publishes with a keyless
 # Sigstore signature tied to this workflow, tag and commit, checks the install script takes exactly
 # that, and only then makes the release. A PR that changes any of this builds, rebuilds and installs
-# the same way, and publishes nothing.
+# the same way, and publishes nothing. A PR builds one platform for each of Linux, Mac and Windows and
+# rebuilds the Linux one, unless it changes how a build is made or has the label "release: all
+# platforms", when it builds and rebuilds all six as a tag does.
 on:
   push:
     tags: ["v*"]
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
     paths: [".github/workflows/release.yml", "deploy/release/**", "docs/agents.md"]
 
 permissions:
   contents: read
+
+# A new push to a PR cancels the run still going for its last one. A tag's run is never cancelled, and
+# a label other than "release: all platforms" runs nothing, so it gets a group of its own.
+concurrency:
+  group: "release-${{ github.event.pull_request.number || github.ref }}-${{ github.event.action == 'labeled' && github.event.label.name != 'release: all platforms' && github.run_id || 'run' }}"
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   VERSION: ${{ github.event_name == 'push' && github.ref_name || format('v0.0.0-pr{0}', github.event.number) }}
@@ -21,19 +30,58 @@ env:
   ZIGBUILD: 0.23.4
 
 jobs:
+  # Which platforms this run builds and rebuilds. Every platform is listed here once.
+  plan:
+    if: "github.event.action != 'labeled' || github.event.label.name == 'release: all platforms'"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      all: ${{ steps.plan.outputs.all }}
+      build: ${{ steps.plan.outputs.build }}
+      rebuild: ${{ steps.plan.outputs.rebuild }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      - id: plan
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          ALL_LABEL: "${{ contains(github.event.pull_request.labels.*.name, 'release: all platforms') }}"
+        run: |
+          all=true
+          if [ "$EVENT" = pull_request ] && [ "$ALL_LABEL" != true ]; then
+            # How a build is made: a change to it builds every platform, as a tag would.
+            git diff --name-only "$BASE_SHA...$HEAD_SHA" | grep -qE '^deploy/release/(build|package)\.sh$' || all=false
+          fi
+          ALL=$all python3 - <<'EOF' >> "$GITHUB_OUTPUT"
+          import json, os
+          platforms = [
+              {"platform": "macos-arm64", "target": "aarch64-apple-darwin", "runner": "macos-latest"},
+              {"platform": "macos-x86_64", "target": "x86_64-apple-darwin", "runner": "macos-latest"},
+              # Static, so they run on any Linux, and cross-built so a private repository needs no Arm runner.
+              {"platform": "linux-x86_64", "target": "x86_64-unknown-linux-musl", "runner": "ubuntu-latest"},
+              {"platform": "linux-arm64", "target": "aarch64-unknown-linux-musl", "runner": "ubuntu-latest"},
+              # Windows on Arm is cross-built too, by Microsoft's own compiler on an x86_64 runner.
+              {"platform": "windows-x86_64", "target": "x86_64-pc-windows-msvc", "runner": "windows-latest"},
+              {"platform": "windows-arm64", "target": "aarch64-pc-windows-msvc", "runner": "windows-latest"},
+          ]
+          every = os.environ["ALL"] == "true"
+          build = platforms if every else [p for p in platforms if p["platform"] in ("macos-arm64", "linux-x86_64", "windows-x86_64")]
+          rebuild = platforms if every else [p for p in platforms if p["platform"] == "linux-x86_64"]
+          print(f"all={str(every).lower()}")
+          print(f"build={json.dumps(build)}")
+          print(f"rebuild={json.dumps(rebuild)}")
+          EOF
+          cat "$GITHUB_OUTPUT"
+
   build:
+    needs: plan
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - { platform: macos-arm64, target: aarch64-apple-darwin, runner: macos-latest }
-          - { platform: macos-x86_64, target: x86_64-apple-darwin, runner: macos-latest }
-          # Static, so they run on any Linux, and cross-built so a private repository needs no Arm runner.
-          - { platform: linux-x86_64, target: x86_64-unknown-linux-musl, runner: ubuntu-latest }
-          - { platform: linux-arm64, target: aarch64-unknown-linux-musl, runner: ubuntu-latest }
-          # Windows on Arm is cross-built too, by Microsoft's own compiler on an x86_64 runner.
-          - { platform: windows-x86_64, target: x86_64-pc-windows-msvc, runner: windows-latest }
-          - { platform: windows-arm64, target: aarch64-pc-windows-msvc, runner: windows-latest }
+        include: ${{ fromJSON(needs.plan.outputs.build) }}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 45
     # Git Bash on Windows, so every platform builds and packs with the same scripts.
@@ -76,17 +124,11 @@ jobs:
   # every program is the same as the build's, byte for byte. Anyone can do the same from a release's
   # commit with deploy/release/build.sh.
   rebuild:
-    needs: build
+    needs: [plan, build]
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - { platform: macos-arm64, target: aarch64-apple-darwin, runner: macos-latest }
-          - { platform: macos-x86_64, target: x86_64-apple-darwin, runner: macos-latest }
-          - { platform: linux-x86_64, target: x86_64-unknown-linux-musl, runner: ubuntu-latest }
-          - { platform: linux-arm64, target: aarch64-unknown-linux-musl, runner: ubuntu-latest }
-          - { platform: windows-x86_64, target: x86_64-pc-windows-msvc, runner: windows-latest }
-          - { platform: windows-arm64, target: aarch64-pc-windows-msvc, runner: windows-latest }
+        include: ${{ fromJSON(needs.plan.outputs.rebuild) }}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 45
     defaults:
@@ -155,7 +197,7 @@ jobs:
   # On a PR: what an agent on Linux and on a Mac would get, from these builds.
   try:
     if: github.event_name == 'pull_request'
-    needs: build
+    needs: [plan, build]
     strategy:
       fail-fast: false
       matrix:
@@ -176,18 +218,18 @@ jobs:
       - run: deploy/release/check-install.sh "$VERSION" dist
       # The other two platforms have no runner of their own here, so each is run translated.
       - name: The Intel Mac build installs and runs, under Rosetta
-        if: runner.os == 'macOS'
+        if: runner.os == 'macOS' && needs.plan.outputs.all == 'true'
         run: |
           home=$(mktemp -d)
           HOME="$home" SPLINT_FROM_DIR=dist arch -x86_64 /bin/sh dist/install.sh
           file "$home/.splint/bin/splint" | grep x86_64
           [ "$(arch -x86_64 "$home/.splint/bin/splint" --version)" = "splint $VERSION" ]
-      - if: runner.os == 'Linux'
+      - if: runner.os == 'Linux' && needs.plan.outputs.all == 'true'
         uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
         with:
           platforms: arm64
       - name: The arm64 Linux build installs and runs, under emulation
-        if: runner.os == 'Linux'
+        if: runner.os == 'Linux' && needs.plan.outputs.all == 'true'
         run: |
           docker run --rm --platform linux/arm64 -v "$PWD/dist:/dist:ro" -e VERSION \
             alpine:3.22@sha256:bfe7ceb9f09ec0566c48fb93356e45a47a00be5a1dd14fa5b909e7709c66b034 \
