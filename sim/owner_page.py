@@ -140,8 +140,12 @@ class OwnerPage:
 
     def click_twice(self, inside: str, label: str, armed: str) -> bool:
         """As a person does: look, click, read what it now says, click again. A redraw starts it over.
-        It waits for the button to say it's armed, as a fast machine clicked again before the page had
+        It waits for the card to be on the page, as the page asks what's new only every few seconds: a
+        fast machine clicked before the card was drawn, then in the pause just after it was. And it
+        waits for the button to say it's armed, as that machine clicked again before the page had
         redrawn, then found neither label and never clicked a second time."""
+        if not self.has(inside):
+            return False
         for _ in range(4):
             self.reveal(inside)
             time.sleep(CLICK_SETTLE_SECONDS)

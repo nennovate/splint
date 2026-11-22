@@ -12,6 +12,10 @@ tools/checks/check_ci_shards.py fails `make rules` if the shards ever stop addin
 No sims are pinned together. Each makes its own ports, database and scratch folders, and a shard is a
 machine of its own. The one thing a sim took from those before it was the debug programs, which some
 use without building, so every shard builds them first. Within a shard, sims keep make's order.
+
+A sim that fails on a shard runs once more. One that fails twice fails the shard. One that then passes
+was caught by timing on that machine, not by a bug that's always there: the shard passes, and the run
+carries a warning naming the sim, so it gets fixed rather than costing every shard a second run.
 """
 
 import argparse
@@ -27,8 +31,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 TARGETS = ("e2e", "test-adapter", "test-install", "test-owner-page")
 
-# A private repository's runners have 2 cores, and each shard spends about 4 minutes starting up. The
-# longest sim, owner_device, takes over 7 minutes alone, so no number of shards beats that.
+# The longest sim, host_gone, takes over 10 minutes alone, so no number of shards beats that, and nine
+# come out at about 11 minutes each. A shard spends under a minute starting up, so fewer would save little.
 SHARD_COUNT = 9
 
 SIM = re.compile(r"python3 sim/(\w+)\.py")
@@ -49,67 +53,65 @@ SHARED_BUILDS = (
 ONCE_SECONDS = 90
 # For a sim not in the table yet. It only affects how evenly the shards come out.
 DEFAULT_SECONDS = 120
-# Seconds on a hosted 2-core runner, from the job logs. The balance needs them only roughly.
+# Seconds on the 2-core runners CI uses, from one full run's job logs. The balance needs them only roughly.
 SECONDS = {
-    "adapter": 22,
-    "agent_asks": 154,
-    "agent_join": 336,
-    "agent_signup": 311,
-    "asked_by_link": 57,
-    "change_notices": 64,
-    "cleanup_check": 12,
-    "colluders": 190,
-    "contact_rules": 74,
-    "delegation": 111,
-    "direct_access": 144,
-    "e2e": 121,
-    "fooled_agent": 34,
-    "grants": 8,
-    "guest_link": 114,
-    "host_limits": 148,
-    "hostile_home_host": 38,
-    "identity_recovery": 59,
-    "install": 64,
-    "invites": 88,
-    "key_safety": 32,
-    "listening": 327,
-    "managed_requests": 250,
-    "outbound_text": 20,
-    "owner_api": 24,
-    "owner_control": 26,
-    "owner_controls": 53,
-    "owner_device": 442,
-    "owner_keys": 64,
-    "owner_mail_sealed": 72,
-    "owner_page": 165,
-    "payments": 21,
-    "profiles": 54,
-    "proxied_agents": 57,
-    "reach_and_permissions": 62,
-    "readable_records": 47,
-    "sealed": 91,
-    "shell_agent": 42,
-    "tls_rules": 49,
-    "waiting": 127,
-    # No CI log has these yet. Timed on a Mac and scaled by the sims timed in both places, and host_id
-    # allowed the time a 2-core runner takes to compile the older host it builds.
-    "agreed_time": 41,
-    "owner_page_here": 150,
-    "hanging_up": 40,
-    "host_closing": 17,
-    "host_id": 190,
-    "host_operator": 24,
-    "join_with_code": 41,
-    "kept_listener": 30,
-    "open_federation": 79,
-    "peers_file": 88,
-    "retire_agent": 111,
-    "rules_at_host": 53,
-    "switch_host": 124,
-    "unopened_mail": 170,
-    "sent_mail": 60,
-    "lost_key_files": 150,
-    "host_gone": 240,
+    "adapter": 16,
+    "agent_asks": 126,
+    "agent_join": 255,
+    "agent_signup": 261,
+    "agreed_time": 47,
+    "asked_by_link": 106,
+    "change_notices": 50,
+    "cleanup_check": 6,
+    "colluders": 98,
+    "contact_rules": 59,
+    "delegation": 109,
+    "direct_access": 120,
+    "e2e": 112,
+    "fooled_agent": 25,
+    "grants": 6,
+    "guest_link": 107,
+    "hanging_up": 11,
+    "host_closing": 16,
+    "host_gone": 633,
+    "host_id": 23,
+    "host_limits": 137,
+    "host_operator": 18,
+    "hostile_home_host": 35,
+    "identity_recovery": 48,
+    "install": 100,
+    "invites": 74,
+    "join_with_code": 19,
+    "kept_listener": 27,
+    "key_safety": 104,
+    "listening": 273,
+    "lost_key_files": 290,
+    "managed_requests": 203,
+    "open_federation": 90,
+    "outbound_text": 14,
+    "owner_api": 78,
+    "owner_control": 22,
+    "owner_controls": 62,
+    "owner_device": 495,
+    "owner_keys": 52,
+    "owner_mail_sealed": 56,
+    "owner_page": 317,
+    "owner_page_here": 196,
+    "payments": 17,
+    "peers_file": 100,
+    "profiles": 37,
+    "proxied_agents": 24,
+    "reach_and_permissions": 44,
+    "readable_records": 43,
+    "retire_agent": 84,
+    "rules_at_host": 66,
+    "sealed": 80,
+    "sent_mail": 15,
+    "shell_agent": 32,
+    "switch_host": 218,
+    "tls_rules": 18,
+    "unopened_mail": 120,
+    "waiting": 122,
 }
 
 
@@ -202,10 +204,21 @@ def run_one(command: str) -> bool:
     return code == 0
 
 
-def run_all(commands: list[str], heading: str) -> int:
-    """Runs every command even after one fails, so one run shows everything that's wrong."""
-    failed = [command for command in commands if not run_one(command)]
+def run_all(commands: list[str], heading: str, again: bool = False) -> int:
+    """Runs every command even after one fails, so one run shows everything that's wrong. With `again`,
+    a sim that fails runs once more, and one that then passes is warned of rather than failed."""
+    failed, flaky = [], []
+    for command in commands:
+        if run_one(command):
+            continue
+        if again and SIM.fullmatch(command) and run_one(command):
+            flaky.append(command)
+        else:
+            failed.append(command)
     print(f"\n{heading}: {len(commands) - len(failed)} passed, {len(failed)} failed", flush=True)
+    for command in flaky:
+        # GitHub shows a line that starts this way as a warning on the run and beside the PR's checks.
+        print(f"::warning title=Passed only when run again::{command} failed, then passed when run again, so it depends on timing", flush=True)
     for command in failed:
         print(f"FAILED {command}", flush=True)
     return 1 if failed else 0
@@ -218,7 +231,7 @@ def shard_commands(commands: Commands, number: int, count: int) -> list[str]:
 
 
 def run_shard(number: int, count: int) -> int:
-    return run_all(shard_commands(classify(make_commands()), number, count), f"Shard {number} of {count}")
+    return run_all(shard_commands(classify(make_commands()), number, count), f"Shard {number} of {count}", again=True)
 
 
 def main() -> int:

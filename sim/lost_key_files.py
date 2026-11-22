@@ -540,6 +540,9 @@ def main() -> None:
         check("control: ivy invites ben", signup.walk.run_as("ivy", f"splint invite {ben_address} --json").returncode == 0)
         check("control: and he accepts", wait_until(lambda: signup.walk.run_as("ben", f"splint accept {ivy_address}").returncode == 0, 60))
         check("control: ben can write to her", wait_until(lambda: any(one["address"] == ivy_address for one in ben.api("GET", "/v0/contacts")[1].get("contacts", [])), 60))
+        # Her Signet is stopped next, and on a fast machine that came before it had taken his yes, so his
+        # mail then waited as a stranger's rather than in her inbox.
+        check("control: and she has him as a contact", wait_until(lambda: any(one["address"] == ben_address for one in ivy.api("GET", "/v0/contacts")[1].get("contacts", [])), 60))
         ivy_id = before["agent_id"]
         for files in (("agent.seal",), ("agent.key",), KEY_FILES):
             files_go_missing(signup, ivy, ben, ivy_address, ivy_id, files)
