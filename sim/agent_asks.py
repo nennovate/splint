@@ -716,12 +716,49 @@ def a_passphrase_lets_the_page_sign_and_read_until_viewing_says(signup: Signup, 
     status, made = http("POST", port, "/local/recovery", {"passphrase": "correct horse"}, same)
     check("with it, the code is made and shown once", status == 200 and bool(made.get("code")), status)
     check("and it's set from then on", http("GET", port, "/local/here", headers=same)[1].get("here", {}).get("recovery_not_set") is False)
+    unlocking_signs_within_its_session_and_never_past_it(port, same)
     # Before ola is paused below, as a paused agent can't read where its person gets paid.
     she_signs_where_she_gets_paid_on_her_controls(signup, ola, port, same, work)
     a_place_approved_with_no_session_is_left_by_the_sign_ins_own_proof(signup, ola, port, same)
     later = an_approval_signs_only_the_asks_shown(signup, ola, port, same)
     the_page_lists_and_codes_what_one_approval_signs(signup, port, same, later)
     the_page_signs_what_it_listed_when_she_began(signup, ola, port, same, work)
+
+
+def unlocking_signs_within_its_session_and_never_past_it(port: int, same: dict) -> None:
+    """Nenye, 2026-11-22: once she's unlocked her controls, changes go through with no passphrase. Bugs
+    caught: unlocking handing out the page key, or a session, for a wrong passphrase, or for as many
+    tries as anything on the computer cares to make; a session signing where she gets paid, which
+    people are told to pay to; a session outliving a Lock; and the recovery code or an agent's ask
+    signed by a session, with nobody typing anything."""
+    def prepared(typ: str, payload: dict) -> str:
+        return f"{e2e.encode(e2e.compact_json({'alg': 'ES256', 'typ': typ}))}.{e2e.encode(e2e.compact_json(payload))}"
+    # A no to nothing, which is signed here and left nowhere.
+    a_no = prepared("splint-approval", {"decision": "deny"})
+    no_key = {"Sec-Fetch-Site": "same-origin"}
+    status, asks = http("GET", port, "/local/unlock", headers=no_key)
+    check("a page with no key learns only that there's an owner ID here to unlock, and how", status == 200 and asks == {"set_up": True, "chip": False}, asks)
+    for _ in range(5):
+        status, wrong = http("POST", port, "/local/unlock", {"passphrase": "wrong horse"}, no_key)
+        check("a wrong passphrase unlocks nothing, and gives no page key", status == 422 and "key" not in wrong and "session" not in wrong, (status, wrong))
+    status, waited = http("POST", port, "/local/unlock", {"passphrase": "correct horse"}, no_key)
+    check("after 5 wrong in a row, even the right one waits", status == 422 and "wait a minute" in str(waited.get("error")), (status, waited))
+    time.sleep(61)
+    status, unlocked = http("POST", port, "/local/unlock", {"passphrase": "correct horse"}, no_key)
+    check("the right passphrase unlocks: the page key, a session and sessions at hosts", status == 200 and unlocked.get("key") == same.get("Splint-Page") and bool(unlocked.get("session")) and bool(unlocked.get("sessions")), (status, sorted(unlocked)))
+    session = str(unlocked.get("session", ""))
+    status, signed = http("POST", port, "/local/sign", {"inputs": [a_no], "session": session}, same)
+    check("within the session, a change signs with no passphrase", status == 200 and len(signed.get("signed", [])) == 1, (status, signed))
+    status, _ = http("POST", port, "/local/sign", {"inputs": [a_no], "session": "0" * 64}, same)
+    check("a token that isn't the session's signs nothing", status == 401)
+    paid_at = prepared("splint-where-paid", {"places": [{"kind": "payment_page", "url": "https://pay.example.com/thief"}]})
+    status, refused = http("POST", port, "/local/sign", {"inputs": [a_no, paid_at], "session": session}, same)
+    check("a session never signs where she gets paid, even beside something it signs", status == 422 and "passphrase" in str(refused.get("error")), (status, refused))
+    for path, body in (("/local/recovery", {"session": session}), ("/local/approve", {"ids": [], "session": session})):
+        check(f"{path} takes no session, only a passphrase", http("POST", port, path, body, same)[0] == 422)
+    check("Lock ends it", http("POST", port, "/local/lock", {}, same)[0] == 200)
+    status, _ = http("POST", port, "/local/sign", {"inputs": [a_no], "session": session}, same)
+    check("and a locked session signs nothing", status == 401)
 
 
 def a_held_step_is_asked_for_only_while_held(signup: Signup, ivy) -> None:
