@@ -6,6 +6,7 @@ rules:
 	python3 tools/checks/test_check_repo_rules.py
 	python3 tools/checks/check_repo_rules.py
 	python3 tools/checks/check_ci_shards.py
+	python3 tools/checks/test_ci_shards.py
 	python3 tools/vectors/test_spec.py
 
 rust:

@@ -8,7 +8,7 @@ checks what it gets against the checksums inside it, wherever it came from, so t
 it checks.
 
 Not shown here: a signature check, as nothing here is signed by the release workflow, so cosign is
-kept off the clean PATH. The release workflow checks that when it's run by hand on a branch, on GitHub.
+kept off the clean PATH. The release workflow's own run for a PR checks that, on GitHub.
 """
 
 import functools
