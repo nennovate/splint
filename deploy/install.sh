@@ -169,6 +169,34 @@ set_up_postgres() {
     fi
 }
 
+# Rust's installer runs as root here, so it's one fixed version, and a download that isn't byte for
+# byte the one pinned is refused before it runs. A newer version's hashes are in the .sha256 file
+# beside each rustup-init in https://static.rust-lang.org/rustup/archive/.
+install_rustup() {
+    local version=1.29.3 arch sha256 folder init
+    arch=$(uname -m)
+    case "$arch" in
+    x86_64) sha256=b1c8cb14e30889e7e2999e6b69e62d9e9b9ffc0f4df8180564d306d9680e6c55 ;;
+    aarch64) sha256=9f608c142e0e38a78957d0661ba1dfaf0b6fb37184cfaa4b9a0aa57af6184282 ;;
+    *)
+        echo "there's no pinned Rust installer for $arch: build the binaries elsewhere and give their folder" >&2
+        exit 1
+        ;;
+    esac
+    # It goes by the name it's run as, so it keeps its own.
+    folder=$(mktemp -d)
+    init=$folder/rustup-init
+    curl -sSf -o "$init" "https://static.rust-lang.org/rustup/archive/$version/$arch-unknown-linux-gnu/rustup-init"
+    if ! echo "$sha256  $init" | sha256sum --check --quiet >/dev/null 2>&1; then
+        rm -rf "$folder"
+        echo "the Rust installer didn't match its pinned hash, so it wasn't run" >&2
+        exit 1
+    fi
+    chmod 700 "$init"
+    "$init" -y --profile minimal --no-modify-path >/dev/null
+    rm -rf "$folder"
+}
+
 build_binaries() {
     if [ -n "$binaries" ]; then
         return
@@ -176,7 +204,7 @@ build_binaries() {
     apt-get install -y -qq build-essential pkg-config cmake >/dev/null
     export RUSTUP_HOME=/opt/rust CARGO_HOME=/opt/rust
     if [ ! -x /opt/rust/bin/cargo ]; then
-        curl -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --no-modify-path >/dev/null
+        install_rustup
     fi
     # One job, so the linker and the compiler don't both want the same memory.
     (cd "$checkout/packages" && CARGO_BUILD_JOBS=1 /opt/rust/bin/cargo build --release --locked \
