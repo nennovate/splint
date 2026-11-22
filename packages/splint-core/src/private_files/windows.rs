@@ -15,7 +15,8 @@ use std::ptr;
 
 use tokio::net::windows::named_pipe::{NamedPipeServer, ServerOptions};
 use windows_sys::Win32::Foundation::{
-    CloseHandle, ERROR_SUCCESS, GENERIC_WRITE, HANDLE, INVALID_HANDLE_VALUE, LocalFree,
+    CloseHandle, ERROR_SUCCESS, GENERIC_WRITE, HANDLE, HANDLE_FLAG_INHERIT, INVALID_HANDLE_VALUE,
+    LocalFree, SetHandleInformation,
 };
 use windows_sys::Win32::Security::Authorization::{
     ConvertSecurityDescriptorToStringSecurityDescriptorW, ConvertSidToStringSidW,
@@ -31,7 +32,9 @@ use windows_sys::Win32::Storage::FileSystem::{
     CREATE_NEW, CreateDirectoryW, CreateFileW, FILE_ATTRIBUTE_NORMAL, FILE_SHARE_DELETE,
     FILE_SHARE_READ, FILE_SHARE_WRITE,
 };
-use windows_sys::Win32::System::Console::FreeConsole;
+use windows_sys::Win32::System::Console::{
+    FreeConsole, GetStdHandle, STD_ERROR_HANDLE, STD_INPUT_HANDLE, STD_OUTPUT_HANDLE,
+};
 use windows_sys::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
 
 /// Memory Windows handed back, freed once with `LocalFree`.
@@ -340,4 +343,24 @@ pub fn private_pipe(options: &ServerOptions, name: &OsStr) -> io::Result<NamedPi
 pub fn leave_console() {
     // SAFETY: takes no arguments, and failing only means there was no console.
     unsafe { FreeConsole() };
+}
+
+/// Keeps this program's own input and output from passing to the programs it starts. Windows hands a
+/// started program every handle marked inheritable, whatever it's given as its own input and output,
+/// and these are marked so by whoever started this one, as pipes it reads. A service started here, left
+/// running, would then hold its caller's pipe open, and the caller, such as an agent's tool reading
+/// what a command said, would wait for that command's output to end for as long as the service ran. A
+/// program given this one's output on purpose still gets it, as a copy made for it.
+pub fn keep_own_handles_to_itself() {
+    for which in [STD_INPUT_HANDLE, STD_OUTPUT_HANDLE, STD_ERROR_HANDLE] {
+        // SAFETY: GetStdHandle takes one of these constants and returns this process's own handle, or
+        // none. SetHandleInformation only changes whether that handle passes to a program started
+        // later, and failing leaves it as it was, which is no worse than before.
+        unsafe {
+            let handle: HANDLE = GetStdHandle(which);
+            if !handle.is_null() && handle != INVALID_HANDLE_VALUE {
+                SetHandleInformation(handle, HANDLE_FLAG_INHERIT, 0);
+            }
+        }
+    }
 }

@@ -959,6 +959,9 @@ fn counted_json(waiting: &check::Waiting) -> Result<serde_json::Value, Failure> 
 
 #[tokio::main]
 async fn main() -> ExitCode {
+    // Before anything starts another program, which would otherwise hold its caller's pipes open.
+    #[cfg(windows)]
+    splint_core::private_files::windows::keep_own_handles_to_itself();
     let words: Vec<String> = env::args().skip(1).collect();
     let words: Vec<&str> = words.iter().map(String::as_str).collect();
     let typed = match Typed::of(&words) {
