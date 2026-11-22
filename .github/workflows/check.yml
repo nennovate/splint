@@ -11,10 +11,10 @@ jobs:
   check:
     # An edit counts only when it moves the PR to a new base, as when the PR below it merges.
     if: github.event.action != 'edited' || github.event.changes.base
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2604
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: useblacksmith/checkout@v1 # v4
       - uses: actions-rust-lang/setup-rust-toolchain@a188e68d0fd2bd36ad51dccb2b07ba6e75105f30 # v2.0.1
         with:
           rust-src-dir: packages
@@ -59,13 +59,13 @@ jobs:
   # Decides once, for all the jobs below, whether the suites are needed and how many shards they take.
   e2e-plan:
     if: github.event.action != 'edited' || github.event.changes.base
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2604
     timeout-minutes: 5
     outputs:
       needed: ${{ steps.needed.outputs.needed }}
       shards: ${{ steps.shards.outputs.shards }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: useblacksmith/checkout@v1 # v4
         with:
           fetch-depth: 0
       # Runs for code that a running system depends on, once a PR is ready. The two docs are the ones
@@ -94,10 +94,10 @@ jobs:
   e2e-build:
     needs: e2e-plan
     if: needs.e2e-plan.outputs.needed == 'true'
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2604
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: useblacksmith/checkout@v1 # v4
       - uses: actions-rust-lang/setup-rust-toolchain@a188e68d0fd2bd36ad51dccb2b07ba6e75105f30 # v2.0.1
         with:
           rust-src-dir: packages
@@ -109,7 +109,7 @@ jobs:
     name: e2e shard ${{ matrix.shard }}
     needs: [e2e-plan, e2e-build]
     if: needs.e2e-plan.outputs.needed == 'true'
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2604
     timeout-minutes: 45
     strategy:
       fail-fast: false
@@ -117,7 +117,7 @@ jobs:
         shard: ${{ fromJSON(needs.e2e-plan.outputs.shards) }}
     steps:
       # The whole history, as sim/host_id.py builds a host from an older commit.
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: useblacksmith/checkout@v1 # v4
         with:
           fetch-depth: 0
       # The suites build the workspace several times over, a release build, a debug one and a second
@@ -154,7 +154,7 @@ jobs:
   e2e:
     needs: [e2e-plan, e2e-build, e2e-shard]
     if: always() && needs.e2e-plan.result != 'skipped' && (needs.e2e-plan.result != 'success' || needs.e2e-plan.outputs.needed == 'true')
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2604
     timeout-minutes: 5
     steps:
       - env:

@@ -26,14 +26,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { platform: macos-arm64, target: aarch64-apple-darwin, runner: macos-latest }
-          - { platform: macos-x86_64, target: x86_64-apple-darwin, runner: macos-latest }
+          - { platform: macos-arm64, target: aarch64-apple-darwin, runner: blacksmith-6vcpu-macos-15 }
+          - { platform: macos-x86_64, target: x86_64-apple-darwin, runner: blacksmith-6vcpu-macos-15 }
           # Static, so they run on any Linux, and cross-built so a private repository needs no Arm runner.
-          - { platform: linux-x86_64, target: x86_64-unknown-linux-musl, runner: ubuntu-latest }
-          - { platform: linux-arm64, target: aarch64-unknown-linux-musl, runner: ubuntu-latest }
+          - { platform: linux-x86_64, target: x86_64-unknown-linux-musl, runner: blacksmith-4vcpu-ubuntu-2604 }
+          - { platform: linux-arm64, target: aarch64-unknown-linux-musl, runner: blacksmith-4vcpu-ubuntu-2604 }
           # Windows on Arm is cross-built too, by Microsoft's own compiler on an x86_64 runner.
-          - { platform: windows-x86_64, target: x86_64-pc-windows-msvc, runner: windows-latest }
-          - { platform: windows-arm64, target: aarch64-pc-windows-msvc, runner: windows-latest }
+          - { platform: windows-x86_64, target: x86_64-pc-windows-msvc, runner: blacksmith-4vcpu-windows-2025 }
+          - { platform: windows-arm64, target: aarch64-pc-windows-msvc, runner: blacksmith-4vcpu-windows-2025 }
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 45
     # Git Bash on Windows, so every platform builds and packs with the same scripts.
@@ -81,12 +81,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { platform: macos-arm64, target: aarch64-apple-darwin, runner: macos-latest }
-          - { platform: macos-x86_64, target: x86_64-apple-darwin, runner: macos-latest }
-          - { platform: linux-x86_64, target: x86_64-unknown-linux-musl, runner: ubuntu-latest }
-          - { platform: linux-arm64, target: aarch64-unknown-linux-musl, runner: ubuntu-latest }
-          - { platform: windows-x86_64, target: x86_64-pc-windows-msvc, runner: windows-latest }
-          - { platform: windows-arm64, target: aarch64-pc-windows-msvc, runner: windows-latest }
+          - { platform: macos-arm64, target: aarch64-apple-darwin, runner: blacksmith-6vcpu-macos-15 }
+          - { platform: macos-x86_64, target: x86_64-apple-darwin, runner: blacksmith-6vcpu-macos-15 }
+          - { platform: linux-x86_64, target: x86_64-unknown-linux-musl, runner: blacksmith-4vcpu-ubuntu-2604 }
+          - { platform: linux-arm64, target: aarch64-unknown-linux-musl, runner: blacksmith-4vcpu-ubuntu-2604 }
+          - { platform: windows-x86_64, target: x86_64-pc-windows-msvc, runner: blacksmith-4vcpu-windows-2025 }
+          - { platform: windows-arm64, target: aarch64-pc-windows-msvc, runner: blacksmith-4vcpu-windows-2025 }
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 45
     defaults:
@@ -159,7 +159,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        runner: [ubuntu-latest, macos-latest]
+        runner: [blacksmith-4vcpu-ubuntu-2604, blacksmith-6vcpu-macos-15]
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 15
     permissions:
@@ -226,7 +226,7 @@ jobs:
   try-windows:
     if: github.event_name == 'pull_request'
     needs: build
-    runs-on: windows-latest
+    runs-on: blacksmith-4vcpu-windows-2025
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -313,14 +313,14 @@ jobs:
   publish:
     if: github.event_name == 'push'
     needs: [build, rebuild]
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2604
     timeout-minutes: 15
     permissions:
       contents: write
       id-token: write
       attestations: write
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: useblacksmith/checkout@v1 # v4
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: splint-*
