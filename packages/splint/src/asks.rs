@@ -410,6 +410,13 @@ pub(crate) struct Signed {
 /// running. Whether it took it: one Splint here refused, as when the agent's host can't vouch for its
 /// address, goes by link.
 pub(crate) async fn hand_here(home: &Home, client: &Client, asked: &Asked) -> bool {
+    taken_here(home, client, asked).await.is_some()
+}
+
+/// What Splint on this computer made of an ask it took, as `hand_here` hands it, or `None` where it
+/// didn't take it. One it won't put to its person, such as for a name its host won't give, comes back
+/// not approved, with why.
+async fn taken_here(home: &Home, client: &Client, asked: &Asked) -> Option<Outcome> {
     if !client.is_up().await && computer::start(home).is_ok() {
         for _ in 0..20 {
             if client.is_up().await {
@@ -418,11 +425,14 @@ pub(crate) async fn hand_here(home: &Home, client: &Client, asked: &Asked) -> bo
             tokio::time::sleep(Duration::from_millis(250)).await;
         }
     }
-    client.is_up().await
-        && client
-            .hand(asked)
-            .await
-            .is_ok_and(|taken| taken.get("status").and_then(Value::as_str) != Some("refused"))
+    if !client.is_up().await {
+        return None;
+    }
+    let taken = client.hand(asked).await.ok()?;
+    if taken.get("status").and_then(Value::as_str) == Some("refused") {
+        return None;
+    }
+    serde_json::from_value(taken).ok()
 }
 
 /// The answer already left for an ask for controls still waiting, taken up, as a new ask would end
@@ -490,9 +500,20 @@ pub async fn ask(home: &Home, flags: &[&str]) -> Result<Asking, Failure> {
         kinds: Vec::new(),
         agreed: Vec::new(),
         in_words: Default::default(),
+        owner_part: None,
     };
     let client = Client::new(home)?;
-    let here = hand_here(home, &client, &asked).await;
+    let taken = taken_here(home, &client, &asked).await;
+    if let Some(Outcome::NotApproved { reason }) = taken {
+        return Ok(Asking {
+            id: signed.id,
+            status: "not_approved".to_owned(),
+            approve_at: Waits::Here.approve_at(),
+            said: format!("Not asked: {reason}."),
+            computer_link: None,
+        });
+    }
+    let here = taken.is_some();
     let waits = if !here {
         Waits::ByLinkOnly
     } else if client.here().await.is_ok_and(|here| here.prompts_by_itself) {

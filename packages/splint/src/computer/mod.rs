@@ -49,7 +49,7 @@ use tokio::sync::{Mutex, Notify};
 
 use crate::failure::Failure;
 use crate::home::{HOME_SETTING, Home};
-use crate::host_calls::{HostCalls, SealedMail};
+use crate::host_calls::{HostCalls, NameHere, SealedMail};
 use crate::owner_key::{NewSignIn, OwnerKey, SignIn};
 use crate::rules::first_rules;
 use crate::secrets::Token;
@@ -131,6 +131,10 @@ pub struct Asked {
     /// ask and the draft and schema above, so the page and terminal show what the prompt does.
     #[serde(skip)]
     pub in_words: InWords,
+    /// For an ask for controls or to add an owner part: the owner's name this computer chose for the
+    /// agent to go under, from what its host says, never from whoever handed the ask over.
+    #[serde(skip)]
+    pub owner_part: Option<String>,
 }
 
 /// One ask in the words its prompt names it by, as `owner-key describe-asks` prints them.
@@ -337,6 +341,14 @@ impl Computer {
                  agent's view has to hold each one's schema",
             ));
         }
+        // Settled before anyone is asked, so a touch never signs a name its host won't give.
+        asked.owner_part = match self.name_for(&asked, &ask).await {
+            Ok(owner_part) => owner_part,
+            Err(Failure::Refused(why)) => {
+                return Ok(Outcome::NotApproved { reason: why });
+            }
+            Err(failure) => return Err(failure),
+        };
         let known = self
             .waiting
             .lock()
@@ -369,6 +381,53 @@ impl Computer {
         Ok(Outcome::Waiting)
     }
 
+    /// The owner's name an ask's binding names its agent under at its host: theirs there already, which
+    /// every agent of theirs after the first gets with nothing asked, or the one the ask names, once the
+    /// host says nobody else has it. An ask for controls with neither, from an agent under a temporary
+    /// name, isn't asked, as an owner's agent is always named under theirs. One adding an owner part
+    /// adds the one it names, so it has to be theirs or free. A refusal says why, for the agent.
+    async fn name_for(&self, asked: &Asked, ask: &VerifiedAsk) -> Result<Option<String>, Failure> {
+        let adds = ask.adds_owner_part();
+        if !ask.asks_for_controls() && adds.is_none() {
+            return Ok(None);
+        }
+        let (name, domain) = parse_address(&asked.address)?;
+        let host = HostCalls::new(domain)?;
+        let owner = self
+            .owner
+            .kept_identity()
+            .and_then(|identity| Identity::from_encoded(&identity).ok())
+            .map(|identity| identity.id().clone());
+        let theirs = match &owner {
+            Some(owner) => host.owners_name(owner).await?,
+            None => None,
+        };
+        match (theirs, ask.owner_part()) {
+            (Some(theirs), Some(asked_for)) if adds.is_some() && theirs != asked_for => {
+                Err(Failure::refused(format!(
+                    "your person's name at {domain} is {theirs}, the one they have there, so ask \
+                     again with --name {theirs}"
+                )))
+            }
+            (Some(theirs), _) => Ok(Some(theirs)),
+            (None, Some(asked_for)) => match host.name_holder(asked_for).await? {
+                NameHere::Nobody => Ok(Some(asked_for.to_owned())),
+                NameHere::Owner(holder) if owner.is_some_and(|owner| owner.as_str() == holder) => {
+                    Ok(Some(asked_for.to_owned()))
+                }
+                NameHere::Owner(_) | NameHere::Barred => Err(Failure::refused(format!(
+                    "{asked_for} is someone else's at {domain}, or nobody can have it there, so ask \
+                     your person for another name and ask again with --name and it"
+                ))),
+            },
+            (None, None) if splint_core::is_temporary_name(name) => Err(Failure::refused(
+                "your person's name goes after your handle, and nothing names it yet: ask them the \
+                 name they go by, and ask again with --name and it",
+            )),
+            (None, None) => Ok(None),
+        }
+    }
+
     /// An ask in the words its prompt will name it by, from `owner-key`, which writes the prompt. One it
     /// can't say whole isn't taken, so nothing is listed that a prompt would name differently.
     async fn in_words(&self, asked: &Asked) -> Result<InWords, Failure> {
@@ -382,6 +441,7 @@ impl Computer {
             kinds: &asked.kinds,
             in_force: None,
             owner_identity: None,
+            owner_part: asked.owner_part.as_deref(),
         }] })
         .to_string();
         let dir = self.owner.dir_path().to_owned();
@@ -563,6 +623,7 @@ impl Computer {
                     kinds: &asked.kinds,
                     in_force: in_force.as_ref().map(|found| found.rules.as_str()),
                     owner_identity: in_force.as_ref().map(|found| found.owner_identity.as_str()),
+                    owner_part: asked.owner_part.as_deref(),
                 }
             })
             .collect();
@@ -656,14 +717,9 @@ impl Computer {
                 self.remember_agent(agent.as_str(), &asked.address, &asked.identity);
                 // Kept at the name it has now, which follows once its host names it with the
                 // owner's part, as only then has the agent taken it up.
-                if let Some(named) = splint_core::asks::payload_changes(&asked.ask)
-                    .ok()
-                    .as_deref()
-                    .and_then(splint_core::asks::owner_part_of)
-                    .and_then(|owner_part| {
-                        splint_core::with_owner_part(&asked.address, owner_part).ok()
-                    })
-                {
+                if let Some(named) = asked.owner_part.as_deref().and_then(|owner_part| {
+                    splint_core::with_owner_part(&asked.address, owner_part).ok()
+                }) {
                     self.note_moving(agent.as_str(), &named);
                 }
             }
@@ -961,6 +1017,8 @@ struct ToSign<'a> {
     in_force: Option<&'a str>,
     #[serde(skip_serializing_if = "Option::is_none")]
     owner_identity: Option<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    owner_part: Option<&'a str>,
 }
 
 #[derive(Deserialize)]
@@ -1758,6 +1816,7 @@ mod tests {
             kinds: Vec::new(),
             agreed: Vec::new(),
             in_words: Default::default(),
+            owner_part: None,
         };
         assert!(!step_held(&verified, &asked), "no draft");
         let mut other_step = draft.clone();

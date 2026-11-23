@@ -9,8 +9,9 @@ use serde::Deserialize;
 use serde::de::DeserializeOwned;
 use splint_core::host_api::{
     HeldOwnerView, HeldRules, JoinAnswer, JoinAnswers, JoinLimit, KnownOwner, ListsByHandle,
-    OWNER_AGENTS_PATH, OWNER_HANDLES_PATH, OWNERS_PATH, OwnerAgentsNotice, RecoveryNotice,
-    Resolved, RetirementNotice, RevocationNotice, RulesNotice,
+    NAMES_PATH, NameHolder, OWNER_AGENTS_PATH, OWNER_HANDLES_PATH, OWNERS_NAME_PATH, OWNERS_PATH,
+    OwnerAgentsNotice, OwnersName, RecoveryNotice, Resolved, RetirementNotice, RevocationNotice,
+    RulesNotice,
 };
 use splint_core::owner_call::owner_mail_path;
 use splint_core::owner_session::SESSION_HEADER;
@@ -20,6 +21,15 @@ use splint_core::{Identity, SplintId, VerifiedBinding, parse_address};
 
 use crate::failure::Failure;
 use crate::release::{other_protocol, speaking_ours};
+
+/// Who has a name at a host as their own, as that host says.
+pub enum NameHere {
+    /// An owner, by ID, whose name it is or whose agent goes by it alone.
+    Owner(String),
+    Nobody,
+    /// Nobody can have it there: it's kept back, or reads as a temporary name or an owner's ID.
+    Barred,
+}
 
 const TIMEOUT: Duration = Duration::from_secs(10);
 /// A host keeps at most 2 MiB of this, and the machine at the other end decides how much it sends.
@@ -150,6 +160,58 @@ impl HostCalls {
             ));
         }
         Ok(info.open_signup)
+    }
+
+    /// Who has a name at this host as their own, as the host says before anyone signs: an owner whose
+    /// name it is, or whose agent goes by it alone, nobody, or nobody can.
+    pub async fn name_holder(&self, name: &str) -> Result<NameHere, Failure> {
+        let answer = self
+            .http
+            .get(format!("{}{NAMES_PATH}/{name}", self.base))
+            .send()
+            .await
+            .map_err(|_| Failure::refused("couldn't reach that host, so try again"))?;
+        match answer.status() {
+            StatusCode::NOT_FOUND => Ok(NameHere::Nobody),
+            StatusCode::FORBIDDEN => Ok(NameHere::Barred),
+            status if status.is_success() => Ok(NameHere::Owner(
+                answer
+                    .json::<NameHolder>()
+                    .await
+                    .map_err(|_| Failure::refused("that host's answer doesn't make sense"))?
+                    .owner,
+            )),
+            status => Err(Failure::refused(format!(
+                "that host answered {status}, so try again"
+            ))),
+        }
+    }
+
+    /// An owner's name at this host, as the host says, if they have one.
+    pub async fn owners_name(&self, owner: &SplintId) -> Result<Option<String>, Failure> {
+        let answer = self
+            .http
+            .get(format!(
+                "{}{OWNERS_NAME_PATH}/{}/name",
+                self.base,
+                owner.as_str()
+            ))
+            .send()
+            .await
+            .map_err(|_| Failure::refused("couldn't reach that host, so try again"))?;
+        match answer.status() {
+            StatusCode::NOT_FOUND => Ok(None),
+            status if status.is_success() => Ok(Some(
+                answer
+                    .json::<OwnersName>()
+                    .await
+                    .map_err(|_| Failure::refused("that host's answer doesn't make sense"))?
+                    .name,
+            )),
+            status => Err(Failure::refused(format!(
+                "that host answered {status}, so try again"
+            ))),
+        }
     }
 
     /// Whether someone already has this handle, as far as anyone can look up.

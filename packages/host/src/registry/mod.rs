@@ -19,7 +19,8 @@ use axum::http::HeaderMap;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use splint_core::host_api::{
-    JoinLimit, RecoveryNotice, Resolved, RetirementNotice, RetirementTaken, RevocationNotice,
+    JoinLimit, NAMES_PATH, NameHolder, OWNERS_NAME_PATH, OwnersName, RecoveryNotice, Resolved,
+    RetirementNotice, RetirementTaken, RevocationNotice,
 };
 use splint_core::{
     ADDRESS_SEPARATOR, Error, Identity, MIN_SIGNUP_CODE_CHARS, RECOVERY_WINDOW_SECS, SplintId,
@@ -117,6 +118,8 @@ pub fn routes() -> Router<Arc<Host>> {
         .route("/v0/recoveries", post(recover))
         .route("/v0/revocations", post(revoke))
         .route("/.well-known/splint/agents/{handle}", get(resolve))
+        .route(&format!("{NAMES_PATH}/{{name}}"), get(name_holder))
+        .route(&format!("{OWNERS_NAME_PATH}/{{owner}}/name"), get(owners_name))
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -763,6 +766,45 @@ async fn resolve(
     Path(handle): Path<String>,
 ) -> Result<Json<Resolved>, ApiError> {
     Ok(Json(resolved_here(&host, &handle).await?))
+}
+
+/// Who has a name here as their own, so an owner's side can say before anyone signs whether it's free:
+/// an owner whose name it is, or whose agent goes by it alone. One nobody can have here is 403.
+async fn name_holder(
+    State(host): State<Arc<Host>>,
+    Path(name): Path<String>,
+) -> Result<Json<NameHolder>, ApiError> {
+    if !may_be_owner_name(&name) || host.kept_names.holds(&name) {
+        return Err(ApiError::Forbidden(NAMED_UNDER_AN_OWNER));
+    }
+    let owner: Option<String> = sqlx::query_scalar(&format!(
+        "SELECT owner_id FROM owner_names WHERE name = $1
+         UNION ALL SELECT owner_id FROM agents WHERE handle = $1
+         UNION ALL SELECT agents.owner_id FROM moved_names
+             JOIN agents ON agents.id = moved_names.agent_id WHERE name = $1 AND {STILL_HELD}
+         LIMIT 1"
+    ))
+    .bind(&name)
+    .bind(host.clock.now_for_sql().await)
+    .fetch_optional(&host.db)
+    .await?;
+    let owner = owner.ok_or(ApiError::NotFound)?;
+    Ok(Json(NameHolder { owner }))
+}
+
+/// An owner's name here, which their agents here are named under.
+async fn owners_name(
+    State(host): State<Arc<Host>>,
+    Path(owner): Path<String>,
+) -> Result<Json<OwnersName>, ApiError> {
+    let name: Option<String> =
+        sqlx::query_scalar("SELECT name FROM owner_names WHERE owner_id = $1")
+            .bind(&owner)
+            .fetch_optional(&host.db)
+            .await?;
+    Ok(Json(OwnersName {
+        name: name.ok_or(ApiError::NotFound)?,
+    }))
 }
 
 /// Who's registered at this name here, as anyone can ask. A name an agent left with its owner answers

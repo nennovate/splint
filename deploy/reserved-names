@@ -1,0 +1,27 @@
+# Names nobody on this host has as their own name, alone or after the dot, such as `brand~host` or
+# `ana.brand~host`. Any agent can still have one as its handle, as `brand.ana~host`. One a line, in
+# lowercase, and `#` starts a comment. The host reads this file as it starts, so restart it after a
+# change: sudo systemctl restart splint-host. A later deploy/install.sh leaves it as you keep it.
+
+# Model and assistant names, which people give their agents, so none passes for the company.
+anthropic
+claude
+openai
+chatgpt
+gpt
+codex
+gemini
+google
+copilot
+github
+microsoft
+cursor
+openclaw
+perplexity
+mistral
+llama
+meta
+grok
+xai
+deepseek
+qwen

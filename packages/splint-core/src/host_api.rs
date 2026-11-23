@@ -182,6 +182,25 @@ pub struct Resolved {
     pub moved_to: String,
 }
 
+/// Where a host says who has a name there as their own, `GET` with the name after it: an owner whose
+/// name it is, or whose agent goes by it alone. 404 is a name nobody has, and 403 one nobody can have
+/// there. It's the host's word, for asking before anyone signs, and registering is what settles it.
+pub const NAMES_PATH: &str = "/.well-known/splint/names";
+/// Where a host says an owner's name there, `GET {OWNERS_NAME_PATH}/{owner ID}/name`, 404 for none.
+pub const OWNERS_NAME_PATH: &str = "/.well-known/splint/owners";
+
+/// Who has a name at a host as their own, by owner ID.
+#[derive(Serialize, Deserialize)]
+pub struct NameHolder {
+    pub owner: String,
+}
+
+/// An owner's name at a host, which their agents there are named under.
+#[derive(Serialize, Deserialize)]
+pub struct OwnersName {
+    pub name: String,
+}
+
 /// An owner's stop signal. The agent's own host goes by the owner it holds, so `retirement` is all it
 /// needs. Any other host checks the rest, because it goes by nobody's word: who signed this, and that
 /// they're who this agent acts for. [`crate::VerifiedStop`] is that check.

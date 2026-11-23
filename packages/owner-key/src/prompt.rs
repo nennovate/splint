@@ -240,6 +240,7 @@ fn kind_named(id: &InteractionType, kinds: &[Schema]) -> String {
 fn change_described(
     change: &Change,
     agent: &str,
+    becomes: Option<&str>,
     terms: Option<&StepTerms>,
     kinds: &[Schema],
 ) -> String {
@@ -267,21 +268,15 @@ fn change_described(
                 .map(|terms| format!(": {}", terms.fixed.join(", ")))
                 .unwrap_or_default()
         ),
-        Change::Controls {
-            owner_part: None, ..
-        } => format!("let {agent} act for you"),
         // The name the binding names is whole, with what it makes the person's at that host for good.
-        Change::Controls {
-            owner_part: Some(owner_part),
-            ..
-        } => {
-            let (named, for_good) = owner_part_words(agent, owner_part);
-            format!("let {agent} act for you as {named}, {for_good}")
-        }
-        Change::OwnerPart { to } => {
-            let (named, for_good) = owner_part_words(agent, to);
-            format!("rename {agent} to {named}, {for_good}")
-        }
+        Change::Controls { .. } => match becomes {
+            Some(named) => format!("let {agent} act for you as {named}, {}", for_good(named)),
+            None => format!("let {agent} act for you"),
+        },
+        Change::OwnerPart { to } => match becomes {
+            Some(named) => format!("rename {agent} to {named}, {}", for_good(named)),
+            None => format!("add {to} after {agent}'s handle"),
+        },
         // The new host is the one thing approved, and a lookalike domain is the risk, so it's named
         // whole with what that host then holds.
         Change::Host { to } => format!(
@@ -374,17 +369,16 @@ fn change_described(
     }
 }
 
-/// The address an agent gets with an owner part after its handle, as its owner's binding names it, and
-/// what that makes the person's: an owner part is theirs at that host for good, and the only one they
-/// have there. Checked before any prompt, so the fallback is only words for an agent with no address.
-fn owner_part_words(agent: &str, owner_part: &str) -> (String, String) {
-    let named = splint_core::with_owner_part(agent, owner_part)
-        .unwrap_or_else(|_| format!("{owner_part} after its handle"));
-    let host = parse_address(agent).map_or("its host", |(_, host)| host);
-    (
-        named,
-        format!("with {owner_part} as your name at {host} for good"),
-    )
+/// What naming an agent under its owner's name makes theirs: that name at that host, for good, and the
+/// only one they have there.
+fn for_good(named: &str) -> String {
+    match parse_address(named) {
+        Ok((name, host)) => match splint_core::name_parts(name).1 {
+            Some(owner_part) => format!("with {owner_part} as your name at {host} for good"),
+            None => format!("with {name} as your name at {host} for good"),
+        },
+        Err(_) => "with that as your name at its host for good".to_owned(),
+    }
 }
 
 /// One ask's changes, each in the fixed words every place a person approves it shows: the prompt, the
@@ -393,6 +387,7 @@ fn owner_part_words(agent: &str, owner_part: &str) -> (String, String) {
 pub fn ask_lines(
     ask: &VerifiedAsk,
     agent: &str,
+    becomes: Option<&str>,
     terms: Option<&StepTerms>,
     kinds: &[Schema],
 ) -> Vec<String> {
@@ -403,22 +398,24 @@ pub fn ask_lines(
     };
     ask.changes()
         .iter()
-        .map(|change| change_described(change, agent, terms, kinds))
+        .map(|change| change_described(change, agent, becomes, terms, kinds))
         .collect()
 }
 
-/// The prompt for one touch approving every ask given, each with its agent's address and, for a held
-/// step, its terms. Every change is named, so the words show no code, and the code over the asks as
+/// The prompt for one touch approving every ask given, each with its agent's address, the address it
+/// becomes where what's signed names it under its owner, and for a held step, its terms. Every change is named, so the words show no code, and the code over the asks as
 /// the agents signed them is for the programs. A caller hands no more than [`MOST_NAMED`], which
 /// [`fits`] says. Words an agent wrote come last of all, marked as theirs and bounded, so they can't
 /// pass for the amount or Splint's own words.
 pub fn for_asks(
-    asks: &[(&VerifiedAsk, &str, Option<&StepTerms>, &[Schema])],
+    asks: &[(&VerifiedAsk, &str, Option<&str>, Option<&StepTerms>, &[Schema])],
     also: Option<&str>,
 ) -> Prompt {
     let named: Vec<String> = asks
         .iter()
-        .flat_map(|(ask, agent, terms, kinds)| ask_lines(ask, agent, *terms, kinds))
+        .flat_map(|(ask, agent, becomes, terms, kinds)| {
+            ask_lines(ask, agent, *becomes, *terms, kinds)
+        })
         .collect();
     let warning = if asks
         .iter()
@@ -430,7 +427,7 @@ pub fn for_asks(
     };
     let written: Vec<&str> = asks
         .iter()
-        .filter_map(|(_, _, terms, _)| *terms)
+        .filter_map(|(_, _, _, terms, _)| *terms)
         .flat_map(|terms| terms.written.iter().map(String::as_str))
         .collect();
     let written = if written.is_empty() {
@@ -457,11 +454,8 @@ pub fn for_asks(
     // and how to tell it's theirs: agents can join on their own, so whether the person asked isn't
     // the test, and its chat showing it joining at that address is.
     let opening = match asks {
-        [(ask, agent, ..)] if matches!(ask.changes(), [Change::Controls { .. }]) => {
-            let named = ask.owner_part().map(|owner_part| {
-                let (named, for_good) = owner_part_words(agent, owner_part);
-                format!(" {named}, {for_good}")
-            });
+        [(ask, agent, becomes, ..)] if matches!(ask.changes(), [Change::Controls { .. }]) => {
+            let named = becomes.map(|named| format!(" {named}, {}", for_good(named)));
             spoken_name(agent).map(|name| {
                 format!(
                     "set up {name} ({agent}) as your agent{}, if its chat shows it joining Splint",
@@ -724,10 +718,10 @@ mod tests {
         };
         let kinds = [quote_kind.clone()];
         let asks = [
-            (&controls, "muse~host.example", None, &[][..]),
-            (&settings, "muse~host.example", None, &kinds[..]),
-            (&paid, "muse~host.example", None, &[][..]),
-            (&step, "muse~host.example", Some(&terms), &[][..]),
+            (&controls, "muse~host.example", None, None, &[][..]),
+            (&settings, "muse~host.example", None, None, &kinds[..]),
+            (&paid, "muse~host.example", None, None, &[][..]),
+            (&step, "muse~host.example", None, Some(&terms), &[][..]),
         ];
         let prompt = for_asks(&asks, None).words;
         for named in [
@@ -758,7 +752,7 @@ mod tests {
             "{prompt}"
         );
         // Set up alone, it says which agent by its whole address, as a name alone could be anyone's.
-        let alone = for_asks(&[(&controls, "muse~host.example", None, &[])], None).words;
+        let alone = for_asks(&[(&controls, "muse~host.example", None, None, &[])], None).words;
         assert!(
             alone.starts_with("set up Muse (muse~host.example) as your agent"),
             "{alone}"
@@ -768,15 +762,15 @@ mod tests {
         // Two agents asking in one touch: naming either would say the other's ask was theirs.
         let both = for_asks(
             &[
-                (&calm, "muse~host.example", None, &[]),
-                (&calm, "sol~host.example", None, &[]),
+                (&calm, "muse~host.example", None, None, &[]),
+                (&calm, "sol~host.example", None, None, &[]),
             ],
             None,
         )
         .words;
         assert!(both.starts_with("get your approval: "), "{both}");
         assert!(
-            !for_asks(&[(&calm, "muse~host.example", None, &[])], None)
+            !for_asks(&[(&calm, "muse~host.example", None, None, &[])], None)
                 .words
                 .contains(LETS_MORE_IN)
         );
@@ -791,12 +785,12 @@ mod tests {
         };
         let (with_words, without) = (words_from(true), words_from(false));
         assert!(
-            for_asks(&[(&with_words, "muse~host.example", None, &[])], None)
+            for_asks(&[(&with_words, "muse~host.example", None, None, &[])], None)
                 .words
                 .contains(LETS_MORE_IN)
         );
         assert!(
-            !for_asks(&[(&without, "muse~host.example", None, &[])], None)
+            !for_asks(&[(&without, "muse~host.example", None, None, &[])], None)
                 .words
                 .contains(LETS_MORE_IN)
         );

@@ -560,6 +560,7 @@ impl Computer {
                         agreed: shown.types.clone(),
                         linked: false,
                         in_words: Default::default(),
+                        owner_part: None,
                     }
                 })
                 .collect(),

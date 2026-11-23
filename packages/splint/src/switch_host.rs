@@ -304,6 +304,7 @@ async fn start(
         kinds: Vec::new(),
         agreed: Vec::new(),
         in_words: Default::default(),
+        owner_part: None,
     };
     let client = Client::new(home)?;
     let computer_link = asks::link_for(&asked.ask, &asked.address);
