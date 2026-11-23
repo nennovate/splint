@@ -68,6 +68,7 @@ pub const SCHEMA: &str = "
     ALTER TABLE agents ADD COLUMN IF NOT EXISTS moved_from_owner_identity TEXT;
     ALTER TABLE agents ADD COLUMN IF NOT EXISTS moved_from_identity TEXT;
     ALTER TABLE agents ADD COLUMN IF NOT EXISTS moved_at BIGINT;
+    ALTER TABLE agents ADD COLUMN IF NOT EXISTS moved_from_name TEXT;
     ALTER TABLE agents ADD COLUMN IF NOT EXISTS identity_before_recovery TEXT;
     ALTER TABLE agents ADD COLUMN IF NOT EXISTS identity_recovered_at BIGINT;
     ALTER TABLE agents ADD COLUMN IF NOT EXISTS won_back BOOLEAN NOT NULL DEFAULT FALSE;
@@ -341,7 +342,7 @@ async fn take_newer_statement(
         let before = recent_identity(row, now)?.unwrap_or_else(|| held_agent.encoded());
         sqlx::query(
             "UPDATE agents SET moved_from_owner = $2, moved_from_owner_identity = $3,
-                 moved_from_identity = $4, moved_at = $5
+                 moved_from_identity = $4, moved_at = $5, moved_from_name = $6
              WHERE id = $1",
         )
         .bind(agent.id().as_str())
@@ -349,6 +350,7 @@ async fn take_newer_statement(
         .bind(held_owner.encoded())
         .bind(before)
         .bind(now)
+        .bind(&held_name)
         .execute(&mut *transaction)
         .await?;
     }
@@ -998,9 +1000,9 @@ pub async fn take_identity(host: &Host, new: &Identity) -> Result<(), ApiError> 
     let mut transaction = database::begin(&host.db).await?;
     let list_changed = owner_keys::list_owner_changed(&mut transaction, new).await?;
     let rows = sqlx::query(
-        "SELECT id, owner_id, identity, owner_identity, retirement_final_at, moved_from_owner,
-             moved_from_owner_identity, moved_from_identity, moved_at, identity_before_recovery,
-             identity_recovered_at, won_back
+        "SELECT id, handle, owner_id, identity, owner_identity, retirement_final_at,
+             moved_from_owner, moved_from_owner_identity, moved_from_identity, moved_at,
+             moved_from_name, identity_before_recovery, identity_recovered_at, won_back
          FROM agents
          WHERE (id = $1 OR owner_id = $1 OR moved_from_owner = $1)
              AND (retirement IS NULL OR retirement_final_at > $2) FOR UPDATE",
@@ -1140,8 +1142,9 @@ async fn owner_recovered(
 
 /// An owner's recovery in time takes back an agent their old key moved to someone else, with whatever
 /// has been signed for it since, and puts its ID back as it was before that. Whoever it was moved to
-/// keeps nothing here. So a real sale is only sure once this has run out, and a seller who recovers
-/// within it gets the agent back stopped, and needs the backup they gave away to go any further.
+/// keeps nothing here, and the name they gave it points back to the one it had. So a real sale is only
+/// sure once this has run out, and a seller who recovers within it gets the agent back stopped, and
+/// needs the backup they gave away to go any further.
 async fn moved_from_owner_recovered(
     transaction: &mut Transaction<'_, Postgres>,
     agent: &SplintId,
@@ -1161,7 +1164,7 @@ async fn moved_from_owner_recovered(
              identity = moved_from_identity, history = '', retirement = NULL,
              retirement_final_at = NULL, revocation = $4, revoked_seq = 0, won_back = TRUE,
              moved_from_owner = NULL, moved_from_owner_identity = NULL,
-             moved_from_identity = NULL, moved_at = NULL,
+             moved_from_identity = NULL, moved_at = NULL, moved_from_name = NULL,
              identity_before_recovery = NULL, identity_recovered_at = NULL
          WHERE id = $1",
     )
@@ -1171,6 +1174,13 @@ async fn moved_from_owner_recovered(
     .bind(STOPPED_UNTIL_SIGNED)
     .execute(&mut **transaction)
     .await?;
+    // A name under the owner it went to is theirs, so the owner taking it back couldn't sign it.
+    let name: String = row.try_get("handle")?;
+    if let Some(before) = row.try_get::<Option<String>, _>("moved_from_name")?
+        && before != name
+    {
+        rename(transaction, agent, (&name, &before), None, now).await?;
+    }
     forget_rules(transaction, agent).await?;
     admission::forget_for_new_owner(transaction, agent).await?;
     inbox::clear_for_new_owner(transaction, agent).await?;

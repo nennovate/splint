@@ -896,6 +896,8 @@ class Network:
         self.peers_file = {name: self.work / f"host-{name}.peers" for name in self.domain}
         for name in self.domain:
             self.write_peers(name, self.first_peers_file(name))
+        kept_names = self.work / "reserved-names"
+        kept_names.write_text("# the operator's own list, as a brand\nacme\n")
         self.hosts = {
             name: self.spawn("host", f"host-{name}", {
                 "SPLINT_DOMAIN": self.domain[name],
@@ -906,6 +908,7 @@ class Network:
                 **PLAIN_HTTP_FOR_TESTS,
                 "SPLINT_CLEANUP_SECS": "1",
                 "SPLINT_SIGNUP_CODES": ",".join(signup_code(number) for number in range(SIGNUP_CODES)),
+                "SPLINT_RESERVED_NAMES": str(kept_names),
                 **self.host_settings,
             })
             for name in ("a", "b")
@@ -1124,6 +1127,14 @@ class Network:
 
     def address(self, agent: str) -> str:
         return f"{self.names.get(agent, agent)}~{self.domain[self.home[agent]]}"
+
+    def under(self, agent: str, owner_name: str) -> str:
+        """Where an agent goes when a new owner takes it: its word under that owner's own name, at the
+        same host. A name its old owner gave it is theirs, so a new owner can't keep it."""
+        return f"{agent}.{owner_name}~{self.domain[self.home[agent]]}"
+
+    def goes_by(self, agent: str, address: str) -> None:
+        self.names[agent] = address.split("~")[0]
 
     def agent(self, agent: str, method: str, path: str, body: object = None, timeout: float = 10) -> tuple[int, dict]:
         """A call to an agent's Signet. Before an agent's first open of an example type with someone, the
@@ -2521,6 +2532,15 @@ def registration_cant_take_over_a_handle(net: Network) -> None:
     status = net.register_on_a(other_key, newcomer, "ana.newcomer", other, other_id)
     check("control: the same handle under the newcomer's own name is theirs", status == 200, status)
     check("and the handle alone still names ana's agent", http("GET", f"{resolve}/ana.newcomer")[1].get("agent_id") == other_id and http("GET", f"{resolve}/ana")[1].get("agent_id") == net.ids["ana"])
+
+    # Bug caught: a name the operator keeps back, such as a brand, taken as someone's own, even with a code.
+    kept_key = net.work / "kept-name.key"
+    kept, kept_id = new_identity(kept_key)
+    brand = new_owner(net.work / "brand-owner")
+    check("a name the host keeps back isn't anyone's own", net.register_on_a(kept_key, brand, "acme", kept, kept_id) == 403)
+    check("nor theirs after a handle", net.register_on_a(kept_key, brand, "muse.acme", kept, kept_id) == 403)
+    check("and the host says so when asked", http("GET", f"http://{net.domain['a']}/.well-known/splint/names/acme")[0] == 403)
+    check("control: it can still be a handle under an owner's own name", net.register_on_a(kept_key, newcomer, "acme.newcomer", kept, kept_id) == 200)
 
     # An agent that joined on its own, calling its host itself rather than through `splint join`.
     stand_in = new_owner(net.work / "stand-in-owner", unconfirmed=True)

@@ -883,6 +883,12 @@ def a_name_after_the_dot_comes_with_one_approval(signup: Signup, port: int):
     check("she takes it up and runs under her person's name", wait_until(lambda: taken_up(signup, "lea", asked.get("id", "")).get("status") == "done", SIGNET_HEARS_SECONDS) and address_of(lea) == f"lea.ana~{host}", address_of(lea))
     _, found = e2e.http("GET", f"http://{host}/.well-known/splint/agents/{temporary.split('~')[0]}")
     check("her temporary name answers with where she went", found.get("moved_to") == f"lea.ana~{host}", found)
+    # Thirty days on, as the host's operator would see it. Bug caught: a temporary name held for good,
+    # so every agent that ever joined kept one more name.
+    gone = temporary.split("~")[0]
+    signup.sql("hana", f"UPDATE moved_names SET until_at = {int(time.time()) - 1} WHERE name = '{gone}'")
+    status, found = e2e.http("GET", f"http://{host}/.well-known/splint/agents/{gone}")
+    check("and once its time is up, it names nobody", status == 404, (status, found))
     lea.address = f"lea.ana~{host}"
     return lea
 

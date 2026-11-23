@@ -202,11 +202,13 @@ def a_modified_signet_skipping_notices_only_stops_its_own_owner_being_heard(net:
     buyer = new_owner(net.work / "yan-buyer")
     next_backup = buyer.new_agent_backup()
     handed = json.loads(net.owners["yan"].sign("transfer", "--agent", identity, "--backup", net.agent_backups["yan"]["file"], "--to", buyer.id, "--commitment", next_backup["commitment"]))
-    binding = buyer.sign("bind", "--agent", handed["identity"], "--address", net.address("yan"), "--backup", next_backup["file"])
+    renamed = net.under("yan", "buyer")
+    binding = buyer.sign("bind", "--agent", handed["identity"], "--address", renamed, "--backup", next_backup["file"])
     status, answer = http("PUT", f"http://127.0.0.1:{net.signet_port['yan']}/v0/owner/transfer",
                           {"identity": handed["identity"], "new_owner_identity": buyer.identity, "release": handed["release"], "binding": binding}, net.owners["yan"].token)
     check("control: it moves to a new owner, and its Signet tells nobody", status == 200, answer)
     net.owners["yan"] = e2e.Owner(buyer.dir, buyer.key, buyer.identity, buyer.id, net.owners["yan"].token)
+    net.goes_by("yan", renamed)
     sign_and_put(net, "yan", [net.contact_entry("ana")])
 
     words = "yan, under someone else now"

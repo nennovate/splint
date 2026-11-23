@@ -96,9 +96,12 @@ def try_transfer(net: e2e.Network, name: str, new: Owner, address: str) -> tuple
 
 
 def transfer_to(net: e2e.Network, name: str, new: Owner, address: str | None = None) -> None:
+    """The new owner names it under a name of their own, `ida.idanew` for ida, unless told another."""
     old = net.owners[name]
-    status, taken, next_backup = try_transfer(net, name, new, address or net.address(name))
+    address = address or net.under(name, f"{name}new")
+    status, taken, next_backup = try_transfer(net, name, new, address)
     check("control: the owner hands the agent over", status == 200, taken)
+    net.goes_by(name, address)
     net.owners[name] = Owner(new.dir, new.key, new.identity, new.id, old.token)
     net.agent_backups[name] = next_backup
 
