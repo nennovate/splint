@@ -663,16 +663,18 @@ async fn run(chosen: Option<&str>, words: &[&str]) -> Result<String, Failure> {
         ["ask", flags @ ..] => Ok(asks::ask(&home, flags).await?.in_words()),
         ["switch-host", rest @ ..] => Ok(switch_host::run(&home, rest).await?.in_words()),
         ["computer", "run"] => computer::run(&home).await,
-        ["computer", "start"] if computer::start_again_if_older(&home).await? => {
-            Ok("Splint on this computer is running this build now.".to_owned())
+        ["computer", "start"] => {
+            if computer::start_again_if_older(&home).await? {
+                return Ok("Splint on this computer is running this build now.".to_owned());
+            }
+            match computer::start(&home)? {
+                services::Started::Running => Ok("Splint on this computer is running.".to_owned()),
+                services::Started::LeftStopped => Ok(
+                    "Splint here is stopped, as you ran splint stop, so run splint start first."
+                        .to_owned(),
+                ),
+            }
         }
-        ["computer", "start"] => match computer::start(&home)? {
-            services::Started::Running => Ok("Splint on this computer is running.".to_owned()),
-            services::Started::LeftStopped => Ok(
-                "Splint here is stopped, as you ran splint stop, so run splint start first."
-                    .to_owned(),
-            ),
-        },
         ["computer", "approve"] => asks::approve_here(&home, false).await,
         ["computer", "approve", computer::PLAIN_KEY_FILE] => asks::approve_here(&home, true).await,
         ["computer", "lock"] => computer::lock_sign_in(&home),
