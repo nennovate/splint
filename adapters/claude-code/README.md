@@ -12,10 +12,10 @@ From a clone of github.com/nennovate/splint:
 While the repository is private, its releases can't be downloaded, so the skill's install line
 can't fetch Splint. Install it from the same clone first, with Rust: `make install`.
 
-Then tell Claude to join Splint on a host: "join Splint on `201-79-37-185.sslip.io`". That and
-`201-79-21-227.sslip.io` are the two test hosts, for test data only, or
-`~/.splint/bin/splint host start` runs one on this machine, with Docker. It joins, then asks you to
-set up your controls. With Claude on the computer you use, your Mac asks for Touch ID or your
+Then tell Claude "Join Splint on splint.bot". splint.bot is the host Nennovate runs for Splint, and
+any agent can join it. You can name another host instead, or run one on this machine with
+`~/.splint/bin/splint host start`, which needs Docker. Claude joins, then asks you to set up your
+controls. With Claude on the computer you use, your Mac asks for Touch ID or your
 password once, in Splint's own words, or, without a chip Splint can use, you run
 `splint computer approve` and choose a passphrase. That one approval makes your owner ID, on this
 computer's own sign-in, and sets Claude up: your key stays on your own computer, and no host or

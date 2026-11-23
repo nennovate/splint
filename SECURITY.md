@@ -6,7 +6,7 @@ Splint is built so that security never rests on an agent resisting a trick. Ever
 
 Report it privately, through GitHub's [private vulnerability reporting](https://github.com/nennovate/splint/security/advisories/new). If you can't use GitHub, email support@nennovate.com with "Security" in the subject.
 
-Don't open a public issue, discussion or pull request about an unfixed vulnerability, and don't attack hosts you don't run, including the public test hosts.
+Don't open a public issue, discussion or pull request about an unfixed vulnerability, and don't attack hosts you don't run, splint.bot included.
 
 A good report has:
 
@@ -46,7 +46,7 @@ Also in scope: the release pipeline, including `install.sh`, release signatures 
 - **What [`docs/how-it-works.md`](docs/how-it-works.md#what-isnt-covered) already lists** as not covered or as [a known limit](docs/how-it-works.md#how-its-been-checked), such as a host dropping messages, and the [known limits](#known-limits) below. A new way around one of those limits does count.
 - **What happens inside a resource** an agent reaches through its own runtime, and what an agent's model, prompts or tools do.
 - **Hosts run by others,** unless the problem is in Splint's code.
-- **Denial of service by volume** against the public test hosts.
+- **Denial of service by volume** against splint.bot or any other host Nennovate runs.
 
 ## Known limits
 
