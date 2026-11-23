@@ -484,11 +484,9 @@ def a_reminder_sets_the_recovery_code_and_shows_it_once(controls: Controls) -> N
     check("home reminds her to set her recovery code", controls.browser.wait_for("document.getElementById('recovery-reminder') !== null", SEEN_SECONDS), controls.text())
     check("control: Set up", controls.approve("Set up", "#recovery-reminder", "/local/recovery"))
     shown = controls.browser.wait_for("document.getElementById('recovery-code') !== null", SEEN_SECONDS)
-    # Bug caught: the page's next refresh, every 5 seconds, drawing home over the code before she'd
-    # written it down. The run waits for that refresh's reads rather than for a time.
-    controls.browser.eval("""window.__reads = 0; (() => { const fetched = window.fetch; window.fetch = (url, options) => {
-      if (String(url) === '/local/read') window.__reads += 1; return fetched(url, options); }; })(); true""")
-    check("control: the page refreshes", controls.browser.wait_for("window.__reads > 0", 15))
+    # Bug caught: a refresh drawing home over the code before she'd written it down. The page starts
+    # none while the code shows, so this is one already under way when it appeared, as can happen.
+    controls.browser.eval("refresh().then(() => true)")
     check("the code is shown once, and stays through a refresh until she says she's written it down, with the warning never to give it to anyone", shown and controls.browser.eval("document.getElementById('recovery-code') !== null") and "Never give this code to anyone" in controls.text(), controls.text())
     code = controls.text("#recovery-code")
     check("as 26 characters in groups of 4", len(code.replace("-", "").replace(" ", "")) == 26, code)

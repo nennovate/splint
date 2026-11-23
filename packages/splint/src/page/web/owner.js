@@ -2863,15 +2863,17 @@ window.addEventListener("popstate", () => {
 });
 
 setInterval(() => {
-  if (["home", "agent", "requests", "request"].includes(ui.view) && me.sessions.size && !document.hidden) {
-    refresh().catch(() => null);
-    // Drawn again only if the asks changed: a refresh draws what it read once it's all read, so nothing
-    // taken in halfway is drawn, or signed, before the rest.
-    const asked = JSON.stringify(ui.approvals.map((one) => one.asks.map((ask) => ask.id)));
-    loadAsks().then(() => {
-      if (JSON.stringify(ui.approvals.map((one) => one.asks.map((ask) => ask.id))) !== asked) draw(true);
-    }).catch(() => null);
-  }
+  if (!["home", "agent", "requests", "request"].includes(ui.view) || document.hidden) return;
+  // What agents left at their hosts is read only while Splint here has sessions there.
+  if (me.sessions.size) refresh().catch(() => null);
+  // What waits on this computer needs only the page key, so it's looked at with no sessions too, as
+  // after approving in a terminal or with viewing set to ask every time. Drawn again only if the asks
+  // changed: a refresh draws what it read once it's all read, so nothing taken in halfway is drawn, or
+  // signed, before the rest.
+  const asked = JSON.stringify(ui.approvals.map((one) => one.asks.map((ask) => ask.id)));
+  loadAsks().then(() => {
+    if (JSON.stringify(ui.approvals.map((one) => one.asks.map((ask) => ask.id))) !== asked) draw(true);
+  }).catch(() => null);
 }, REFRESH_MILLIS);
 
 start();
