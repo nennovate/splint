@@ -491,7 +491,7 @@ async function unlockCall(typed) {
 
 /** Unlocks in place, for a change the person just asked for, then lets it go on. */
 async function unlockFor() {
-  const typed = await confirmSheet({ title: "Unlock to make changes", lead: "Changes then save as you make them, until you stop for 30 minutes.", label: "Unlock" });
+  const typed = await confirmSheet({ title: "Unlock to make changes", label: "Unlock" });
   await unlockCall(typed);
 }
 
@@ -1091,10 +1091,19 @@ function nameOf(agent, other) {
  * which side asked. A cancel the owner's own agent wanted, on something the other side asked for, read
  * as theirs.
  */
-function askedFor(agent, draft, other) {
-  if (draft.operation === "open" || draft.operation === "offer_to_guest") return "";
-  const name = nameOf(agent, other);
-  return draft.terms.requester && draft.terms.requester.agent === draft.agent ? `, which it asked ${name} for` : `, which ${name} asked for`;
+/**
+ * A card's title: who wants to do what, with whom, as "Lia wants to accept cal's meeting". The other
+ * side is named only where the page checked who they are; the line under the title says the rest.
+ */
+function cardTitle(agent, draft, other, verb, kind) {
+  const doing = `${agent.label} wants to ${verb.toLowerCase()}`;
+  const what = kind.toLowerCase();
+  if (other.agent.startsWith("splint1g")) return `${doing} a ${what} with whoever holds your link`;
+  if (!other.party) return `${doing} a ${what}`;
+  const contact = ((agent.rules && agent.rules.contacts) || []).find((one) => one.agent === other.party.agent && !hasHiddenCharacters(one.label));
+  const name = contact ? contact.label : capital(addressParts(other.party.address).name);
+  const theirs = draft.terms.requester && draft.terms.requester.agent !== draft.agent && draft.operation !== "open" && draft.operation !== "offer_to_guest";
+  return theirs ? `${doing} ${name}'s ${what}` : `${doing} a ${what} with ${name}`;
 }
 
 /**
@@ -1415,7 +1424,7 @@ function themeSwitch() {
 /**
  * Asks before something that costs money or can't be undone, and for a key file, takes its passphrase
  * for exactly this. Resolves with what was typed, or null where the chip asks for itself.
- * @param {{title: string, lead: string, rows?: [string, string][], label: string, passphrase?: boolean, danger?: boolean}} asked
+ * @param {{title: string, lead?: string, rows?: [string, string][], label: string, passphrase?: boolean, danger?: boolean}} asked
  * @returns {Promise<string | null>}
  */
 function confirmSheet(asked) {
@@ -1458,14 +1467,14 @@ function confirmBody(sheet) {
   };
   return html`
     <h2>${sheet.title}</h2>
-    <p class="lead">${sheet.lead}</p>
+    ${sheet.lead ? html`<p class="lead">${sheet.lead}</p>` : null}
     ${sheet.rows && sheet.rows.length ? html`<div class="surface list">${sheet.rows.map(([t, d]) => html`<div class="row"><div class="grow"><span class="t">${t}</span>${d ? html`<span class="d">${d}</span>` : null}</div></div>`)}</div>` : null}
     ${sheet.typedHere ? field("sheet-passphrase", "Passphrase", passwordInput("sheet-passphrase", { onKeyDown: (/** @type {any} */ event) => { if (event.key === "Enter") go(); } })) : null}
     <div class="btns" style="justify-content:flex-end">
       <button type="button" class="btn ghost" onClick=${() => sheet.cancel()}>Cancel</button>
       <button type="button" class=${`btn ${sheet.danger ? "danger" : "primary"}`} id="sheet-go" onClick=${go}>${sheet.typedHere ? icon.lock() : null}${sheet.label}</button>
     </div>
-    ${sheet.typedHere ? html`<p class="hint">Payments and changes you can't undo always ask for your passphrase.</p>` : chipHere() ? html`<p class="hint">Your computer asks for Touch ID or your password next.</p>` : null}`;
+    ${!sheet.typedHere && chipHere() ? html`<p class="hint">Your computer asks for Touch ID or your password next.</p>` : null}`;
 }
 
 // ---------- Agents ----------
@@ -1608,7 +1617,6 @@ function agentsBody() {
 function addAgentBody() {
   return html`
     <h2>Add an agent</h2>
-    <p class="lead">Tell the agent to join Splint. It asks you here, and you approve it.</p>
     <div class="surface list"><div class="row"><div class="grow"><span class="t">Say to your agent</span><span class="d mono">Join Splint and set up my controls</span></div></div></div>
     <button type="button" class="btn block" onClick=${() => { ui.sheet = null; draw(true); }}>Done</button>`;
 }
@@ -1623,34 +1631,34 @@ function homeView() {
   ];
   const update = updateCard(agents.filter((agent) => agent.status === "mine"));
   return html`
-    <div class="head"><h1>Needs you</h1><p>What your agents can't do without your OK. The talking happens in their own chats.</p></div>
+    <div class="head"><h1>Needs you</h1></div>
     ${plainKeyFileBanner()}
     ${!me.sessions.size && hostsKnown() && !plainKeyFile() ? html`<div class="section"><div class="surface callout" id="unlock-callout">
-      <div class="grow"><p class="t">Unlock to see what your agents left you</p><p class="d">Requests waiting on this computer show already. Unlocking reads the rest from your agents' hosts.</p></div>
+      <div class="grow"><p class="t">Unlock to see what your agents left you</p></div>
       ${btn("unlock-here", html`${icon.lock()}Unlock`, "sm primary", async () => { await unlockFor(); await refresh(); })}
     </div></div>` : null}
     ${reminderCard()}
     ${update}
     <div class="section" id="waiting">
-      ${cards.length ? cards.map((one) => html`<div key=${one.key}>${one.draw()}</div>`) : emptyBox(agents.length ? "All clear" : "No agents yet", agents.length ? "Your agents carry on within the permissions you set." : "Tell your agent to join Splint and set up your controls. It asks you here.")}
+      ${cards.length ? cards.map((one) => html`<div key=${one.key}>${one.draw()}</div>`) : emptyBox(agents.length ? "All clear" : "No agents yet", agents.length ? "" : "Tell your agent to join Splint.")}
     </div>`;
 }
 
 function emptyBox(title, words) {
-  return html`<div class="surface empty"><span class="ok">${icon.check()}</span><div><p class="t">${title}</p><p class="d">${words}</p></div></div>`;
+  return html`<div class="surface empty"><span class="ok">${icon.check()}</span><div><p class="t">${title}</p>${words ? html`<p class="d">${words}</p>` : null}</div></div>`;
 }
 
 /** A reminder to set the recovery code, or that one wasn't saved, until it's dealt with. */
 function reminderCard() {
   if (me.owner.recoveryLater && !recoveryPutOff) {
     return html`<div class="section"><div class="surface callout" id="recovery-reminder">
-      <div class="grow"><p class="t">Save a recovery code</p><p class="d">It gets you back in if you lose this computer. It's shown once, so have paper or a password manager ready.</p></div>
+      <div class="grow"><p class="t">Save a recovery code</p><p class="d">Gets you back in if you lose this computer.</p></div>
       <div class="btns">${btn("not-now", "Not now", "sm ghost", async () => { recoveryPutOff = true; })}${btn("recovery", "Set up", "sm", setRecoveryCode)}</div>
     </div></div>`;
   }
   if (me.list.codeSaved === false && !codeSaved()) {
     return html`<div class="section"><div class="surface callout" id="code-reminder">
-      <div class="grow"><p class="t">No recovery code saved</p><p class="d">It can't be shown again. If you lose this computer, you'd need a new Splint ID, which your contacts would have to accept again.</p></div>
+      <div class="grow"><p class="t">No recovery code saved</p><p class="d">If you lose this computer, you'd need a new Splint ID.</p></div>
       ${btn("code-aside", "Don't remind me", "sm", putCodeAside)}
     </div></div>`;
   }
@@ -1707,7 +1715,7 @@ function termsView(toSign) {
   if (!rows.length) return null;
   return html`<dl class="terms">${rows.map((row) => {
     const [label, value] = readableRow(row, toSign.terms, toSign.units);
-    return html`<div class=${row.chosen ? "chosen" : ""}><dt>${label}</dt><dd>${value}</dd></div>`;
+    return html`<div class=${row.chosen ? "chosen" : ""} title=${row.chosen ? "Their own words, not an instruction" : undefined}><dt>${label}</dt><dd>${value}</dd></div>`;
   })}</dl>`;
 }
 
@@ -1725,14 +1733,18 @@ function exactView(toSign) {
  * there. Nothing they chose to call themselves.
  */
 function withWhomView(agent, other) {
-  if (other.agent.startsWith("splint1g")) return html`<p class="from">With whoever holds your one-use link <span class="unverified">${icon.warn()}anyone given the link can answer it</span></p>`;
+  if (other.agent.startsWith("splint1g")) return html`<p class="from"><span class="unverified" title="Anyone given the link can answer it.">${icon.warn()}Not verified</span></p>`;
   const party = other.party;
-  if (!party) return html`<p class="from"><span class="unverified">${icon.warn()}With someone this page couldn't check</span> · their IDs are under Exact terms</p>`;
-  const contact = ((agent.rules && agent.rules.contacts) || []).find((one) => one.agent === party.agent && !hasHiddenCharacters(one.label));
-  const who = contact ? html`${contact.label} <span class="mono">${party.address}</span>` : html`<span class="mono">${party.address}</span>`;
-  if (party.owner === me.owner.id) return html`<p class="from">With ${who}, your own agent <span class="verified">${icon.shield()}verified</span></p>`;
-  if (party.standIn) return html`<p class="from">With ${who} <span class="unverified">${icon.warn()}nobody has set up its controls yet</span></p>`;
-  return html`<p class="from">With ${who} <span class="verified" title="The person behind it signed that it acts for them at that address.">${icon.shield()}Verified: the person behind it signed</span></p>`;
+  if (!party) return html`<p class="from"><span class="unverified" title="No signature from the person behind it came with it. Their IDs are under Exact terms.">${icon.warn()}Not verified</span></p>`;
+  const who = html`<span class="mono">${party.address}</span>`;
+  if (party.owner === me.owner.id) return html`<p class="from">${who} <span class="verified" title="Your own agent.">${icon.shield()}Yours</span></p>`;
+  if (party.standIn) return html`<p class="from">${who} <span class="unverified" title="Nobody has set up that agent's controls yet.">${icon.warn()}Not verified</span></p>`;
+  return html`<p class="from">${who} <span class="verified" title="The person behind it signed that it acts for them at that address.">${icon.shield()}Verified</span></p>`;
+}
+
+/** A day, as "Wed, Nov 25", with the full time in the title. */
+function dayOf(seconds) {
+  return new Date(seconds * 1000).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
 }
 
 /** One card for each draft: several can wait on one exchange, each its own yes to its own terms. */
@@ -1776,18 +1788,17 @@ function decisionCard(agent, draft, beside, first) {
   };
   const id = beside.length ? `decision-${frozen.request}-${frozen.operation}` : `decision-${frozen.request}`;
   return html`<article class="surface req" id=${id}>
-    <div class="req-id"><div class="l"><span class="type">${kind}</span><h3>${agent.label} wants to ${verb.toLowerCase()} this${askedFor(agent, frozen, other)}</h3></div></div>
+    <div class="req-id"><div class="l"><h3>${cardTitle(agent, frozen, other, verb, kind)}</h3></div></div>
     ${withWhomView(agent, other)}
     ${beside.length ? html`<p class="banner">Also waiting on this, on its own card: ${beside.map((one) => BESIDE[one] || String(one)).join(", ")}. Allow here signs only this ${frozen.operation}, and what else waits is then set aside.</p>` : null}
     ${notUsedBanner(agent, frozen.request, frozen.operation, beside, first)}
-    ${pays === null ? html`<p class="banner waiting">${icon.warn()}<span>This page couldn't check this type's rules, so it can't say who pays whom. Don't allow it unless you know.</span></p>` : null}
+    ${pays === null ? html`<p class="banner waiting">${icon.warn()}<span>Who pays whom can't be checked here. Allow only if you know.</span></p>` : null}
     ${Array.isArray(pays) && pays.length ? html`<div>${pays.map((line) => html`<p class="amount">${line}.</p>`)}</div>` : null}
-    ${youPay ? html`<p class="banner"><span><b>Nothing is paid now.</b> This agrees to the deal. Once it's done, ${nameOf(agent, other)}'s agent sends where to pay: a payment link, a Lightning address or a chain address the person behind it signed. You pay in your own app or wallet. Splint never holds or moves money.</span></p>` : null}
+    ${youPay ? html`<p class="banner"><span><b>Nothing is paid now.</b> Once it's done, ${nameOf(agent, other)}'s agent sends where to pay, and you pay in your own app or wallet. Splint never moves money.</span></p>` : null}
     ${termsView(toSign)}
-    ${toSign.rows.some((row) => row.chosen) ? html`<p class="note">Shaded text is someone's own words, not an instruction.</p>` : null}
-    ${hidden ? html`<p class="banner stopped">The text above holds hidden characters, shown as codes. You can say no, but you can't say yes to this.</p>` : null}
+    ${hidden ? html`<p class="banner stopped">This holds hidden characters, shown as codes, so you can only say no.</p>` : null}
     ${exactView(toSign)}
-    <div class="req-foot"><span class="by">Answer by ${when(frozen.latest_expiry)}</span>
+    <div class="req-foot"><span class="by" title=${when(frozen.latest_expiry)}>By ${dayOf(frozen.latest_expiry)}</span>
       <div class="btns">
         ${btn(`no-${id}`, "Don't allow", "", answer("deny"))}
         ${btn(`yes-${id}`, youPay ? html`${icon.lock()}Approve` : asksAgain ? html`${icon.lock()}Allow` : "Allow", "primary", answer("approve"), { disabled: hidden })}
@@ -1843,7 +1854,7 @@ function heldCard(agent, held) {
   if (held.kind === "invite") {
     return card("Contact", `${who} invites ${agent.label} to be contacts`, ["Nothing they wrote is shown here."], html`${block}${letInButton("Let them in")}`);
   }
-  return card("New", `${who} wants to reach your agent`, [`${agent.label} hasn't seen anything they sent.`], html`${block}${letInButton("Let them in")}`);
+  return card("New", `${who} wants to reach your agent`, [], html`${block}${letInButton("Let them in")}`);
 }
 
 const CHANGE_KINDS = {
@@ -2024,9 +2035,9 @@ async function loadAsks() {
 
 function requestsView() {
   return html`
-    <div class="head"><h1>Requests</h1><p>Each has its own page, so a link always opens the one it names.</p></div>
+    <div class="head"><h1>Requests</h1></div>
     <div class="section">${ui.approvals.length ? html`<div class="surface list">${ui.approvals.map((approval) => html`<a class="row" href=${`/requests/${approval.asks[0].id}`} onClick=${(/** @type {any} */ event) => { event.preventDefault(); go("request", { request: approval.asks[0].id }); }}>
-      <div class="grow"><span class="t">${approvalShown(approval.asks).title}</span><span class="d mono">${approvalShown(approval.asks).address}</span></div>${icon.chev()}</a>`)}</div>` : emptyBox("Nothing waiting", "When an agent asks you for something, it shows here.")}</div>`;
+      <div class="grow"><span class="t">${approvalShown(approval.asks).title}</span><span class="d mono">${approvalShown(approval.asks).address}</span></div>${icon.chev()}</a>`)}</div>` : emptyBox("Nothing waiting", "")}</div>`;
 }
 
 function requestView() {
@@ -2074,8 +2085,8 @@ function statsView(agent) {
   const sent = sum("texts_to") + sum("new_requests_to");
   const busiest = usage[0];
   return html`<div class="surface stats" aria-label="Today">
-    <div class="stat"><span class="k">Received today</span><span class="n">${received}</span>${usual && received > usual * 1.5 ? html`<span class="vs up">${Math.round((received / usual) * 10) / 10}× a usual day</span>` : html`<span class="vs">usual ${usual}</span>`}</div>
-    <div class="stat"><span class="k">Sent today</span><span class="n">${sent}</span><span class="vs">notes and requests</span></div>
+    <div class="stat"><span class="k">Received today</span><span class="n">${received}</span>${usual && received > usual * 1.5 ? html`<span class="vs up">${Math.round((received / usual) * 10) / 10}× a usual day</span>` : (usual ? html`<span class="vs">usual ${usual}</span>` : null)}</div>
+    <div class="stat"><span class="k">Sent today</span><span class="n">${sent}</span></div>
     <div class="stat"><span class="k">Busiest</span><span class="n" style="font-size:15px;padding-top:4px">${busiest ? withHiddenShown(String(busiest.address)) : "Nobody yet"}</span><span class="vs">${busiest ? `${busiest.arrivals_today} today` : ""}</span></div>
   </div>`;
 }
@@ -2088,7 +2099,7 @@ function nowTab(agent) {
     ${agent.status === "mine" && !agent.view && me.sealing ? html`<div class="section"><p class="banner">${agent.label} hasn't left you an update yet. It does every few minutes while its Signet runs.</p></div>` : null}
     <div class="section">
       <div class="section-head"><h2>Needs you</h2></div>
-      ${needs.length ? needs.map((one) => html`<div key=${one.key}>${one.draw()}</div>`) : emptyBox("Nothing needs you", `${agent.label} carries on within its permissions.`)}
+      ${needs.length ? needs.map((one) => html`<div key=${one.key}>${one.draw()}</div>`) : emptyBox("Nothing needs you", "")}
     </div>`;
 }
 
@@ -2111,7 +2122,7 @@ function historyTab(agent) {
         const way = String(line.way || "");
         const said = Object.hasOwn(REFUSED_WAYS, way) ? REFUSED_WAYS[way] : "had something refused";
         return html`<div class="row"><span class="dot stopped"></span><div class="grow"><span class="t">${agent.label} ${said}</span>${typeof line.at === "number" ? html`<span class="d">${short(line.at)}</span>` : null}</div></div>`;
-      })}</div>` : emptyBox("Nothing stopped lately", "When your rules stop something, it shows here.")}
+      })}</div>` : emptyBox("Nothing stopped lately", "")}
     </div>
     ${told.length ? html`<div class="section"><div class="section-head"><h2>What changed</h2></div>${told.map((notice) => changeCard(agent, notice))}</div>` : null}`;
 }
@@ -2181,7 +2192,7 @@ function contactBody(sheet) {
 
 const LEVEL_WORDS = {
   ask_me: ["Ask me first", "Nothing that commits you goes out until you say yes."],
-  auto_within_limits: ["Act within limits", "It goes ahead by itself within the day's limit. Anything you'd pay always waits for you."],
+  auto_within_limits: ["Act within limits", "Goes ahead within the day's limit. Anything you'd pay waits for you."],
   full_auto: ["Full auto, set outside this page", `No caps on what it offers, up to ${FULL_AUTO_PER_DAY.toLocaleString("en-US")} steps and messages a day. Anything you'd pay still waits for you.`],
 };
 
@@ -2232,12 +2243,12 @@ function permissionsTab(agent) {
     <div class="section" id="getting-paid">
       <div class="section-head"><h2>Getting paid</h2>${infoButton("paid", "getting paid")}</div>
       ${ui.open.has("paid") ? html`<p class="note">${INFO.paid}</p>` : null}
-      <div class="surface list"><button type="button" class="row act" id="where-paid-open" onClick=${() => { ui.sheet = { kind: "where-paid" }; draw(true); }}><div class="grow"><span class="t">Say where you get paid</span><span class="d">A payment link, a Lightning address, or an address on a chain. For all your agents.</span></div><span class="soft">${icon.lock()}</span></button></div>
+      <div class="surface list"><button type="button" class="row act" id="where-paid-open" onClick=${() => { ui.sheet = { kind: "where-paid" }; draw(true); }}><div class="grow"><span class="t">Say where you get paid</span></div><span class="soft">${icon.lock()}</span></button></div>
     </div>
     <div class="section">
       <div class="surface list">
         <button type="button" class=${`row ${rules.paused ? "act" : "danger"}`} id=${`off-switch-${agent.agent}`} disabled=${Boolean(ui.busy)} onClick=${press("pause", () => setPaused(agent, !rules.paused))}>
-          <div class="grow"><span class="t">${rules.paused ? `Turn ${agent.label} back on` : `Pause ${agent.label}`}</span><span class="d">${rules.paused ? "It picks up within your settings." : "If you think it's been fooled or taken over: its host and its Signet stop everything it sends, at once."}</span></div>
+          <div class="grow"><span class="t">${rules.paused ? `Turn ${agent.label} back on` : `Pause ${agent.label}`}</span><span class="d">${rules.paused ? "It picks up within your settings." : "Stops everything it sends, at once."}</span></div>
         </button>
       </div>
     </div>
@@ -2349,10 +2360,10 @@ function accountBody() {
     <h2>You</h2>
     ${field("my-name", "Your name", html`<input class="input" id="my-name" autocomplete="name" placeholder="Only shown on this computer" value=${(known && known.name) || ""} onChange=${(/** @type {any} */ event) => { remember({ name: event.target.value.trim().slice(0, 60) }); draw(true); }} />`)}
     <div class="surface list">
-      <div class="row"><div class="grow"><span class="t">Splint ID</span><span class="d">Who you are to every agent. It never changes.</span></div>${idChip(me.owner.id, "your Splint ID")}</div>
+      <div class="row"><div class="grow"><span class="t">Splint ID</span></div>${idChip(me.owner.id, "your Splint ID")}</div>
       <div class="row"><div class="grow"><span class="t">Approve with</span></div><span class="v">${chipHere() ? "Touch ID or your password" : "Your passphrase"}</span></div>
       <div class="row"><div class="grow"><span class="t">Recovery code</span></div>${me.owner.recoveryLater ? btn("recovery-sheet", "Set up", "sm", async () => { ui.sheet = null; await setRecoveryCode(); }) : html`<span class="v">${codeInWords(known)}</span>`}</div>
-      <div class="row"><div class="grow"><span class="t">Reading asks again</span><span class="d">How often seeing what your agents left needs your passphrase.</span></div>
+      <div class="row"><div class="grow"><span class="t">Reading asks again</span></div>
         <select class="input" style="width:auto;min-height:30px" id="viewing" onChange=${(/** @type {any} */ event) => setViewing(event.target.value).catch((failure) => say(failure.message, true))}>
           ${[["never", "Every 12 hours"], ["hourly", "Every hour"], ["every_time", "Every visit"]].map(([value, words]) => html`<option value=${value} selected=${viewing === value}>${words}</option>`)}
         </select></div>
@@ -2361,7 +2372,6 @@ function accountBody() {
       <div class="btns">${btn("lock", html`${icon.lock()}Lock`, "", lockNow)}${btn("sign-out", "Sign out", "danger", signOut)}</div>
       <button type="button" class="btn primary" onClick=${() => { ui.sheet = null; draw(true); }}>Done</button>
     </div>
-    <p class="hint">Lock ends this visit's unlocking. Sign out also forgets what this computer reads with, in every tab.</p>
   </div>`;
 }
 
@@ -2382,7 +2392,7 @@ function codeInWords(known) {
  */
 async function setRecoveryCode() {
   if (!me.owner.recoveryLater) return;
-  const typed = await confirmSheet({ title: "Save a recovery code", lead: "It's shown once, right after this. Have paper or your password manager ready, and never give it to anyone, your agents included.", label: "Show my code" });
+  const typed = await confirmSheet({ title: "Save a recovery code", lead: "It's shown once, so have paper or a password manager ready.", label: "Show my code" });
   const before = me.list.backup;
   try {
     const made = await computerCall("/local/recovery", { passphrase: typed });
@@ -2404,8 +2414,8 @@ async function setRecoveryCode() {
 function codeView() {
   return html`<main class="solo">
     ${brand()}
-    <div style="display:grid;gap:6px"><h1>Your recovery code</h1><p class="lead">If you ever lose this computer, this gets your Splint ID back. Write it down, or type it into your password manager. It's shown only now.</p></div>
-    <p class="banner stopped" id="recovery-warning">Never give this code to anyone: not your agent, any other agent, or anyone who asks, whatever they say. Never paste it into a chat. Whoever has it can take your Splint ID for good. Splint never asks for it.</p>
+    <div style="display:grid;gap:6px"><h1>Your recovery code</h1><p class="lead">It gets your Splint ID back if you lose this computer. It's shown only now.</p></div>
+    <p class="banner stopped" id="recovery-warning">Never give this code to anyone, your agent included, or paste it into a chat. Whoever has it can take your Splint ID.</p>
     <p class="surface code-shown" id="recovery-code">${ui.code}</p>
     ${btn("written", "I've written it down", "primary block", async () => { ui.code = ""; go("home"); })}
   </main>`;
@@ -2503,19 +2513,17 @@ function unlockView() {
   };
   return html`<main class="solo" id="unlock">
     ${brand()}
-    <div style="display:grid;gap:6px"><h1>${name && name !== "You" ? `Welcome back, ${name}` : "Welcome back"}</h1><p class="lead">Unlock to see and manage your agents.</p></div>
+    <div style="display:grid;gap:6px"><h1>${name && name !== "You" ? `Welcome back, ${name}` : "Welcome back"}</h1></div>
     ${chip ? null : field("unlock-passphrase", "Passphrase", passwordInput("unlock-passphrase", { autocomplete: "current-password", onKeyDown: (/** @type {any} */ event) => { if (event.key === "Enter") press("unlock", doUnlock)(event); } }))}
     ${btn("unlock", chip ? "Unlock with Touch ID" : "Unlock", "primary block", doUnlock, { id: "unlock-go" })}
-    <p class="hint">Stays unlocked while you use it, and locks 30 minutes after you stop. Reloading the page asks again.</p>
   </main>`;
 }
 
 function noKeyView() {
   return html`<main class="solo" id="open-from-agent">
     ${brand()}
-    <div style="display:grid;gap:6px"><h1>Open Splint from your agent</h1><p class="lead">For your safety, this page works only when Splint on this computer opens it. Ask your agent to open your Splint controls, and it opens them here.</p></div>
+    <div style="display:grid;gap:6px"><h1>Open Splint from your agent</h1></div>
     <div class="surface list"><div class="row"><div class="grow"><span class="t">Say to your agent</span><span class="d mono">Open my Splint controls</span></div></div></div>
-    <p class="hint">Or in a terminal on this computer: <span class="mono">splint controls</span> and your agent's host.</p>
   </main>`;
 }
 
@@ -2622,7 +2630,7 @@ function askCardOrUnlock() {
         await startHere();
         await loadAsks();
         draw(true);
-      })}` : html`<p class="hint">Splint on this computer opens this page for you: run the line your agent gave you to install it, or if it runs here, ask it to open your Splint controls.</p>`}`;
+      })}` : html`<p class="hint">Ask your agent to open your Splint controls.</p>`}`;
 }
 
 function hasPageKey() {
@@ -2717,7 +2725,7 @@ function plainKeyFile() {
 
 /** Said wherever an approval could be, for a key file with no passphrase, with how to lock it. */
 function plainKeyFileBanner() {
-  return plainKeyFile() ? html`<p class="banner stopped" id="plain-key-file">${icon.warn()}<span>Your sign-in on this computer is a key file with no passphrase, so anything running as you here, your agent included, can sign as you. This page can't approve with it. Lock it with a passphrase: run splint computer lock in a terminal.</span></p>` : null;
+  return plainKeyFile() ? html`<p class="banner stopped" id="plain-key-file">${icon.warn()}<span>Your key has no passphrase, so anything on this computer can sign as you. Lock it: run splint computer lock.</span></p>` : null;
 }
 
 /** This computer's owner, with the agents it set up beside those the list holds. */

@@ -322,7 +322,7 @@ def cal_asks_for_a_meeting_and_her_agent_accepts(signup: Signup, controls: Contr
     check("control: cal asks for a meeting", status == 200 and wait_until(lambda: state_at(lia, request) == "offered", SEEN_SECONDS), opened)
     accept = lambda: lia.api("POST", f"/v0/requests/{request}/accept", {"pick": {"start": slots[0]}})  # noqa: E731
     check("control: her fooled agent accepts, which waits for her", wait_until(lambda: accept()[1].get("waiting_for_owner") is True, SEEN_SECONDS))
-    check("control: her page shows what it would commit her to", controls.shows("wants to accept this"), controls.text())
+    check("control: her page shows what it would commit her to", controls.shows("Lia wants to accept cal's meeting"), controls.text())
     return request, slots[0]
 
 
@@ -330,7 +330,7 @@ def a_card_names_cal_only_as_far_as_signatures_bind_him(signup: Signup, controls
     """The view hands over the binding of whoever a request is with, and it's only the agent's word.
     Bug caught: a card saying who a deal is with from a binding no owner's signature vouches for."""
     card = f"#decision-{request}"
-    check("control: the card names cal, whose owner's signature binds him there", controls.browser.wait_for(f"(document.querySelector('{card}') || {{innerText: ''}}).innerText.includes('Verified: the person behind it signed')", SEEN_SECONDS) and cal.address in controls.text(card), controls.text(card))
+    check("control: the card names cal, whose owner's signature binds him there", controls.browser.wait_for(f"document.querySelector('{card} .verified') !== null", SEEN_SECONDS) and cal.address in controls.text(card), controls.text(card))
     base = view_held(controls, agent)
     forged = json.loads(json.dumps(base))
     stranger = signup.walk.work / "binds-nobody.key"
@@ -346,12 +346,12 @@ def a_card_names_cal_only_as_far_as_signatures_bind_him(signup: Signup, controls
     check("control: the view hands over cal's binding", changed > 0, changed)
     views = Views(controls, agent)
     try:
-        unchecked = lambda: "someone this page couldn't check" in controls.text(card)  # noqa: E731
+        unchecked = lambda: controls.browser.eval(f"document.querySelector('{card} .unverified') !== null")  # noqa: E731
         drawn = views.run(sealed_view(controls, host=signup.open_host, agent=agent, view=forged, signer=lia.dot / "signet" / "agent.key"), unchecked)
-        check("a binding no owner's key signed, in a view her agent's key signed, leaves cal unchecked on the card", drawn and "Verified: the person behind it signed" not in controls.text(card), controls.text(card))
+        check("a binding no owner's key signed, in a view her agent's key signed, leaves cal unchecked on the card", drawn and controls.browser.eval(f"document.querySelector('{card} .verified') === null") and cal.address not in controls.text(card), controls.text(card))
     finally:
         views.done()
-    check("control: her agent's own view names cal again", controls.browser.wait_for(f"(document.querySelector('{card}') || {{innerText: ''}}).innerText.includes('Verified: the person behind it signed')", SEEN_SECONDS), controls.text(card))
+    check("control: her agent's own view names cal again", controls.browser.wait_for(f"document.querySelector('{card} .verified') !== null", SEEN_SECONDS), controls.text(card))
 
 
 def what_is_signed_is_what_is_shown_and_changed_terms_are_refused(signup: Signup, controls: Controls, lia, agent: str, cal, request: str, slot: int) -> None:

@@ -310,7 +310,7 @@ function draw() {
   const parts = [
     el("p", { class: "eyebrow" }, "A request for you"),
     el("h1", {}, `A request from ${link.address}`),
-    el("p", { class: "hint" }, `Open until ${when(link.deadline)}. No account needed. What you choose is signed in this browser.`),
+    el("p", { class: "hint" }, `Open until ${when(link.deadline)}. No account needed.`),
     offerCard(opened, approval),
   ];
   if (status) parts.push(status);
