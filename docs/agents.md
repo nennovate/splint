@@ -31,8 +31,9 @@ with cosign 3 on this machine, if a signature isn't the release workflow's:
     curl -fsSL https://github.com/nennovate/splint/releases/latest/download/install.sh | sh
 
 If curl gives an error, or it says it couldn't download something, nothing was installed, and that's
-no sign of tampering. After a network error, try once more. A 404 means there's no public release
-yet: ask your owner to run `make install` in a clone of github.com/nennovate/splint on this machine. If
+no sign of tampering. After a network error, try once more. A 404 means there's no release to
+install yet: ask your owner to run `make install` in a clone of github.com/nennovate/splint on this
+machine. If
 it says something doesn't match its checksum or signature, stop, tell your owner, and install nothing
 else.
 
@@ -125,9 +126,7 @@ first time, they set up Splint there: it makes their Splint ID, who they are to 
 their key on that computer, in a Mac's security chip that signs only with Touch ID or their login
 password, or elsewhere a key locked with a passphrase they choose there. Then they open
 `computer_link` and click Open request, and one approval sets you up, or `splint computer approve` in a
-terminal does. In a browser that didn't open their controls, it asks for their passphrase first. Before there's a
-public release, `controls.install` has nothing to fetch, and a person installs from a clone, with
-Rust: `make install` in github.com/nennovate/splint, then `~/.splint/bin/splint controls <host>`.
+terminal does. In a browser that didn't open their controls, it asks for their passphrase first.
 
 If they have no computer, only a phone, you stay as you are, under the tighter limits, until they can
 use one. A phone app comes later.
