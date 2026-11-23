@@ -316,6 +316,9 @@ struct Beside<C, W, H, D> {
     asks: Vec<String>,
     /// Who kept the agent busy today, as `GET /v0/owner/usage` has it, at most 20 lines.
     usage: Vec<crate::arrivals::UsageLine>,
+    /// Everything received today and sent in the last day, whoever with, where this Signet counted it.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    today: Option<crate::arrivals::Totals>,
 }
 
 #[derive(Serialize)]
@@ -413,6 +416,7 @@ async fn view_of(signet: &Signet) -> Option<Fitted> {
             schemas,
             delegation: Some(delegation),
             usage: crate::arrivals::usage(signet).await,
+            today: Some(crate::arrivals::totals(signet).await),
         },
         requests_within,
         seal,
@@ -463,6 +467,7 @@ struct About {
     schemas: Vec<splint_core::requests::Schema>,
     delegation: Option<Shown>,
     usage: Vec<crate::arrivals::UsageLine>,
+    today: Option<crate::arrivals::Totals>,
 }
 
 /// Signs a view with the agent's key and seals it to its owner's device, unless signed it's more than
@@ -547,6 +552,7 @@ where
         delegation: about.delegation,
         asks: about.asks,
         usage: about.usage,
+        today: about.today,
     };
     fit(&beside, requests_within, seal, left_out).await
 }
@@ -752,6 +758,7 @@ mod tests {
                 units: BTreeMap::new(),
                 schemas: Vec::new(),
                 usage: Vec::new(),
+                today: None,
                 delegation: None,
             },
             requests_within,
@@ -841,6 +848,7 @@ mod tests {
                 units: BTreeMap::new(),
                 schemas: Vec::new(),
                 usage: Vec::new(),
+                today: None,
                 delegation: None,
             },
             requests_within,

@@ -72,6 +72,19 @@ impl Budget {
         self.take_from(SAVED, allowed, None, now).await
     }
 
+    /// The steps and messages the agent sent in the last day, whoever to, as its daily limit counts
+    /// them.
+    pub async fn taken_today(&self, now: u64) -> u32 {
+        let all = self.taken.lock().await;
+        all.get(SAVED).map_or(0, |times| {
+            let within = times
+                .iter()
+                .filter(|at| now.saturating_sub(**at) < DAY_SECS)
+                .count();
+            u32::try_from(within).unwrap_or(u32::MAX)
+        })
+    }
+
     /// The same, and unless `per_hour` have been taken in the last hour.
     pub async fn take_within_hour(
         &self,
@@ -474,6 +487,27 @@ mod tests {
         let restarted = Budget::load(path).unwrap();
         assert_eq!(restarted.take(2, now + 3).await, Err(Spent));
         assert_eq!(restarted.take(2, now + DAY_SECS).await, Ok(()));
+        std::fs::remove_dir_all(&directory).unwrap();
+    }
+
+    /// Bug caught: the owner's page counting only what went to contacts who also wrote today, so
+    /// what went to a quiet contact went uncounted.
+    #[tokio::test]
+    async fn what_was_sent_in_the_last_day_is_counted_whoever_it_went_to() {
+        let directory = std::env::temp_dir().join(format!("signet-sent-{}", std::process::id()));
+        std::fs::create_dir_all(&directory).unwrap();
+        let now = 1_793_750_400;
+        let budget = Budget::load(directory.join("budget.json")).unwrap();
+        assert_eq!(budget.taken_today(now).await, 0);
+        for at in 0..3 {
+            assert_eq!(budget.take(250, now + at).await, Ok(()));
+        }
+        assert_eq!(budget.taken_today(now + 3).await, 3);
+        assert_eq!(
+            budget.taken_today(now + DAY_SECS + 3).await,
+            0,
+            "a day later"
+        );
         std::fs::remove_dir_all(&directory).unwrap();
     }
 

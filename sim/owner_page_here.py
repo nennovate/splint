@@ -436,6 +436,9 @@ def asking_first_signs_new_rules_once(controls: Controls, agent: str) -> None:
     settings = f"#settings-{agent}"
     controls.permissions(agent)
     check("control: her agent's settings show, from rules the page checked", controls.browser.wait_for(f"document.getElementById('level-ask_me-{agent}') !== null", SEEN_SECONDS), controls.text())
+    limits = lambda: controls.text(f"#limits-{agent}")  # noqa: E731
+    # Bug caught: a person choosing Act within limits with no way to see what the limits are.
+    check("the day's limits show under the levels, from the rules in force", "250 steps and messages" in limits() and "50 yeses by itself" in limits() and "per contact, 20 new requests and 100 messages" in limits(), limits())
     the_price_setting_signs_as_chosen(controls, agent)
     before = controls.approvals()
     check("control: Ask me first", controls.pick(f"#level-ask_me-{agent}"))
@@ -443,6 +446,7 @@ def asking_first_signs_new_rules_once(controls: Controls, agent: str) -> None:
     level = lambda: controls.rules_held(agent).get("permissions", {}).get("level")  # noqa: E731
     check("at Ask me first, as chosen", wait_until(lambda: level() == "ask_me", SEEN_SECONDS), level())
     check("and the page shows it chosen", controls.browser.wait_for(f"document.querySelector('{settings} #level-ask_me-{agent}[aria-checked=true]') !== null", SEEN_SECONDS), controls.text(settings))
+    check("with no yeses by itself in the day's limits", controls.browser.wait_for(f"(document.getElementById('limits-{agent}') || {{textContent: ''}}).textContent.includes('no yeses by itself')", SEEN_SECONDS), limits())
 
 def the_price_setting_signs_as_chosen(controls: Controls, agent: str) -> None:
     """Bug caught: the price switch signing nothing, or the opposite of what it shows, so the host's
@@ -498,6 +502,16 @@ def a_reminder_sets_the_recovery_code_and_shows_it_once(controls: Controls) -> N
             break
     check("and once written down, home has no reminder and doesn't show it again", controls.browser.wait_for(home, SEEN_SECONDS) and code not in controls.text(), controls.text())
 
+def todays_numbers_count_what_went(controls: Controls, agent: str) -> None:
+    """Bugs caught: the strip summing only the busiest contacts who wrote today, so what her agent sent
+    anyone else went uncounted; and totals that never reach her page through her agent's sealed
+    update. Her agent heard from cal and answered him today, so neither count is nothing."""
+    controls.permissions(agent)
+    numbers = lambda: controls.browser.eval("[...document.querySelectorAll('.stats .stat .n')].slice(0, 2).map((one) => Number(one.textContent))") or []  # noqa: E731
+    counted = lambda: len(numbers()) == 2 and all(n >= 1 for n in numbers())  # noqa: E731
+    check("her agent's page counts what it received and sent today, from its Signet's own totals", wait_until(counted, SEEN_SECONDS), numbers())
+
+
 def run() -> None:
     print("\n== your controls on your own computer ==", flush=True)
     work = e2e.short_scratch("splint-page-here-")
@@ -517,6 +531,7 @@ def run() -> None:
         request, slot = cal_asks_for_a_meeting_and_her_agent_accepts(signup, controls, lia, cal)
         a_card_names_cal_only_as_far_as_signatures_bind_him(signup, controls, lia, agent, cal, request)
         what_is_signed_is_what_is_shown_and_changed_terms_are_refused(signup, controls, lia, agent, cal, request, slot)
+        todays_numbers_count_what_went(controls, agent)
         said = [word for word in NEVER_SAID if word.lower() in controls.seen.lower()]
         check("nowhere does the page name a passkey or a pairing code", said == [], said)
         check("nothing on the page threw", controls.browser.problems == [], controls.browser.problems)

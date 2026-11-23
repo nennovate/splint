@@ -188,6 +188,13 @@ impl Arrivals {
         self.heard.lock().unwrap_or_else(PoisonError::into_inner)
     }
 
+    /// Everything heard today, from anyone, contacts or not.
+    pub fn received_today(&self, now: u64) -> u32 {
+        self.heard()
+            .values()
+            .fold(0, |total: u32, one| total.saturating_add(one.today(now)))
+    }
+
     /// Whether this note, read from the host again, was counted already.
     pub fn counted(&self, message: &MessageId) -> bool {
         self.notes_seen
@@ -613,6 +620,23 @@ pub async fn usage(signet: &Signet) -> Vec<UsageLine> {
     lines
 }
 
+/// What came and went today, for the owner's page: everything heard since the day began, from anyone,
+/// and every step and message the agent sent in the last day, as its daily limit counts them. The
+/// usage lines name only the busiest contacts who wrote today, so sums of them miss the rest.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Totals {
+    pub received: u32,
+    pub sent: u32,
+}
+
+pub async fn totals(signet: &Signet) -> Totals {
+    let now = unix_now();
+    Totals {
+        received: signet.arrivals.received_today(now),
+        sent: signet.budget.taken_today(now).await,
+    }
+}
+
 #[derive(Serialize)]
 struct UsagePage {
     usage: Vec<UsageLine>,
@@ -750,6 +774,27 @@ mod tests {
         let other: MessageId = serde_json::from_value(serde_json::json!("m2")).unwrap();
         arrivals.count_note(&ben, &other, now);
         assert!(arrivals.counted(&other), "with nowhere to keep it");
+        std::fs::remove_dir_all(&folder).unwrap();
+    }
+
+    /// Bug caught: the owner's page counting only what the busiest contacts sent today, so what came
+    /// from anyone else, a stranger included, went uncounted.
+    #[test]
+    fn everything_heard_today_counts_whoever_sent_it() {
+        let folder = std::env::temp_dir().join(format!("signet-received-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&folder);
+        std::fs::create_dir_all(&folder).unwrap();
+        let arrivals =
+            Arrivals::load(folder.join("arrivals.json"), folder.join("notes.json")).unwrap();
+        let id = |n: u32| -> SplintId {
+            serde_json::from_value(serde_json::json!(format!("splint1{n:064x}"))).unwrap()
+        };
+        let now = 1_793_750_400 - (1_793_750_400 % DAY_SECS) + 3600;
+        arrivals.note(&id(0xb), now);
+        arrivals.note(&id(0xb), now + 1);
+        arrivals.note(&id(0x5), now + 2);
+        assert_eq!(arrivals.received_today(now + 3), 3);
+        assert_eq!(arrivals.received_today(now + DAY_SECS), 0, "the next day");
         std::fs::remove_dir_all(&folder).unwrap();
     }
 

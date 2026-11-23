@@ -2077,16 +2077,15 @@ function agentView() {
 
 /** Today's numbers, from the counts the agent's Signet signed in its view. */
 function statsView(agent) {
-  const usage = agent.view && Array.isArray(agent.view.usage) ? agent.view.usage : null;
-  if (!usage) return null;
-  const sum = (key) => usage.reduce((total, line) => total + (Number.isSafeInteger(line[key]) ? line[key] : 0), 0);
-  const received = sum("arrivals_today");
-  const usual = sum("usual_per_day");
-  const sent = sum("texts_to") + sum("new_requests_to");
+  // Its Signet's own totals, whoever with. The usage lines name only the busiest contacts who wrote
+  // today, so sums of them would miss the rest: where there are no totals, nothing is counted here.
+  const today = agent.view && agent.view.today;
+  if (!today || !Number.isSafeInteger(today.received) || !Number.isSafeInteger(today.sent)) return null;
+  const usage = Array.isArray(agent.view.usage) ? agent.view.usage : [];
   const busiest = usage[0];
   return html`<div class="surface stats" aria-label="Today">
-    <div class="stat"><span class="k">Received today</span><span class="n">${received}</span>${usual && received > usual * 1.5 ? html`<span class="vs up">${Math.round((received / usual) * 10) / 10}× a usual day</span>` : (usual ? html`<span class="vs">usual ${usual}</span>` : null)}</div>
-    <div class="stat"><span class="k">Sent today</span><span class="n">${sent}</span></div>
+    <div class="stat"><span class="k">Received today</span><span class="n">${today.received}</span></div>
+    <div class="stat"><span class="k">Sent today</span><span class="n">${today.sent}</span></div>
     <div class="stat"><span class="k">Busiest</span><span class="n" style="font-size:15px;padding-top:4px">${busiest ? withHiddenShown(String(busiest.address)) : "Nobody yet"}</span><span class="vs">${busiest ? `${busiest.arrivals_today} today` : ""}</span></div>
   </div>`;
 }
@@ -2222,10 +2221,11 @@ function permissionsTab(agent) {
     ${RISKY.filter((one) => one.on(rules)).map((one) => html`<p class="banner waiting" style="margin-bottom:10px">${icon.warn()}<span>${one.words}</span></p>`)}
     <div class="section">
       <div class="section-head"><h2>What ${agent.label} can do alone</h2>${infoButton("level", "limits")}</div>
-      ${ui.open.has("level") ? html`<p class="note">${INFO.level} ${limitsShort(rules)}</p>` : null}
+      ${ui.open.has("level") ? html`<p class="note">${INFO.level}</p>` : null}
       <div class="surface list" role="radiogroup" aria-label=${`What ${agent.label} can do alone`}>
         ${levels.map((one) => choice("level", one, LEVEL_WORDS[one][0], LEVEL_WORDS[one][1], level === one))}
         ${toggle("quotes", "Ask me before quoting a price", quoted === "wait", (on) => (on ? "wait" : "within_limits"))}
+        ${limitsRow(agent, rules)}
       </div>
     </div>
     <div class="section">
@@ -2255,10 +2255,28 @@ function permissionsTab(agent) {
   </div>`;
 }
 
-/** The day's caps, in a few words. */
-function limitsShort(rules) {
+/**
+ * The day's limits from the rules in force, in a row under the levels: what the agent sends in a day,
+ * what it says yes to by itself at Act within limits, and what each contact gets. Its yeses are the
+ * fewer of its delegation's day and a fifth of its rules', as its Signet counts them.
+ */
+function limitsRow(agent, rules) {
   const actions = rules.permissions.actions_per_day;
-  return Number.isSafeInteger(actions) ? `It takes at most ${actions} steps and messages a day, and agrees to at most ${Math.ceil(actions / YESES_PART)} things a day by itself.` : "";
+  const limits = rules.limits || {};
+  if (!Number.isSafeInteger(actions)) return null;
+  const held = currentView(agent) && /** @type {any} */ (currentView(agent)).delegation && /** @type {any} */ (currentView(agent)).delegation.delegation;
+  const delegated = held && Number.isSafeInteger(held.actions_per_day) ? held.actions_per_day : DEFAULT_DELEGATION.actions_per_day;
+  const yeses = rules.permissions.level === "ask_me" ? 0 : Math.min(Math.ceil(actions / YESES_PART), delegated);
+  const each = [
+    Number.isSafeInteger(limits.new_requests_per_contact_per_day) ? `${limits.new_requests_per_contact_per_day} new requests` : null,
+    Number.isSafeInteger(limits.texts_per_contact_per_day) ? `${limits.texts_per_contact_per_day} messages` : null,
+  ].filter(Boolean);
+  const facts = [
+    `${actions.toLocaleString("en-US")} steps and messages`,
+    yeses ? `${yeses} yeses by itself` : "no yeses by itself",
+    each.length ? `per contact, ${each.join(" and ")}` : null,
+  ].filter(Boolean);
+  return html`<div class="row" id=${`limits-${agent.agent}`}><div class="grow"><span class="t">Daily limits</span><span class="d">${facts.join(" · ")}</span></div></div>`;
 }
 
 /**
