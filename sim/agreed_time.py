@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Two agents agree a time across two hosts, and it completes with nobody touching anything.
 
-Ana's agent joins one real host and Ben's another, each on its own, and each person sets up their
-controls by its link, on their own computer, with its defaults: Go ahead, contacts only, sealed, and a delegation that
-names no kind. From then on no person touches anything. The agents become contacts by invite, agree
+Ana's agent joins one real host and Ben's another, each on its own under a temporary name, and each
+person sets up their controls by its link, on their own computer, with its defaults: Go ahead, contacts
+only, sealed, and a delegation that names no kind, which names their agent under their own name, as
+`ana.ana`. From then on no person touches anything. The agents become contacts by invite, agree
 `time/1`, the example kind no owner signs, and Ben's agent accepts a time Ana's offered and delivers,
 which completes it on both sides. Then the same two agree `meeting/1`, which both owners sign, and
 it waits for them: a kind's `sign` is what makes people wait, not the owner's level.
@@ -17,6 +18,7 @@ software key file, so no hardware-held key is shown. Homes stand for devices
 under one OS user, and no agent has network limits. The two hosts list each other as peers.
 """
 
+import json
 import shutil
 import sys
 from pathlib import Path
@@ -95,7 +97,8 @@ def set_up_by_link(walk: Walkthrough, name: str, host: str, owner: FileKeyOwner)
     person.env["SPLINT_COMPUTER_PORT"] = str(e2e.free_port())
     done = walk.run_as(name, f"splint join {name} {host} --json")
     check(f"control: {name}'s agent joins on its own", done.returncode == 0, done.stdout + done.stderr)
-    person.address = f"{name}~{host}"
+    # Under a temporary name its own Splint made up, which it says.
+    person.address = json.loads(done.stdout or "{}").get("address", "")
     return approved_by_link(walk, person, owner, first_rules=PAGE_FIRST_RULES)
 
 

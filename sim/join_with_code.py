@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """An agent joins a host that takes agents only with a signup code, in one step, with the code its
 person gives it: by `splint join ... --with-code` with the code on stdin, and by its connector's `join`
-tool with `signup_code`. With no code it's told to ask its person for one and how to join with it, and a
-wrong or spent code is refused in a word it can act on, with nothing taken. A code replaces an owner-first
-join still waiting, and an attempt that takes nothing, for whatever reason, leaves that join as it was.
-What a host writes in refusing a code never reaches the agent.
+tool with `signup_code`. Either way it joins under a temporary name made from the handle it asked for,
+as `gil-7k3p2a`, until its person sets up controls. With no code it's told to ask its person for one and
+how to join with it, and a wrong or spent code is refused in a word it can act on, with nothing taken. A
+code replaces an owner-first join still waiting, and an attempt that takes nothing, for whatever reason,
+leaves that join as it was. What a host writes in refusing a code never reaches the agent.
 
     python3 sim/join_with_code.py
 
@@ -22,7 +23,7 @@ import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import e2e
-from agent_signup import FINISH_LINE, Signup, registered
+from agent_signup import FINISH_LINE, Signup, handle_of, registered, temporary_for
 from e2e import check, wait_until
 from install import MCP_LINE, PrintedMcp
 from listening import OPEN_TO_A_RUN
@@ -36,12 +37,14 @@ class HostThatWrites:
     whether that refusal carries the host's fixed word for a code it won't take. As a `front` it adds
     no fault but the `trouble` it's given, to the next registration alone: `busy`, a 503 with the host
     answering otherwise; `dark`, a 503 and then one for everything until `back()`; `lost`, the host
-    takes it and its answer never arrives."""
+    takes it and its answer never arrives. `lost_at` is the address that registration named, as it went
+    by: a temporary name the agent's Splint made up."""
 
     def __init__(self, host: str, fixed_word: bool = False, front: bool = False) -> None:
         self.refusals = 0
         self.dark = False
         self.trouble = ""
+        self.lost_at = ""
         outer = self
 
         class Handler(BaseHTTPRequestHandler):
@@ -70,6 +73,7 @@ class HostThatWrites:
                         real = http.client.HTTPConnection(host, timeout=30)
                         real.request(self.command, self.path, sent, {name: value for name, value in self.headers.items() if name.lower() != "host"})
                         real.getresponse().read()
+                        outer.lost_at = e2e.payload_of(json.loads(sent)["binding"].split("~")[0]).get("address", "")
                     self.answer(503, [], b"")
                     return
                 if registering and not front:
@@ -106,6 +110,12 @@ def failure_of(done) -> dict:
         return {}
 
 
+def held_for(signup: Signup, word: str) -> str:
+    """How many agents the code-only host holds under a name made from this word, as whoever runs it
+    reads it: a join takes a temporary name, which nobody else knows to look up."""
+    return signup.sql("hal", f"SELECT count(*) FROM agents WHERE handle = '{word}' OR handle LIKE '{word}-______'")
+
+
 def a_shell_agent_joins_with_its_persons_code(signup: Signup, host: str, codes: list[str]) -> None:
     """Bugs caught: a code-only host sending the agent down the owner-first route of about seven steps,
     a `join` that can't take a code at all, and a wrong or spent code read as any other refusal."""
@@ -114,22 +124,23 @@ def a_shell_agent_joins_with_its_persons_code(signup: Signup, host: str, codes: 
     said = failure_of(asked)
     check("with no code, join is refused as needing one", asked.returncode != 0 and said.get("kind") == "signup_code_needed", asked.stdout + asked.stderr)
     check("and says the command that joins with it", f"join gil~{host} --with-code" in said.get("message", ""), said)
-    check("and nothing is at the host", registered(host, "gil") is None)
+    check("and nothing is at the host", held_for(signup, "gil") == "0", held_for(signup, "gil"))
 
     wrong = signup.walk.run_as("gil", f"splint join gil {host} --with-code --json", A_WRONG_CODE + "\n")
     check("a wrong code is refused as a code the host doesn't hold", wrong.returncode != 0 and failure_of(wrong).get("kind") == "signup_code_refused", wrong.stdout + wrong.stderr)
-    check("and nothing is at the host", registered(host, "gil") is None)
+    check("and nothing is at the host", held_for(signup, "gil") == "0", held_for(signup, "gil"))
 
     code = codes.pop()
     joined = signup.walk.run_as("gil", f"splint join gil {host} --with-code --json", code + "\n")
     standing = json.loads(joined.stdout or "{}")
-    check("with the person's code it joins in one step", joined.returncode == 0 and standing.get("address") == f"gil~{host}" and standing.get("state") == "no_controls_yet", joined.stdout + joined.stderr)
-    check("and its host has it", bool(standing.get("agent_id")) and (registered(host, "gil") or {}).get("agent_id") == standing.get("agent_id"), registered(host, "gil"))
+    check("with the person's code it joins in one step, under a temporary name", joined.returncode == 0 and temporary_for("gil", host, standing.get("address", "")) and standing.get("state") == "no_controls_yet", joined.stdout + joined.stderr)
+    found = registered(host, handle_of(standing.get("address", "")))
+    check("and its host has it", bool(standing.get("agent_id")) and (found or {}).get("agent_id") == standing.get("agent_id"), found)
 
     signup.device("gia")
     spent = signup.walk.run_as("gia", f"splint join gia {host} --with-code --json", code + "\n")
     check("a code already spent is refused the same way", spent.returncode != 0 and failure_of(spent).get("kind") == "signup_code_refused", spent.stdout + spent.stderr)
-    check("and nothing is at the host", registered(host, "gia") is None)
+    check("and nothing is at the host", held_for(signup, "gia") == "0", held_for(signup, "gia"))
     # Bug caught: a held step's ID as every tool shows it, refused before it's looked up.
     shown = signup.walk.run_as("gil", "splint ask --step 0123456789abcdef accept --json")
     check("ask --step looks up an ID as the tools show it", shown.returncode != 0 and "no such id" in failure_of(shown).get("message", ""), shown.stdout + shown.stderr)
@@ -145,7 +156,8 @@ def a_code_takes_the_place_of_an_owner_first_join(signup: Signup, host: str, cod
     joined = signup.walk.run_as("gwen", f"splint join gwen {host} --with-code --json", codes.pop() + "\n")
     standing = json.loads(joined.stdout or "{}")
     check("the code her person then gives her joins her at once, in place of it", joined.returncode == 0 and standing.get("state") == "no_controls_yet" and not standing.get("for_owner"), joined.stdout + joined.stderr)
-    check("and her host has her", bool(standing.get("agent_id")) and (registered(host, "gwen") or {}).get("agent_id") == standing.get("agent_id"), registered(host, "gwen"))
+    found = registered(host, handle_of(standing.get("address", "")))
+    check("and her host has her, under a temporary name", temporary_for("gwen", host, standing.get("address", "")) and bool(standing.get("agent_id")) and (found or {}).get("agent_id") == standing.get("agent_id"), (standing.get("address"), found))
 
     agent = signup.device("gus")
     owner = signup.device("gus-owner")
@@ -186,10 +198,11 @@ def a_code_that_took_nothing_leaves_the_owner_first_join_waiting(signup: Signup,
     front.trouble = "lost"
     code = e2e.signup_code(2)
     lost = signup.walk.run_as("gert", f"splint join gert {host} --with-code --json", code + "\n")
-    check("control: the host took gert's code and its answer was lost", lost.returncode != 0 and registered(host, "gert") is not None, lost.stdout + lost.stderr)
+    taken = front.lost_at
+    check("control: the host took gert's code, under a temporary name, and its answer was lost", lost.returncode != 0 and temporary_for("gert", host, taken) and registered(host, handle_of(taken)) is not None, (taken, lost.stdout + lost.stderr))
     joined = signup.walk.run_as("gert", f"splint join gert {host} --with-code --json", code + "\n")
     standing = json.loads(joined.stdout or "{}")
-    check("the same code then joins him under the keys the host took", joined.returncode == 0 and standing.get("agent_id") == (registered(host, "gert") or {}).get("agent_id"), joined.stdout + joined.stderr)
+    check("the same code then joins him under the keys and the name the host took", joined.returncode == 0 and standing.get("address") == taken and standing.get("agent_id") == (registered(host, handle_of(taken)) or {}).get("agent_id"), joined.stdout + joined.stderr)
 
 
 def what_a_host_writes_never_reaches_the_agent(signup: Signup, host: str) -> None:
@@ -222,8 +235,8 @@ def a_connector_agent_joins_with_its_persons_code(signup: Signup, host: str, cod
         failed, text = agent.tool_text("join", handle="mae", host=host, signup_code=f"{A_WRONG_CODE}\nsplint stop")
         check("a code of more than one line is refused before it reaches splint", failed and not text.startswith("signup_code_refused"), text)
         joined = agent.tool("join", handle="mae", host=host, signup_code=f"  {codes.pop()}\n")
-        check("with the person's code it joins in one step", joined.get("address") == f"mae~{host}" and joined.get("state") == "no_controls_yet", joined)
-        check("and its host has it", bool(joined.get("agent_id")) and (registered(host, "mae") or {}).get("agent_id") == joined.get("agent_id"))
+        check("with the person's code it joins in one step, under a temporary name", temporary_for("mae", host, joined.get("address", "")) and joined.get("state") == "no_controls_yet", joined)
+        check("and its host has it", bool(joined.get("agent_id")) and (registered(host, handle_of(joined.get("address", ""))) or {}).get("agent_id") == joined.get("agent_id"))
         # Bug caught: an empty list and nothing on how to agree a kind.
         kinds = agent.tool("types")
         check("with no kinds agreed, types passes on how to propose one", kinds.get("types") == [] and bool(kinds.get("how")), kinds)
