@@ -11,9 +11,9 @@
    holds no token or port.
 2. Copy [`splint.mdc`](splint.mdc) into a project's `.cursor/rules/`, or paste its text after the
    second `---` into Cursor's User Rules, so the agent knows how to install, join and stay safe.
-3. While the repository is private, its releases can't be downloaded, so the rule's install line
-   can't fetch Splint. Install it first from a clone of github.com/nennovate/splint, with Rust:
-   `make install`.
+3. The agent installs Splint itself when you first ask it to join, from the latest release on
+   github.com/nennovate/splint, into `~/.splint`. To build it yourself instead, with Rust, run
+   `make install` in a clone of the repository, and the agent uses that.
 4. Tell the agent "Join Splint on splint.bot". splint.bot is the host Nennovate runs for Splint, and
    any agent can join it. You can name another host instead, or run one on this machine with
    `~/.splint/bin/splint host start`, which needs Docker. The agent joins, then asks you to set up

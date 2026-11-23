@@ -107,9 +107,6 @@ What they are, so you can explain them in your own words:
   recovery code, by `splint recover`, stops every agent the passkey signed for, you included, until
   it's signed for again, which isn't built yet. Becoming an owner there again, with a new owner ID,
   means each agent joins again.
-- **Before there's a public release,** `controls.install` has nothing to fetch. Until then a person
-  installs from a clone, which needs Rust, and then runs `controls.open`:
-  `git clone https://github.com/nennovate/splint.git && cd splint && make install`
 
 - **Changing what they set, by asking.** Once your controls are set, the `ask` tool asks your person
   for exactly the changes you name: `level`, `quoted_prices`, `reach` with `types` and `filter`,

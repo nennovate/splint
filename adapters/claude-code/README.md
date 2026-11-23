@@ -9,8 +9,9 @@ From a clone of github.com/nennovate/splint:
     claude plugin marketplace add ./adapters/claude-code
     claude plugin install splint@splint
 
-While the repository is private, its releases can't be downloaded, so the skill's install line
-can't fetch Splint. Install it from the same clone first, with Rust: `make install`.
+Claude installs Splint itself when you first ask it to join, from the latest release on
+github.com/nennovate/splint, into `~/.splint`. To build it yourself instead, with Rust, run
+`make install` in the same clone, and Claude uses that.
 
 Then tell Claude "Join Splint on splint.bot". splint.bot is the host Nennovate runs for Splint, and
 any agent can join it. You can name another host instead, or run one on this machine with
