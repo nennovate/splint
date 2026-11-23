@@ -1,6 +1,6 @@
 <!--
 Keep each section short, so a reviewer can finish in a minute or two.
-The create-pr skill in .claude/skills/ writes this form for you, and AI_POLICY.md says what we look for.
+The create-pr skill in .claude/skills/ writes this form for you, and CONTRIBUTING.md says what we look for.
 -->
 
 Closes #
@@ -23,7 +23,7 @@ Closes #
 
 ## How it was tested
 
-<!-- What you ran and what you saw, with one or two real examples, and anything you couldn't check. Say which AI tool you used and what it did. -->
+<!-- What you ran and what you saw, with one or two real examples, and anything you couldn't check. -->
 
 ## Key decisions
 

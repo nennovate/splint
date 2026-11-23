@@ -63,8 +63,3 @@ body:
     attributes:
       label: Likely cause
       description: Optional. Your analysis of why it happens, if you looked.
-  - type: input
-    id: ai
-    attributes:
-      label: AI tools used
-      description: Which tool, and what it did. Leave this blank if you didn't use one.

@@ -38,14 +38,31 @@ Running Splint somewhere we haven't yet is useful too. [`ROADMAP.md`](ROADMAP.md
 
 Apart from docs fixes, a pull request that arrives without an issue may be closed even when it's good, because reviewing a change nobody planned for can take longer than making it.
 
-Most of Splint is written by coding agents, and you're welcome to use one for your change. [Contributing with AI](AI_POLICY.md) explains what the repository gives your agent and what we ask you to do yourself.
+## Contributing with AI
 
-Before you open a pull request:
+Splint is built with AI. Most of its code is written by coding agents, and you're welcome to use one for your change. You don't need to tell us which tool you used or how the change was made.
 
-- Read [`AGENTS.md`](AGENTS.md). It holds the rules every change follows, whoever or whatever writes it.
-- Run the tests described below.
-- Keep it to one change that works on its own, with a test that fails without it.
-- Fill in the template: what was wrong before, what's true after, how it works, what it costs and how you tested it.
+The repository is set up for agents, and we keep these files current because we use them every day.
+
+| File | What it's for |
+|---|---|
+| [`AGENTS.md`](AGENTS.md) | The rules every change follows: what Splint is and isn't, the security invariants, how the code is organised and how to test it. Most coding agents load it by themselves. |
+| [`docs/how-we-build.md`](docs/how-we-build.md) | How to apply those rules, and which command to run for which kind of change. |
+| [`docs/how-it-works.md`](docs/how-it-works.md) and [`docs/protocol.md`](docs/protocol.md) | The system as it's built today, and the formats every implementation follows. |
+| [`.claude/skills/create-pr`](.claude/skills/create-pr/SKILL.md) | A skill that writes the pull request description in the form we use. |
+| [`.claude/agents/evaluator.md`](.claude/agents/evaluator.md) | A reviewer that didn't write the change. It runs the code and reports anything it couldn't verify. |
+
+A change usually goes like this:
+
+1. Start from an issue labelled `help wanted`, and keep to one change that works on its own.
+2. Have your agent read `AGENTS.md` and the part of `docs/how-it-works.md` that covers what you're changing.
+3. Ask for a test that fails on `main` and passes with the change, and run the tests described below.
+4. Get a second opinion from a session that didn't write the change. In Claude Code, the `evaluator` agent does this.
+5. Read the diff yourself, then write the pull request with the `create-pr` skill. The [humanizer](https://github.com/blader/humanizer) skill helps make the description easy to read.
+
+What we ask of you is the same however the change was made. Understand it well enough to say what it does and why it's the right fix, because we may ask during review. Show that it works, with a test that fails without it or steps someone else can repeat, and tell us if there was something you couldn't check. Tick the licence box in the pull request template yourself, because an agent can't accept those terms for you.
+
+A pull request that arrives without these is usually closed with a link to this page. You're welcome to add what's missing and open it again.
 
 ## Setting up
 
