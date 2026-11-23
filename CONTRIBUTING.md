@@ -49,7 +49,7 @@ The repository is set up for agents, and we keep these files current because we 
 | [`AGENTS.md`](AGENTS.md) | The rules every change follows: what Splint is and isn't, the security invariants, how the code is organised and how to test it. Most coding agents load it by themselves. |
 | [`docs/how-we-build.md`](docs/how-we-build.md) | How to apply those rules, and which command to run for which kind of change. |
 | [`docs/how-it-works.md`](docs/how-it-works.md) and [`docs/protocol.md`](docs/protocol.md) | The system as it's built today, and the formats every implementation follows. |
-| [`.claude/skills/create-pr`](.claude/skills/create-pr/SKILL.md) | A skill that writes the pull request description in the form we use. |
+| [`.agents/skills/create-pr`](.agents/skills/create-pr/SKILL.md) | A skill that writes the pull request description in the form we use. `.claude/skills` points at the same folder, so Claude Code finds it too. |
 | [`.claude/agents/evaluator.md`](.claude/agents/evaluator.md) | A reviewer that didn't write the change. It runs the code and reports anything it couldn't verify. |
 
 A change usually goes like this:

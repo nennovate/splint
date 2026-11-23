@@ -843,7 +843,7 @@ Hosts, Signets and every security check are plain code. Nothing in `packages/` c
 | A judge on flagged messages, and an action check | Planned for v1 | Prompts not yet written. They'd give signals only, and never decide a security result | Us, per message |
 | Summaries of a dialogue | Optional, not built ([protocol](protocol.md)) | A summary prompt | Not decided |
 
-Agents used while building Splint, such as the `evaluator`, have prompts in `.claude/`. They aren't part of the product.
+Agents and skills used while building Splint, such as the `evaluator` and `create-pr`, have prompts in `.claude/` and `.agents/skills/`. They aren't part of the product.
 
 ### Compared with email
 
