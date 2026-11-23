@@ -2191,13 +2191,13 @@ function contactBody(sheet) {
 
 const LEVEL_WORDS = {
   ask_me: ["Ask me first", "Nothing that commits you goes out until you say yes."],
-  auto_within_limits: ["Act within limits", "Goes ahead within the day's limit. Anything you'd pay waits for you."],
-  full_auto: ["Full auto, set outside this page", `No caps on what it offers, up to ${FULL_AUTO_PER_DAY.toLocaleString("en-US")} steps and messages a day. Anything you'd pay still waits for you.`],
+  auto_within_limits: ["Act within limits", "Goes ahead within the day's limits below."],
+  full_auto: ["Full auto, set outside this page", `No caps on what it offers, up to ${FULL_AUTO_PER_DAY.toLocaleString("en-US")} steps and messages a day.`],
 };
 
 const INFO = {
   level: "These are limits, not instructions. Your agent's model decides what to do, and Splint's code stops it going past what you set here.",
-  quotes: "A price your agent quotes, where you'd be the one paid. Anything you'd pay always waits for you, whatever you choose here.",
+  quotes: "A price your agent quotes, where you'd be the one paid. Off, it goes within your limits like anything else.",
   agreed: "When your agent and another agree to be contacts, they can talk and arrange things at once, up to 100 new ones a day. A kind of request with money is used with them only once you approve them.",
   sealed: "Sealed: only your agent and the one it's talking to can read what's said. Unsealed: hosts can read it too, as a business might need, so they can screen it for you.",
   paid: "Splint never holds or moves money. Once a deal that pays you is done, your agent can ask to be paid at one of these, with the amount from the deal, and people pay you in their own app or wallet. A payment by Lightning or on a chain can't be reversed.",
@@ -2224,7 +2224,6 @@ function permissionsTab(agent) {
       ${ui.open.has("level") ? html`<p class="note">${INFO.level}</p>` : null}
       <div class="surface list" role="radiogroup" aria-label=${`What ${agent.label} can do alone`}>
         ${levels.map((one) => choice("level", one, LEVEL_WORDS[one][0], LEVEL_WORDS[one][1], level === one))}
-        ${toggle("quotes", "Ask me before quoting a price", quoted === "wait", (on) => (on ? "wait" : "within_limits"))}
         ${limitsRow(agent, rules)}
       </div>
     </div>
@@ -2241,9 +2240,13 @@ function permissionsTab(agent) {
       <div class="surface list">${toggle("sealed", "Seal messages", sealed, (on) => (on ? "sealed" : "unsealed"))}</div>
     </div>
     <div class="section" id="getting-paid">
-      <div class="section-head"><h2>Getting paid</h2>${infoButton("paid", "getting paid")}</div>
+      <div class="section-head"><h2>Money</h2>${infoButton("paid", "money")}</div>
       ${ui.open.has("paid") ? html`<p class="note">${INFO.paid}</p>` : null}
-      <div class="surface list"><button type="button" class="row act" id="where-paid-open" onClick=${() => { ui.sheet = { kind: "where-paid" }; draw(true); }}><div class="grow"><span class="t">Say where you get paid</span></div><span class="soft">${icon.lock()}</span></button></div>
+      <div class="surface list">
+        <div class="row" id=${`pays-${agent.agent}`}><div class="grow"><span class="t">Anything you'd pay</span><span class="d">Always asks you first, at every level</span></div><span class="soft" title="No setting changes this">${icon.lock()}</span></div>
+        ${toggle("quotes", "Ask me before quoting a price", quoted === "wait", (on) => (on ? "wait" : "within_limits"))}
+        <button type="button" class="row act" id="where-paid-open" onClick=${() => { ui.sheet = { kind: "where-paid" }; draw(true); }}><div class="grow"><span class="t">Say where you get paid</span></div><span class="soft">${icon.chev()}</span></button>
+      </div>
     </div>
     <div class="section">
       <div class="surface list">
@@ -2376,7 +2379,7 @@ function accountBody() {
   const viewing = viewingHere();
   return html`<div id="account-panel">
     <h2>You</h2>
-    ${field("my-name", "Your name", html`<input class="input" id="my-name" autocomplete="name" placeholder="Only shown on this computer" value=${(known && known.name) || ""} onChange=${(/** @type {any} */ event) => { remember({ name: event.target.value.trim().slice(0, 60) }); draw(true); }} />`)}
+    ${field("my-name", "Your name", html`<input class="input" id="my-name" autocomplete="name" placeholder="Kept in this browser" value=${(known && known.name) || ""} onChange=${(/** @type {any} */ event) => { remember({ name: event.target.value.trim().slice(0, 60) }); draw(true); }} />`)}
     <div class="surface list">
       <div class="row"><div class="grow"><span class="t">Splint ID</span></div>${idChip(me.owner.id, "your Splint ID")}</div>
       <div class="row"><div class="grow"><span class="t">Approve with</span></div><span class="v">${chipHere() ? "Touch ID or your password" : "Your passphrase"}</span></div>
@@ -2480,7 +2483,6 @@ function setupView() {
       <div style="display:grid;gap:6px"><h1>${shown.title}</h1>${shown.one ? html`<p class="lead mono">${shown.address}</p>` : null}</div>
       ${linesView(shown.lines)}
       ${checkFirst(shown.name, true, waiting.asks.some((one) => one.from_link))}
-      ${nameField()}
       ${chip ? null : passphraseFields()}
       ${btn("make", html`${icon.lock()}${chip ? "Approve with Touch ID" : "Approve"}`, "primary block", make, { id: "approve-first" })}
       <p class="hint">It starts within limits, reached only by your contacts. Change it any time.</p>
@@ -2499,7 +2501,7 @@ function setupView() {
 
 /** A name for the person, kept on this computer only. */
 function nameField() {
-  return field("setup-name", "Your name", html`<input class="input" id="setup-name" autocomplete="name" placeholder="Optional, kept on this computer" value=${ui.typed["setup-name"] || ""} onInput=${(/** @type {any} */ event) => { ui.typed["setup-name"] = event.target.value; }} />`);
+  return field("setup-name", "Your name", html`<input class="input" id="setup-name" autocomplete="name" placeholder="Optional, kept in this browser" value=${ui.typed["setup-name"] || ""} onInput=${(/** @type {any} */ event) => { ui.typed["setup-name"] = event.target.value; }} />`);
 }
 
 /** A new passphrase, typed twice. */
