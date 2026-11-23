@@ -637,4 +637,30 @@ mod tests {
         );
         assert!(link_form("ana~Splint.example").is_err());
     }
+
+    /// Bug caught: a temporary name or an owner's ID passing for an owner's name, a word of letters
+    /// alone read as a temporary name, or an ID form that doesn't name the ID it came from.
+    #[test]
+    fn an_owners_name_is_never_a_temporary_name_or_an_id() {
+        let made = temporary_name("claude").unwrap();
+        assert!(is_temporary_name(&made) && agent_word(&made) == "claude", "{made}");
+        assert!(!may_be_owner_name(&made), "{made}");
+        assert!(!is_temporary_name("anna-london") && may_be_owner_name("anna-london"));
+        assert_eq!(
+            with_owner_part(&format!("{made}~host.example"), "jeff").as_deref(),
+            Ok("claude.jeff~host.example")
+        );
+        let owner = crate::test_identity(&crate::SigningKey::generate().unwrap());
+        let form = owner_id_form(owner.id()).unwrap();
+        assert_eq!(form.len(), OWNER_ID_FORM_CHARS);
+        assert!(
+            owner
+                .id()
+                .as_str()
+                .starts_with(&owner_id_start(&form).unwrap())
+        );
+        assert!(!may_be_owner_name(&form));
+        assert!(with_owner_part("claude~host.example", &form).is_err());
+        assert!(owner_id_start("anna").is_none());
+    }
 }

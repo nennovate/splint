@@ -10,17 +10,18 @@
 //! invite, nor a notice, and not anything it was sent, which only its own owner's rules let in. An
 //! owner who sets up controls doesn't count either: an owner key costs nothing to make.
 //!
-//! An agent let go keeps its handle for good, as a retired one does. Its contacts go by its ID, so one
-//! who pinned it would refuse a newcomer at that handle anyway. Someone given only the address, on a
+//! An agent let go keeps its name for good, as a retired one does. Its contacts go by its ID, so one
+//! who pinned it would refuse a newcomer at that name anyway. Someone given only the address, on a
 //! card or in a chat, has nothing pinned, and would reach a newcomer and take it for the agent they
-//! were told about. So a handle given out here names one ID for good, and that ID can come back to it.
+//! were told about. So a name given out here names one ID for good, and that ID can come back to it.
+//! A temporary name is the exception: it was never anyone's to give out, so it goes with the agent.
 //! What goes is everything else the host held for the agent.
 
 use std::sync::Arc;
 use std::time::Duration;
 
 use splint_core::{
-    Identity, MIN_HANDLE_CHARS_WITHOUT_CODE, SplintId, VerifiedRegistration, name_parts,
+    Identity, MIN_HANDLE_CHARS_WITHOUT_CODE, SplintId, VerifiedRegistration, is_temporary_name,
 };
 use sqlx::{Postgres, Row, Transaction};
 
@@ -58,6 +59,11 @@ pub async fn release_unused(host: &Host) -> Result<(), ApiError> {
     for id in due {
         release(host, &id, cutoff).await?;
     }
+    // Temporary names agents left, once they've pointed to the new ones long enough.
+    sqlx::query("DELETE FROM moved_names WHERE until_at IS NOT NULL AND until_at <= $1")
+        .bind(host.clock.now_for_sql().await)
+        .execute(&host.db)
+        .await?;
     Ok(())
 }
 
@@ -87,14 +93,16 @@ async fn release(host: &Host, id: &str, cutoff: i64) -> Result<(), ApiError> {
     let agent = Identity::from_encoded(&row.try_get::<String, _>("identity")?)?
         .id()
         .clone();
-    sqlx::query(
-        "INSERT INTO released_handles (handle, agent_id) VALUES ($1, $2)
-         ON CONFLICT (handle) DO NOTHING",
-    )
-    .bind(name_parts(&handle).0)
-    .bind(agent.as_str())
-    .execute(&mut *transaction)
-    .await?;
+    if !is_temporary_name(&handle) {
+        sqlx::query(
+            "INSERT INTO released_handles (handle, agent_id) VALUES ($1, $2)
+             ON CONFLICT (handle) DO NOTHING",
+        )
+        .bind(&handle)
+        .bind(agent.as_str())
+        .execute(&mut *transaction)
+        .await?;
+    }
     super::forget_rules(&mut transaction, &agent).await?;
     admission::forget_for_new_owner(&mut transaction, &agent).await?;
     inbox::clear_for_new_owner(&mut transaction, &agent).await?;
@@ -109,14 +117,14 @@ async fn release(host: &Host, id: &str, cutoff: i64) -> Result<(), ApiError> {
     Ok(())
 }
 
-/// A handle held for an agent let go is that agent's alone. Run under the handle's lock.
+/// A name held for an agent let go is that agent's alone. Run under the name's lock.
 pub async fn check_not_held(
     transaction: &mut Transaction<'_, Postgres>,
     registration: &VerifiedRegistration,
 ) -> Result<(), ApiError> {
     let held: Option<String> =
         sqlx::query_scalar("SELECT agent_id FROM released_handles WHERE handle = $1")
-            .bind(name_parts(registration.name()).0)
+            .bind(registration.name())
             .fetch_optional(&mut **transaction)
             .await?;
     match held {

@@ -7,6 +7,7 @@
 //! kept apart from the agents who hold codes, so filling them shuts out only others signing up the
 //! same way.
 
+pub mod kept_names;
 pub mod open_signup;
 
 use std::net::IpAddr;
@@ -23,7 +24,8 @@ use splint_core::host_api::{
 use splint_core::{
     ADDRESS_SEPARATOR, Error, Identity, MIN_SIGNUP_CODE_CHARS, RECOVERY_WINDOW_SECS, SplintId,
     VerifiedRegistration, VerifiedRelease, VerifiedRetirement, claimed_released_agent,
-    claimed_retired_agent, may_take_without_code, name_parts, signup_id, unix_now,
+    claimed_retired_agent, is_temporary_name, may_be_owner_name, may_take_without_code,
+    name_parts, owner_id_start, signup_id, unix_now,
 };
 use sqlx::{PgPool, Postgres, Row, Transaction};
 
@@ -31,12 +33,16 @@ use crate::admission::SenderRecord;
 use crate::api_error::ApiError;
 use crate::{Host, admission, changes, database, delivery, inbox, join, owner_keys, requests};
 
-// `handle` holds the whole name before the `~`, with any owner part, and the agent's handle before the
-// owner part names one agent here, whatever owner part follows it. An owner part belongs to the first
-// owner ID whose binding used it here, for good, and each owner has one, so `.jeff` here always means
-// the same owner. A name an agent left when its owner changed, or when its owner added their part to
-// a name that had none, stays its own, and answers with where it went, so nobody else can take it and
-// be reached by mistake.
+// `handle` holds the whole name before the `~`, with any owner part, and names one agent here. Names
+// are their owners': an owner's name belongs to the first owner ID whose binding used it here, for
+// good, and each owner has one, so `.jeff` here always means the same owner, and `jeff` alone can only
+// be that owner's own agent. Their agents are named under it, as `claude.jeff`, so two owners' agents
+// can share a handle. An agent nobody has set up controls for has a temporary name, the word it chose
+// and a code, as `claude-7k3p2a`, which no owner's name can be. A name an agent left when its owner
+// changed, or when its owner added their part to a name that had none, stays its own, and answers
+// with where it went, so nobody else can take it and be reached by mistake: for good, or until
+// `until_at` for a temporary one. Before names were owners', a host kept one agent to each handle,
+// and agents named then keep their names.
 // A retired agent keeps its row, so its ID and handle can't be registered again. A revoked one keeps
 // its row too, and its owner can sign it back in. The columns after `open_source` are what a recovery
 // of the owner's ID can still undo, and for how long.
@@ -65,7 +71,7 @@ pub const SCHEMA: &str = "
     ALTER TABLE agents ADD COLUMN IF NOT EXISTS identity_recovered_at BIGINT;
     ALTER TABLE agents ADD COLUMN IF NOT EXISTS won_back BOOLEAN NOT NULL DEFAULT FALSE;
     CREATE INDEX IF NOT EXISTS agents_moved_from ON agents (moved_from_owner);
-    CREATE UNIQUE INDEX IF NOT EXISTS agents_one_per_handle ON agents ((split_part(handle, '.', 1)));
+    DROP INDEX IF EXISTS agents_one_per_handle;
     CREATE TABLE IF NOT EXISTS owner_names (
         name TEXT PRIMARY KEY,
         owner_id TEXT NOT NULL UNIQUE
@@ -74,6 +80,7 @@ pub const SCHEMA: &str = "
         name TEXT PRIMARY KEY,
         agent_id TEXT NOT NULL
     );
+    ALTER TABLE moved_names ADD COLUMN IF NOT EXISTS until_at BIGINT;
     CREATE TABLE IF NOT EXISTS signup_codes (
         id TEXT PRIMARY KEY,
         code TEXT NOT NULL,
@@ -217,11 +224,13 @@ async fn register(
     .bind(registration.name())
     .fetch_all(&host.db)
     .await?;
-    let left_by: Option<String> =
-        sqlx::query_scalar("SELECT agent_id FROM moved_names WHERE name = $1")
-            .bind(registration.name())
-            .fetch_optional(&host.db)
-            .await?;
+    let left_by: Option<String> = sqlx::query_scalar(&format!(
+        "SELECT agent_id FROM moved_names WHERE name = $1 AND {STILL_HELD}"
+    ))
+    .bind(registration.name())
+    .bind(host.clock.now_for_sql().await)
+    .fetch_optional(&host.db)
+    .await?;
     if left_by.is_some_and(|left_by| left_by != agent.id().as_str()) {
         return Err(ApiError::Conflict);
     }
@@ -283,32 +292,40 @@ async fn take_newer_statement(
     if revoked_seq.is_some_and(|revoked| seq <= revoked) {
         return Err(ApiError::OutOfDate("this agent was revoked since that"));
     }
-    // A new owner gives the name a new owner part. The same owner can only add theirs, once, to a name
-    // that has none, as when they set up controls with one touch and nothing asked their name. Either
-    // way the owner part has to be theirs here, which `take_owner_name` holds them to.
+    // A new owner names the agent under their own name here, as `claude-7k3p2a` set up by jeff becomes
+    // `claude.jeff`. The same owner can only add theirs, once, to a name that has none, as for an agent
+    // set up before names were owners'. An owner's agent never keeps a temporary name.
     let held_name: String = row.try_get("handle")?;
     let renamed = held_name != registration.name();
     let (held_handle, held_part) = name_parts(&held_name);
     let (handle, part) = name_parts(registration.name());
-    let may_rename = held_handle == handle
-        && (owner.id() != held_owner.id() || (held_part.is_none() && part.is_some()));
+    let may_rename = owner.id() != held_owner.id()
+        || (held_handle == handle && held_part.is_none() && part.is_some());
     if renamed && !may_rename {
         return Err(ApiError::Forbidden(
-            "only the owner part of a name changes: with a new owner, or added once by its owner \
-             where it has none",
+            "a name changes with a new owner, who names the agent under their own, or once by its \
+             owner, adding theirs to a name that has none",
         ));
+    }
+    if !owner.is_unconfirmed_owner() && is_temporary_name(registration.name()) {
+        return Err(ApiError::Forbidden(NAMED_UNDER_AN_OWNER));
     }
     let now = host.clock.now_for_sql().await;
     let mut transaction = database::begin(&host.db).await?;
-    take_owner_name(&mut transaction, registration).await?;
     if renamed {
+        may_take_new_name(&mut transaction, host, registration, now).await?;
+        // A temporary name points to the new one for a while, and then anyone can have it again.
+        let until = is_temporary_name(&held_name).then(|| now.saturating_add(TEMPORARY_NAME_KEPT_SECS));
         rename(
             &mut transaction,
             agent.id(),
-            &held_name,
-            registration.name(),
+            (&held_name, registration.name()),
+            until,
+            now,
         )
         .await?;
+    } else {
+        take_owner_name(&mut transaction, registration, now).await?;
     }
     if owner.id() != held_owner.id() && !moved_recently(row, now)? {
         let before = recent_identity(row, now)?.unwrap_or_else(|| held_agent.encoded());
@@ -517,7 +534,8 @@ async fn claim_handle(
     if !open {
         spend_code(&mut transaction, registration).await?;
     }
-    take_owner_name(&mut transaction, registration).await?;
+    let now = host.clock.now_for_sql().await;
+    may_take_new_name(&mut transaction, host, registration, now).await?;
     let inserted = sqlx::query(
         "INSERT INTO agents (id, handle, identity, owner_id, owner_identity, binding, binding_seq,
              open_source, stand_in)
@@ -547,24 +565,73 @@ async fn claim_handle(
     Ok(())
 }
 
-/// Waits for whoever else is taking or letting go of this name's handle, until the transaction ends.
+/// Waits for whoever else is taking or letting go of this name, until the transaction ends.
 async fn lock_handle(
     transaction: &mut Transaction<'_, Postgres>,
     name: &str,
 ) -> Result<(), sqlx::Error> {
     sqlx::query("SELECT pg_advisory_xact_lock($1, hashtext($2))")
         .bind(HANDLE_LOCK)
-        .bind(name_parts(name).0)
+        .bind(name)
         .execute(&mut **transaction)
         .await?;
     Ok(())
 }
 
-/// The owner part of a name is the owner's on this host: the first owner ID to use it takes it, and
-/// an owner has one, so nobody can claim to act for someone, and `.jeff` names one owner for good.
+/// How long a temporary name an agent left points to its new one before anyone can have it. Provisional.
+const TEMPORARY_NAME_KEPT_SECS: i64 = 30 * 24 * 60 * 60;
+/// A moved name that hasn't run out, with `$2` the time now.
+const STILL_HELD: &str = "(until_at IS NULL OR until_at > $2)";
+const TEMPORARY_NAMES_ONLY: &str = "an agent nobody has set up controls for joins under a temporary \
+     name, the word it chose and a code, so update Splint and join again";
+const NAMED_UNDER_AN_OWNER: &str = "an owner's agent is named under their name, as handle.name, or \
+     by it alone, which has 3 or more characters, isn't a temporary name or an owner's ID, and isn't \
+     one this host keeps back";
+const NAMES_ANOTHER_OWNER: &str =
+    "that name is another owner's here, or this owner has another, or an agent goes by it alone";
+
+/// Whether this registration may take its name here as a new one. An agent nobody has set up controls
+/// for takes only a temporary name, and none an owner holds. An owner's agent takes their own name
+/// alone, or a handle and their name after it, as `claude.jeff`, never a temporary name or one this
+/// host keeps back, and that name has to be theirs or free, as `claim_owner_name` says. A name another
+/// agent left, or a handle an agent let go holds, is refused before this.
+async fn may_take_new_name(
+    transaction: &mut Transaction<'_, Postgres>,
+    host: &Host,
+    registration: &VerifiedRegistration,
+    now: i64,
+) -> Result<(), ApiError> {
+    let name = registration.name();
+    if registration.owner().is_unconfirmed_owner() {
+        if !is_temporary_name(name) {
+            return Err(ApiError::Forbidden(TEMPORARY_NAMES_ONLY));
+        }
+        let owned: Option<String> =
+            sqlx::query_scalar("SELECT owner_id FROM owner_names WHERE name = $1")
+                .bind(name)
+                .fetch_optional(&mut **transaction)
+                .await?;
+        return if owned.is_some() {
+            Err(ApiError::Conflict)
+        } else {
+            Ok(())
+        };
+    }
+    let (handle, part) = name_parts(name);
+    let owner_name = part.unwrap_or(handle);
+    if is_temporary_name(name) || !may_be_owner_name(owner_name) || host.kept_names.holds(owner_name)
+    {
+        return Err(ApiError::Forbidden(NAMED_UNDER_AN_OWNER));
+    }
+    claim_owner_name(transaction, registration.owner().id(), owner_name, now).await
+}
+
+/// An owner part held already, as an agent registering again under its name brings it. It has to be
+/// its owner's, as a new name's does, and an agent nobody has set up controls for has none.
 async fn take_owner_name(
     transaction: &mut Transaction<'_, Postgres>,
     registration: &VerifiedRegistration,
+    now: i64,
 ) -> Result<(), ApiError> {
     let (_, Some(owner_name)) = name_parts(registration.name()) else {
         return Ok(());
@@ -575,44 +642,86 @@ async fn take_owner_name(
             "an agent whose person hasn't set up their controls has no owner part",
         ));
     }
-    let owner = registration.owner().id().as_str();
+    claim_owner_name(transaction, registration.owner().id(), owner_name, now).await
+}
+
+/// An owner's name is theirs on this host: the first owner ID to use it takes it, and an owner has one,
+/// so nobody can claim to act for someone, and `.jeff` names one owner for good. A name another owner's
+/// agent goes by alone, a temporary one or one from before names were owners', can't be taken while it
+/// does, so `jeff` alone is never someone else's agent.
+async fn claim_owner_name(
+    transaction: &mut Transaction<'_, Postgres>,
+    owner: &SplintId,
+    name: &str,
+    now: i64,
+) -> Result<(), ApiError> {
+    let owner = owner.as_str();
+    let held: Option<String> =
+        sqlx::query_scalar("SELECT owner_id FROM owner_names WHERE name = $1")
+            .bind(name)
+            .fetch_optional(&mut **transaction)
+            .await?;
+    match held {
+        Some(held) if held == owner => return Ok(()),
+        Some(_) => return Err(ApiError::Forbidden(NAMES_ANOTHER_OWNER)),
+        None => {}
+    }
+    let gone_by_alone: bool = sqlx::query_scalar(&format!(
+        "SELECT EXISTS (SELECT 1 FROM agents WHERE handle = $1 AND owner_id <> $3)
+             OR EXISTS (SELECT 1 FROM moved_names JOIN agents ON agents.id = moved_names.agent_id
+                 WHERE name = $1 AND agents.owner_id <> $3 AND {STILL_HELD})"
+    ))
+    .bind(name)
+    .bind(now)
+    .bind(owner)
+    .fetch_one(&mut **transaction)
+    .await?;
+    if gone_by_alone {
+        return Err(ApiError::Forbidden(NAMES_ANOTHER_OWNER));
+    }
     sqlx::query("INSERT INTO owner_names (name, owner_id) VALUES ($1, $2) ON CONFLICT DO NOTHING")
-        .bind(owner_name)
+        .bind(name)
         .bind(owner)
         .execute(&mut **transaction)
         .await?;
     let held: Option<String> =
         sqlx::query_scalar("SELECT owner_id FROM owner_names WHERE name = $1")
-            .bind(owner_name)
+            .bind(name)
             .fetch_optional(&mut **transaction)
             .await?;
     if held.as_deref() == Some(owner) {
         Ok(())
     } else {
-        Err(ApiError::Forbidden(
-            "that owner part names another owner here, or this owner has another",
-        ))
+        Err(ApiError::Forbidden(NAMES_ANOTHER_OWNER))
     }
 }
 
-/// An agent's new owner gives its name a new owner part. The old name stays the agent's, and answers
-/// with where it went.
+/// An agent takes its new name. The old one stays the agent's, and answers with where it went: for
+/// good, or `until` then for a temporary one.
 async fn rename(
     transaction: &mut Transaction<'_, Postgres>,
     agent: &SplintId,
-    from: &str,
-    to: &str,
+    (from, to): (&str, &str),
+    until: Option<i64>,
+    now: i64,
 ) -> Result<(), ApiError> {
     sqlx::query("DELETE FROM moved_names WHERE name = $1 AND agent_id = $2")
         .bind(to)
         .bind(agent.as_str())
         .execute(&mut **transaction)
         .await?;
-    sqlx::query("INSERT INTO moved_names (name, agent_id) VALUES ($1, $2) ON CONFLICT DO NOTHING")
-        .bind(from)
-        .bind(agent.as_str())
-        .execute(&mut **transaction)
-        .await?;
+    // A temporary name that ran out is anyone's again, which taking it back here makes this agent's.
+    sqlx::query(
+        "INSERT INTO moved_names (name, agent_id, until_at) VALUES ($1, $2, $3)
+         ON CONFLICT (name) DO UPDATE SET agent_id = $2, until_at = $3
+         WHERE moved_names.until_at IS NOT NULL AND moved_names.until_at <= $4",
+    )
+    .bind(from)
+    .bind(agent.as_str())
+    .bind(until)
+    .bind(now)
+    .execute(&mut **transaction)
+    .await?;
     let renamed = sqlx::query("UPDATE agents SET handle = $2 WHERE id = $1")
         .bind(agent.as_str())
         .bind(to)
@@ -654,16 +763,36 @@ async fn resolve(
 }
 
 /// Who's registered at this name here, as anyone can ask. A name an agent left with its owner answers
-/// with that agent as it is now, and where it went, as does one whose agent moved to another host.
+/// with that agent as it is now, and where it went, as does one whose agent moved to another host. A
+/// handle with an owner's ID in place of their name, as `claude.<ID form>`, answers as the name it
+/// stands for here, `claude.jeff`, with that as where it is, for the asker to keep and show from then
+/// on: it checks the owner's ID in the binding starts as the ID form says, as nothing here is signed.
 pub async fn resolved_here(host: &Host, name: &str) -> Result<Resolved, ApiError> {
-    let row = sqlx::query(
+    let named = match name_parts(name) {
+        (handle, Some(part)) => match owner_id_start(part) {
+            Some(start) => {
+                let owner_name: Option<String> = sqlx::query_scalar(
+                    "SELECT name FROM owner_names WHERE starts_with(owner_id, $1) LIMIT 1",
+                )
+                .bind(start)
+                .fetch_optional(&host.db)
+                .await?;
+                format!("{handle}.{}", owner_name.ok_or(ApiError::NotFound)?)
+            }
+            None => name.to_owned(),
+        },
+        (_, None) => name.to_owned(),
+    };
+    let row = sqlx::query(&format!(
         "SELECT a.identity, a.owner_identity, a.binding, a.history, a.moved_away_to,
-             CASE WHEN a.handle = $1 THEN '' ELSE a.handle END AS moved_to
+             CASE WHEN a.handle = $3 THEN '' ELSE a.handle END AS moved_to
          FROM agents a
          WHERE (a.handle = $1
-                OR a.id = (SELECT agent_id FROM moved_names WHERE name = $1))
-             AND a.retirement IS NULL AND a.revocation IS NULL",
-    )
+                OR a.id = (SELECT agent_id FROM moved_names WHERE name = $1 AND {STILL_HELD}))
+             AND a.retirement IS NULL AND a.revocation IS NULL"
+    ))
+    .bind(&named)
+    .bind(host.clock.now_for_sql().await)
     .bind(name)
     .fetch_optional(&host.db)
     .await?
