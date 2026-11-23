@@ -35,7 +35,7 @@ import urllib.request
 from pathlib import Path
 
 import e2e
-from agent_signup import Signup, registered
+from agent_signup import Signup, handle_of, registered
 from e2e import check, compact_json, decode, encode, http, wait_until
 from install import Person
 from owner_by_link import FileKeyOwner, joined_on_its_own, set_up_controls, signing_input
@@ -95,12 +95,14 @@ class Session:
 class PasskeyOwner:
     """A software key standing in for a passkey an owner made on a host's page before 2026-11-21. It
     signs WA256 as a passkey does, a touch over a challenge, at that host's site. Nothing makes one now,
-    and nothing migrates one made then, so every reader still checks what it signs (Nenye, 2026-11-21)."""
+    and nothing migrates one made then, so every reader still checks what it signs (Nenye, 2026-11-21).
+    `name` is the name its person goes by, which their agents are named under, as `kai` for `kai-passkey`."""
 
     alg = "WA256"
 
     def __init__(self, folder: Path) -> None:
         folder.mkdir(parents=True)
+        self.name = folder.name.removesuffix("-passkey")
         self.key = folder / "passkey.key"
         point = e2e.new_key(self.key)
         backup = e2e.new_key(folder / "backup.key")
@@ -137,8 +139,9 @@ def list_for(holder, host: str, seq: int, handle: str | None = None, agents: str
     return {"owner_identity": holder.identity, "list": holder.sign("splint-owner-agents", fields)}
 
 
-def agent_id_of(signup: Signup, name: str) -> str:
-    found = registered(signup.open_host, name)
+def agent_id_of(signup: Signup, agent: Person) -> str:
+    """Its ID at its host, by the name it's at now: a temporary one, or its word under its owner's."""
+    found = registered(signup.open_host, handle_of(agent.address))
     return found["agent_id"] if found else ""
 
 
@@ -200,7 +203,7 @@ def a_session_key_is_never_the_owner(signup: Signup, owner: FileKeyOwner, muse: 
     host = signup.open_host
     path = f"/v0/owner-mail/{agent}"
     url = f"http://{host}{path}"
-    identity = registered(host, "muse")["identity"]
+    identity = registered(host, handle_of(muse.address))["identity"]
     kept = lambda only="": int(signup.sql("hana", f"SELECT count(*) FROM owner_mail WHERE agent_id = '{agent}' {only}") or 0)  # noqa: E731
     places = lambda: [place.get("url") for place in muse.api("GET", "/v0/where-paid")[1].get("places", [])]  # noqa: E731
 
@@ -271,7 +274,7 @@ def the_owner_keeps_a_list_a_new_computer_finds(signup: Signup, owner: FileKeyOw
     status, _ = http("PUT", theirs_url, listed(mallory, seq + 10) | {"agent": agent})
     check("nor for one naming an agent here that an owner has already", status == 403, status)
     pip = joined_on_its_own(signup, "pip")
-    pips = agent_id_of(signup, "pip")
+    pips = agent_id_of(signup, pip)
     # Newer than the owner's own, so only putting lists of owners with agents here first keeps theirs first.
     status, _ = http("PUT", theirs_url, listed(mallory, seq + 10) | {"agent": pips})
     check("but does while they're setting up an agent here with no controls yet", bool(pip) and status == 200, status)
@@ -288,7 +291,7 @@ def lists_of_owners_with_no_agent_here_are_capped_by_the_day(signup: Signup) -> 
     throwaway owner costs nothing. Bug caught: no cap on those lists, so one network fills a host."""
     host, network = signup.open_host, "198.51.100.20"
     waiting = joined_on_its_own(signup, "tia")
-    tia = agent_id_of(signup, "tia")
+    tia = agent_id_of(signup, waiting)
     seq = int(time.time() * 1000)
     headers = {"X-Forwarded-For": network}
     for made in range(20):
@@ -303,8 +306,8 @@ def lists_of_owners_with_no_agent_here_are_capped_by_the_day(signup: Signup) -> 
 def a_retired_agent_makes_no_room_for_its_owners_list(signup: Signup) -> None:
     """Bugs caught: an owner whose only agent here is retired still given room, so retiring keeps it."""
     owner = FileKeyOwner(signup.walk.work / "rita-owner")
-    set_up_controls(signup, owner, "rita")
-    agent = agent_id_of(signup, "rita")
+    rita = set_up_controls(signup, owner, "rita")
+    agent = agent_id_of(signup, rita)
     retirement = owner.sign("splint-retirement", {"v": 1, "owner": owner.id, "agent": agent, "reason": "finished", "issued_at": int(time.time())})
     check("control: the owner retires their only agent here", http("POST", f"http://{signup.open_host}/v0/retirements", {"retirement": retirement})[0] == 200)
     status, _ = http("PUT", f"http://{signup.open_host}/v0/owner-agents/{owner.id}", list_for(owner, signup.open_host, int(time.time() * 1000)))
@@ -367,8 +370,8 @@ def an_owner_whose_id_is_a_passkey_keeps_their_agent(signup: Signup) -> None:
     host = signup.open_host
     owner = PasskeyOwner(signup.walk.work / "kai-passkey")
     kai = set_up_controls(signup, owner, "kai")
-    agent = agent_id_of(signup, "kai")
-    check("control: kai's host holds him as the passkey owner's", (registered(host, "kai") or {}).get("owner_identity") == owner.identity)
+    agent = agent_id_of(signup, kai)
+    check("control: kai's host holds him as the passkey owner's", (registered(host, handle_of(kai.address)) or {}).get("owner_identity") == owner.identity)
     check("control: kai's host stops", signup.walk.run_as("hana", "splint host stop").returncode == 0)
     check("control: and starts again", signup.walk.run_as("hana", "splint host start").returncode == 0)
     check("control: kai's Signet stops", signup.walk.run_as("kai", "splint stop").returncode == 0)
@@ -391,7 +394,7 @@ def main() -> None:
         owner = FileKeyOwner(work / "nenye-device")
         mallory = FileKeyOwner(work / "mallory-device")
         muse = set_up_controls(signup, owner, "muse")
-        agent = agent_id_of(signup, "muse")
+        agent = agent_id_of(signup, muse)
         session = one_approval_reads_for_a_session(signup, owner, agent)
         nobody_else_reads_with_a_session(signup, owner, mallory, agent, session)
         a_session_key_is_never_the_owner(signup, owner, muse, agent, session)

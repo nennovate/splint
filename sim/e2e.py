@@ -869,6 +869,9 @@ class Network:
         self.agent_backups: dict[str, dict[str, str]] = {}
         self.tokens = dict(TOKENS)
         self.signup_codes = (signup_code(number) for number in range(SIGNUP_CODES))
+        # An agent's name at its host where it isn't the agent's own word alone, as an agent nobody has
+        # set up controls for has a temporary one and a new owner names it under their own name.
+        self.names: dict[str, str] = {}
 
     def start(self) -> None:
         self.host_port = {"a": free_port(), "b": free_port()}
@@ -1120,7 +1123,7 @@ class Network:
         return self.work / agent / "agent.key"
 
     def address(self, agent: str) -> str:
-        return f"{agent}~{self.domain[self.home[agent]]}"
+        return f"{self.names.get(agent, agent)}~{self.domain[self.home[agent]]}"
 
     def agent(self, agent: str, method: str, path: str, body: object = None, timeout: float = 10) -> tuple[int, dict]:
         """A call to an agent's Signet. Before an agent's first open of an example type with someone, the
@@ -1277,7 +1280,7 @@ class Network:
 
     def agent_identity(self, agent: str) -> str:
         database = f"host_{self.home[agent]}"
-        return self.postgres.sql(database, f"SELECT identity FROM agents WHERE handle = '{agent}'")
+        return self.postgres.sql(database, f"SELECT identity FROM agents WHERE handle = '{self.names.get(agent, agent)}'")
 
     def envelope_signed_by(
         self, signer: str, sender: str, recipient: str, body: str, dated_ahead: int = 0
@@ -2507,11 +2510,17 @@ def registration_cant_take_over_a_handle(net: Network) -> None:
     check("a taken handle can't be registered by someone else", status == 409, status)
     check("and it still resolves to its owner", http("GET", f"{resolve}/ana")[1].get("agent_id") == net.ids["ana"])
 
+    # Bug caught: an agent named under someone else's name, so it passes for one of theirs.
     other_key = net.work / "same-handle.key"
     other, other_id = new_identity(other_key)
+    status = net.register_on_a(other_key, newcomer, "mal.ana", other, other_id)
+    check("nor can someone else take a name under its owner's name", status == 403, status)
+    check("so nobody holds that name", http("GET", f"{resolve}/mal.ana")[0] == 404)
     status = net.register_on_a(other_key, newcomer, "ana.mal", other, other_id)
-    check("nor can someone else take it with an owner part of their own", status == 409, status)
-    check("so the handle names one agent here", http("GET", f"{resolve}/ana.mal")[0] == 404)
+    check("or under a second name of their own, as an owner has one here", status == 403, status)
+    status = net.register_on_a(other_key, newcomer, "ana.newcomer", other, other_id)
+    check("control: the same handle under the newcomer's own name is theirs", status == 200, status)
+    check("and the handle alone still names ana's agent", http("GET", f"{resolve}/ana.newcomer")[1].get("agent_id") == other_id and http("GET", f"{resolve}/ana")[1].get("agent_id") == net.ids["ana"])
 
     # An agent that joined on its own, calling its host itself rather than through `splint join`.
     stand_in = new_owner(net.work / "stand-in-owner", unconfirmed=True)

@@ -475,7 +475,9 @@ def every_recovery_an_agent_should_hear_of_reaches_it_however_many(net: e2e.Netw
 
 
 def a_new_owner_gives_the_name_their_owner_part(net: e2e.Network) -> None:
-    """kim~a goes to a new owner as kim.lou~a. Nothing else about the address can change with them."""
+    """kim~a goes to a new owner, who names it under their own name at the same host, as kim.lou~a. It
+    can't go to another host that way, or under someone else's name. Bugs caught: a new owner's word
+    moving an agent to another host, and naming it so it passes for another owner's."""
     a_pair(net, "kim", "lee")
     met(net, "kim", "lee")
     kim_id, domain, other = net.ids["kim"], net.domain["a"], net.domain["b"]
@@ -483,9 +485,12 @@ def a_new_owner_gives_the_name_their_owner_part(net: e2e.Network) -> None:
     renamed = f"kim.lou~{domain}"
 
     lou = new_owner(net.work / "kim-new-owner")
-    for refused in (f"kip.lou~{domain}", f"kim.lou~{other}"):
+    for refused in (f"kim.lou~{other}", f"kim.ana~{domain}"):
         status, answer, _ = try_transfer(net, "kim", lou, refused)
         check(f"a new owner can't take it to {refused}", status >= 400 and who(net, "kim")["address"] == net.address("kim"), (status, answer))
+        # Bug caught: a transfer refused for its name half done, its host holding the handed-over ID.
+        held = http("GET", f"{resolve}/kim")[1]
+        check("and its host holds it as its Signet does", held.get("identity") == who(net, "kim")["identity"], held.get("identity", "")[-40:])
 
     transfer_to(net, "kim", lou, renamed)
     check("its Signet takes the new name", who(net, "kim")["address"] == renamed, who(net, "kim"))

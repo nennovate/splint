@@ -170,7 +170,8 @@ def setup_people(signup: Signup) -> tuple[Person, Profile, Person, Person, Perso
     done = walk.run_as("nenye", f"splint setup {nenye.address} --with-code --owner-key-here", walk.signup_code("nenye") + "\n")
     check("control: nenye sets up her default agent with her key beside it", done.returncode == 0, done.stderr)
     dan = Profile(nenye, "dan")
-    dan.address = f"dan~{host}"
+    # Her second agent here goes under her name, which her first has alone.
+    dan.address = f"dan.ana~{host}"
     joined = walk.run_as("nenye", f"splint --as dan join {dan.address} --owner-first")
     check("control: dan joins as a profile and waits for her", joined.returncode == 0, joined.stderr)
     signed = walk.run_as("nenye", AUTHORIZE_LINE.search(joined.stdout).group(0), DEFAULTS_AND_YES)
