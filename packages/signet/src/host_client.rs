@@ -622,6 +622,48 @@ impl HostClient {
         read_capped(accepted(response)?, MAX_SHORT_ANSWER_BYTES).await
     }
 
+    /// Who this host says has a name as their own, by owner ID: an owner whose name it is or whose
+    /// agent goes by it alone, `None` for nobody, and `Refused` for a name nobody can have here. A host
+    /// from before names were owners' says nothing, which reads as nobody.
+    pub async fn name_holder(&self, name: &str) -> Result<Option<String>, HostError> {
+        let response = self
+            .http
+            .get(self.url(&format!("{}/{name}", splint_core::host_api::NAMES_PATH)))
+            .send()
+            .await
+            .map_err(|_| HostError::Unreachable)?;
+        match response.status() {
+            reqwest::StatusCode::NOT_FOUND => Ok(None),
+            reqwest::StatusCode::FORBIDDEN => Err(HostError::Refused),
+            _ => {
+                let held: splint_core::host_api::NameHolder =
+                    read_capped(accepted(response)?, MAX_SHORT_ANSWER_BYTES).await?;
+                Ok(Some(held.owner))
+            }
+        }
+    }
+
+    /// An owner's name at this host, as it says, if they have one.
+    pub async fn owners_name(&self, owner: &SplintId) -> Result<Option<String>, HostError> {
+        let path = format!(
+            "{}/{}/name",
+            splint_core::host_api::OWNERS_NAME_PATH,
+            owner.as_str()
+        );
+        let response = self
+            .http
+            .get(self.url(&path))
+            .send()
+            .await
+            .map_err(|_| HostError::Unreachable)?;
+        if response.status() == reqwest::StatusCode::NOT_FOUND {
+            return Ok(None);
+        }
+        let named: splint_core::host_api::OwnersName =
+            read_capped(accepted(response)?, MAX_SHORT_ANSWER_BYTES).await?;
+        Ok(Some(named.name))
+    }
+
     /// Signed by the backup key, so no proof of ours adds anything, and a proof by a stolen key
     /// mustn't be what it takes.
     pub async fn recover(&self, identity: &str) -> Result<(), HostError> {

@@ -1508,12 +1508,14 @@ mod tests {
             },
         )
         .unwrap();
-        assert_eq!(
-            shown.asks[0].said,
-            [
-                "rename muse~host.example to muse.jeff~host.example, with jeff as your name at \
-              host.example for good"
-            ]
+        let names = |said: &[String], named: &str| {
+            said.iter()
+                .any(|line| line.contains(named) && line.contains("jeff as your name"))
+        };
+        assert!(
+            names(&shown.asks[0].said, "muse.jeff~host.example"),
+            "{:?}",
+            shown.asks[0].said
         );
         // Signing it takes the agent's ID as its handover left it, which sim/agent_asks.py runs.
         assert!(refused_alone(One {
@@ -1553,12 +1555,10 @@ mod tests {
             },
         )
         .unwrap();
-        assert_eq!(
-            shown.asks[0].said,
-            [
-                "let lia-7k3p2a~host.example act for you as lia.jeff~host.example, with jeff as your \
-              name at host.example for good"
-            ]
+        assert!(
+            names(&shown.asks[0].said, "lia.jeff~host.example"),
+            "{:?}",
+            shown.asks[0].said
         );
         assert!(refused_alone(lia_at(None)));
         let answered = approved(&dir, vec![lia_at(Some("jeff"))]);

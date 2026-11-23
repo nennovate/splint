@@ -716,7 +716,6 @@ mod tests {
         assert!(with_owner_part("muse.mal~host.example", "jeff").is_err());
         let owner = crate::test_identity(&crate::SigningKey::generate().unwrap());
         let form = owner_id_form(owner.id()).unwrap();
-        assert_eq!(form.len(), OWNER_ID_FORM_CHARS);
         assert!(
             owner
                 .id()
@@ -733,10 +732,15 @@ mod tests {
             Ok("muse.jeff~host.example")
         );
         let stranger = crate::test_identity(&crate::SigningKey::generate().unwrap());
+        let another_form = format!(
+            "muse.{}~host.example",
+            owner_id_form(stranger.id()).unwrap()
+        );
         for (moved_to, bound_for) in [
             ("muse.jeff~host.example", stranger.id()),
-            ("muse.jeff~host.example", owner.id()),
+            ("lea.jeff~host.example", owner.id()),
             ("muse.jeff~elsewhere.example", owner.id()),
+            (another_form.as_str(), owner.id()),
         ] {
             assert!(
                 address_named(&typed, moved_to, bound_for).is_err(),

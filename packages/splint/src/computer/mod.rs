@@ -394,7 +394,7 @@ impl Computer {
         if !ask.asks_for_controls() && adds.is_none() {
             return Ok(Naming::Under(None));
         }
-        let (name, domain) = parse_address(&asked.address)?;
+        let (_, domain) = parse_address(&asked.address)?;
         let host = HostCalls::new(domain)?;
         let owner = self
             .owner
@@ -437,7 +437,8 @@ impl Computer {
                      and ask again with --name and it"
                 )),
             },
-            (None, None) if splint_core::is_temporary_name(name) => Naming::NotHere(
+            // An owner's agent is named under their name, whatever it went by before.
+            (None, None) if ask.asks_for_controls() => Naming::NotHere(
                 "your person's name goes after your handle, and nothing names it here: they approve \
                  it by its link on their own computer if they have a name at your host already, and \
                  otherwise ask them the name they go by and ask again with --name and it"

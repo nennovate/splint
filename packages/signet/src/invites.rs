@@ -33,7 +33,7 @@ use splint_core::{
 
 use crate::Signet;
 use crate::activity::{Arrival, Kind};
-use crate::agent_api::{ApiError, typed_address, typed_address_named};
+use crate::agent_api::{ApiError, invited_address_named, typed_address, typed_address_named};
 use crate::budget::NotTaken;
 use crate::contacts::{Controls, SameOwner, controls_of, verified_owner_of};
 use crate::ending::{self, Done, Held, IntroductionRows, Proof, Readable};
@@ -295,7 +295,7 @@ const CARD_HOST_UNREACHABLE: &str = "couldn't reach the host at that card's addr
 async fn whom(signet: &Signet, aim: Aim) -> Result<(String, SplintId, &'static str), ApiError> {
     let Aim { card, address } = aim;
     // An owner's ID in place of their name becomes the name it stands for, before anything is matched.
-    let address = typed_address_named(signet, &address).await?;
+    let address = invited_address_named(signet, &address).await?;
     let (handle, domain) =
         parse_address(&address).map_err(|_| ApiError::BadRequest("an address is name~domain"))?;
     let not_who_is_there = ApiError::BadRequest(

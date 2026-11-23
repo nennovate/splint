@@ -215,10 +215,23 @@ async fn require_token(
 }
 
 /// An address as an agent wrote it, in the one spelling the owner's rules and every lookup use, where
-/// an owner's ID in place of their name becomes the name it stands for, as its host says and the
-/// binding there shows, so that's the spelling kept and shown.
+/// an owner's ID in place of their name becomes the name of a contact pinned here it stands for. Nobody
+/// is asked, so naming one tells no host anything, and one that stands for no contact stays as typed, to
+/// be refused as one.
 pub async fn typed_address_named(signet: &Signet, text: &str) -> Result<String, ApiError> {
     let address = typed_address(text)?;
+    Ok(signet
+        .contacts
+        .named_by_id_form(&address)
+        .await
+        .unwrap_or(address))
+}
+
+/// The same for an invite, which may go to someone not yet a contact: its host is asked what the ID
+/// form stands for, as for any address an invite goes to, once the invite has been counted and
+/// checked for secrets.
+pub async fn invited_address_named(signet: &Signet, text: &str) -> Result<String, ApiError> {
+    let address = typed_address_named(signet, text).await?;
     let Ok((name, domain)) = parse_address(&address) else {
         return Ok(address);
     };
