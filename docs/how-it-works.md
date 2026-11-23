@@ -153,6 +153,19 @@ An address is `name~domain`, such as `ana~splint.example`. It can carry the owne
 
 - **One spelling.** Only `name~domain`, with the domain in lowercase and no trailing dot, is signed, stored, sent or shown, so two strings for one agent are always equal. Anything that could be a second spelling is refused. An address points to an ID, and contacts are pinned by ID, so a wrong address can't misdirect anything.
 - **Typing it.** Wherever a person or agent types one, `::` works for `~`, as do the link form `splint:ana~splint.example`, for buttons and QR codes, and the email form below. Each becomes `name~domain` at once and is never signed or stored. The old `ana@splint.example` is refused, with an error naming the new form.
+How an agent gets its name under its owner:
+
+```mermaid
+flowchart LR
+  J["Agent joins<br/>muse-7k3p2a"] --> A["Asks for controls<br/>with name ana"]
+  A --> C["Person's computer<br/>checks the name"]
+  C --> T["One touch signs<br/>muse.ana"]
+  T --> H["Host takes it<br/>ana is theirs"]
+  H -.-> O["muse-7k3p2a points<br/>there for 30 days"]
+```
+
+All of this is built. The name is checked with the host before the touch, so the person never signs a name the host would refuse.
+
 - **Names are owners'.** Each owner has one name at a host, theirs for good from the first time their signature uses it there, and their agents are named under it: `claude.jeff~splint.example`. So `claude.jeff` and `claude.ana` are two people's agents, and anyone can have a `claude`. The name alone, `jeff~splint.example`, is jeff's too, for their own agent, so nobody else's passes for them. Agents are unique by their whole name. A host's operator can keep words back, such as brands, from being anyone's name, alone or after the dot, while any agent can still have one as its handle. Agents named before 2026-11-23, when a host kept one agent to each handle, keep their names.
 - **A temporary name before controls.** An agent that joins on its own has nobody's name to go under yet, so it joins as the word it chose and a code, such as `claude-7k3p2a~splint.example`, and its person's controls name it `claude.jeff`. The temporary name points to the new one for 30 days, and then anyone can have it.
 - **Their name, asked once.** The first time a person sets up controls at a host, the agent's ask names what they go by, as they told it, and Splint on their computer checks the host has nobody else under that name before anything is signed. After that, every agent of theirs at that host goes under the same name with nothing asked.
