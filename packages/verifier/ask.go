@@ -69,9 +69,9 @@ func VerifyAsk(compact string, agent Identity, now int64) (Ask, error) {
 			places = change.members[1].val
 		}
 	}
-	// A step changes no rule, nor does where the owner gets paid or a move to another host, so each
-	// is alone in its ask.
-	if (subjects["step"] || subjects["where_paid"] || subjects["host"]) && len(changes.items) > 1 {
+	// A step changes no rule, nor does where the owner gets paid, a move to another host or an owner
+	// part, so each is alone in its ask.
+	if (subjects["step"] || subjects["where_paid"] || subjects["host"] || subjects["owner_part"]) && len(changes.items) > 1 {
 		return Ask{}, Malformed
 	}
 	a.Changes = len(changes.items)
@@ -119,10 +119,16 @@ func askChange(v Value) (string, error) {
 	}
 	switch kind {
 	case "controls":
-		// Controls name the delegate key their delegation goes to: a real key, in its one spelling.
-		f, err := shape(v, []string{"change", "delegate"})
-		if err != nil || len(f) != 2 {
+		// Controls name the delegate key their delegation goes to: a real key, in its one spelling. An
+		// owner part, the name the person goes by after the agent's handle, is one handle.
+		f, err := shape(v, []string{"change", "delegate"}, "owner_part")
+		if err != nil {
 			return "", Malformed
+		}
+		if f.has("owner_part") {
+			if part, err := f.str("owner_part"); err != nil || !isOwnerPart(part) {
+				return "", Malformed
+			}
 		}
 		delegate, err := f.str("delegate")
 		if err != nil {
@@ -166,6 +172,16 @@ func askChange(v Value) (string, error) {
 				return "", Malformed
 			}
 			seen[encoded] = true
+		}
+		return kind, nil
+	case "owner_part":
+		// An owner part added to the agent's name names one handle, and nothing else.
+		f, err := shape(v, []string{"change", "to"})
+		if err != nil || len(f) != 2 {
+			return "", Malformed
+		}
+		if to, err := f.str("to"); err != nil || !isOwnerPart(to) {
+			return "", Malformed
 		}
 		return kind, nil
 	case "host":
@@ -220,6 +236,11 @@ func askChange(v Value) (string, error) {
 		return "contact " + agent, nil
 	}
 	return "", Malformed
+}
+
+// isOwnerPart checks one handle, as an owner part is: at most 63 lower-case letters, digits and -.
+func isOwnerPart(s string) bool {
+	return len(s) <= 63 && isHandle(s)
 }
 
 // askReach checks who besides contacts may reach the agent: nobody, anyone for some types, or owners

@@ -4292,6 +4292,14 @@ def ask_vectors():
     check("move_in_another_spelling", "hostile", "The address moved to has one spelling, as everywhere.", ask(changes=[{"change": "host", "to": "ANA~New.Example"}]), REFUSED("malformed"))
     check("move_to_no_address", "hostile", "A move names a whole address.", ask(changes=[{"change": "host", "to": "ana"}]), REFUSED("malformed"))
     check("move_with_a_vouch", "hostile", "A move carries nothing but where to: the owner's side signs with what it already holds.", ask(changes=[host | {"vouch": "a.b.c"}]), REFUSED("malformed"))
+    named = controls | {"owner_part": "jeff"}
+    check("ask_for_controls_with_an_owner_part", "valid", "An agent asks its person to set up controls with their name after its handle, as they gave it: the owner's side signs its binding at that name.", ask(changes=[named]), taken(1))
+    check("controls_with_an_owner_part_that_isnt_a_handle", "hostile", "An owner part is one handle: no dot, tilde or capitals.", ask(changes=[controls | {"owner_part": "Jeff.Smith"}]), REFUSED("malformed"))
+    check("controls_with_no_owner_part_written_out", "hostile", "An owner part left out is left out, so an ask has one spelling.", ask(changes=[controls | {"owner_part": None}]), REFUSED("malformed"))
+    owner_part = {"change": "owner_part", "to": "jeff"}
+    check("ask_to_add_an_owner_part", "valid", "An agent its person set up with no owner part asks them to add theirs, once: the owner's side signs a binding at its name with that part after its handle.", ask(changes=[owner_part]), taken(1))
+    check("owner_part_with_a_setting", "hostile", "An owner part changes no rule, so it's alone in its ask.", ask(changes=[owner_part, {"change": "paused", "to": True}]), REFUSED("malformed"))
+    check("owner_part_that_isnt_a_handle", "hostile", "An owner part is one handle, never a whole address.", ask(changes=[{"change": "owner_part", "to": "jeff~host.example"}]), REFUSED("malformed"))
     check("ask_ended", "hostile", "An ask nobody approved is over at its end.", ask(), REFUSED("expired"), now=NOW + HOUR)
     check("ask_from_the_future", "hostile", "A clock far ahead can't make an ask that lasts longer.", ask(), REFUSED("from_the_future"), now=NOW - TOLERANCE - 1)
     check("ask_signed_by_another_key", "hostile", "Only the asking agent's key signs its ask.", ask("mallory-agent"), REFUSED("bad_signature"))
