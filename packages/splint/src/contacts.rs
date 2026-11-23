@@ -98,6 +98,7 @@ pub fn with_contact(
 /// host says, which the agent's Signet checks again. Its owner hasn't named anyone, and whoever it
 /// writes to decides for themselves whether to hear from it. An owner goes by a line, as above.
 pub async fn add_found(home: &Home, address: &str) -> Result<String, Failure> {
+    let address = &HostCalls::name_form(address).await?;
     let (installed, _) = Installed::require_owner_here(home, "name a contact")?;
     if !OwnerKey::new(home).is_stand_in() {
         return Err(Failure::refused(
@@ -117,6 +118,7 @@ pub async fn add_found(home: &Home, address: &str) -> Result<String, Failure> {
 }
 
 pub async fn add(home: &Home, address: &str, id: &str) -> Result<String, Failure> {
+    let address = &HostCalls::name_form(address).await?;
     if let Some(elsewhere) = authorize::the_agent_elsewhere(home)? {
         return authorize::add(home, &elsewhere, address, id).await;
     }

@@ -12,7 +12,7 @@ use axum::routing::put;
 use axum::{Json, Router};
 use serde::{Deserialize, Serialize};
 use splint_core::rules::VerifiedRules;
-use splint_core::{Error, Identity, VerifiedBinding, same_handle_and_host, unix_now};
+use splint_core::{Error, Identity, VerifiedBinding, same_host, unix_now};
 
 use crate::Signet;
 use crate::agent_api::ApiError;
@@ -258,6 +258,36 @@ struct TransferBody {
     binding: String,
 }
 
+/// Whether a new owner's agent can go by `address` at its host, as the host says now: under their own
+/// name there, or one nobody has. Asked before a handover, as the host checks a new name only after.
+async fn may_go_by(signet: &Signet, owner: &Identity, address: &str) -> Result<(), ApiError> {
+    let not_theirs = ApiError::BadRequest(
+        "that name is someone else's at its host, or nobody can have it there, so nothing changed",
+    );
+    let Ok((name, _)) = splint_core::parse_address(address) else {
+        return Err(not_theirs);
+    };
+    if owner.is_unconfirmed_owner() {
+        return Ok(());
+    }
+    if splint_core::is_temporary_name(name) {
+        return Err(not_theirs);
+    }
+    let (handle, part) = splint_core::name_parts(name);
+    let wanted = part.unwrap_or(handle);
+    let holder = match signet.host.owners_name(owner.id()).await? {
+        Some(theirs) if theirs == wanted => return Ok(()),
+        Some(_) => return Err(not_theirs),
+        None => signet.host.name_holder(wanted).await,
+    };
+    match holder {
+        Ok(None) => Ok(()),
+        Ok(Some(holder)) if holder == owner.id().as_str() => Ok(()),
+        Ok(Some(_)) | Err(HostError::Refused) => Err(not_theirs),
+        Err(error) => Err(error.into()),
+    }
+}
+
 /// Moves this agent to a new owner, with its ID unchanged. It takes the owner token as well as the
 /// signatures, so a stolen owner key alone can't take the agent. What this agent held for its old
 /// owner doesn't go with it: rules, contacts and interactions all start empty, and the new owner signs
@@ -290,16 +320,20 @@ async fn take_transfer(
         &new_agent,
     )
     .map_err(ApiError::NotBound)?;
-    // A new owner can give the name their own owner part, and nothing else about the address.
+    // A new owner names the agent under their own name at the same host, and can't move it elsewhere.
     let address = signet.address();
-    let renamed =
-        new_owner.id() != who.owner.id() && same_handle_and_host(binding.address(), &address);
+    let renamed = new_owner.id() != who.owner.id() && same_host(binding.address(), &address);
     if binding.address() != address && !renamed {
         return Err(ApiError::NotBound(Error::ProofMismatch));
     }
     binding
         .may_replace(&who.owner, who.binding_seq())
         .map_err(ApiError::NotBound)?;
+    // The host checks a new name only once it has the handover, which nothing then takes back, so a
+    // name it would refuse is refused here first.
+    if binding.address() != address {
+        may_go_by(&signet, &new_owner, binding.address()).await?;
+    }
     tolerate_unregistered(signet.host.recover(&new_agent.encoded()).await)?;
     register(&signet, &new_agent, &new_owner, binding.compact()).await?;
     // An owner confirming an agent that joined on its own takes up what it was doing, as nothing was

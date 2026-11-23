@@ -82,6 +82,8 @@ pub struct Host {
     pub waits: waits::Waits,
     /// When its operator has said this host closes, which they can set or take back while it runs.
     pub closing: closing::Closing,
+    /// Names its operator keeps back, which nobody here has as a name of their own.
+    pub kept_names: registry::kept_names::KeptNames,
 }
 
 impl Host {
@@ -107,6 +109,7 @@ impl Host {
             known_peers: host_identity::KnownPeers::default(),
             waits: waits::Waits::new(1),
             closing: closing::Closing::default(),
+            kept_names: registry::kept_names::KeptNames::default(),
         })
     }
 }
@@ -141,6 +144,7 @@ pub struct Settings {
     pub key_file: PathBuf,
     pub new_host_key: bool,
     cleanup_every: Duration,
+    kept_names: registry::kept_names::KeptNames,
 }
 
 /// Reads them as a start does, and refuses the first that's wrong by its name. `splint-host check`
@@ -230,6 +234,7 @@ pub fn settings() -> Result<Settings, Stopped> {
         key_file: PathBuf::from(required(own_id::KEY_FILE_SETTING)?),
         new_host_key,
         cleanup_every,
+        kept_names: registry::kept_names::KeptNames::at_start()?,
     })
 }
 
@@ -250,6 +255,7 @@ async fn serve() -> Result<(), Stopped> {
         key_file,
         new_host_key,
         cleanup_every,
+        kept_names,
     } = settings()?;
     let connections = connections::within_file_limit(limits.connections);
     // Held calls take connections, so they never take more than half, whatever the setting.
@@ -319,6 +325,7 @@ async fn serve() -> Result<(), Stopped> {
         first_contact: host_identity::FirstContact::default(),
         known_peers: host_identity::KnownPeers::default(),
         waits: waits::Waits::new(waits_at_once),
+        kept_names,
     });
 
     if let Some(file) = peers_file {

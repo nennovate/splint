@@ -42,7 +42,8 @@ const ID_TAG: &[u8] = b"splint pairing id v1";
 const ANSWER_TAG: &[u8] = b"splint pairing v1";
 const OWNER_TAG: &[u8] = b"splint pairing owner v1";
 /// RFC 4648's base32 alphabet in lower case. 16 bytes are 26 characters, the last carrying 3 bits.
-const BASE32: &[u8; 32] = b"abcdefghijklmnopqrstuvwxyz234567";
+pub(crate) const BASE32_LETTERS: &[u8; 32] = b"abcdefghijklmnopqrstuvwxyz234567";
+const BASE32: &[u8; 32] = BASE32_LETTERS;
 const SECRET_CHARS: usize = 26;
 /// Past these an answer is refused unread. An identity with every recovery it may carry is well under.
 const MAX_IDENTITY_CHARS: usize = 16 * 1024;

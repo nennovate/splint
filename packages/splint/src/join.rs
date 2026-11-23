@@ -267,13 +267,15 @@ pub async fn join(
         back_to_owner_first_if_code_took_nothing(home).await?;
     }
     let coming_back = Installed::load(home)?.is_some_and(|found| found.agent.is_none());
-    if !coming_back && host.handle_taken(handle).await? {
+    let waiting_on_owner = home.join_file().exists();
+    // Joining at once takes a temporary name, so only a name its owner signs first can be taken.
+    let joins_now = with_code || (open && !owner_first && !waiting_on_owner);
+    if !joins_now && !coming_back && host.handle_taken(handle).await? {
         return Err(Failure::HandleTaken {
             handle: handle.to_owned(),
             domain: domain.to_owned(),
         });
     }
-    let waiting_on_owner = home.join_file().exists();
     if with_code && Installed::load(home)?.is_some_and(|found| found.owner_elsewhere.is_some()) {
         return Err(Failure::refused(format!(
             "your owner has answered already, so the code goes with their answer: run {} finish \
@@ -281,7 +283,7 @@ pub async fn join(
             home.command()
         )));
     }
-    if with_code || (open && !owner_first && !waiting_on_owner) {
+    if joins_now {
         let replacing = with_code && waiting_on_owner;
         if replacing {
             set_aside_what_waits_on_owner(home)?;
@@ -431,34 +433,54 @@ listen going or check on a schedule. Where a command can wake what runs you, {sp
 }
 
 /// Joins at once, with no controls yet, on a host that takes agents with no code. Running it again
-/// finishes what failed.
-async fn join_now(
-    home: &Home,
-    address: &str,
-    signup_code: Option<&str>,
-) -> Result<String, Failure> {
-    let (name, domain) = parse_address(address).map_err(Failure::not_an_address)?;
-    if name_parts(name).1.is_some() {
+/// finishes what failed. A name given with its person's part after the dot, as `ana.jeff`, joins as
+/// `ana`, as nobody has said yet who it acts for, and keeps `jeff` for its ask for controls, which
+/// names it for its person to approve with them.
+async fn join_now(home: &Home, given: &str, signup_code: Option<&str>) -> Result<String, Failure> {
+    let (name, domain) = parse_address(given).map_err(Failure::not_an_address)?;
+    let (handle, owner_part) = name_parts(name);
+    if owner_part.is_some_and(|owner_part| !splint_core::may_be_owner_name(owner_part)) {
         return Err(Failure::refused(
-            "leave out the part after the dot: your person's name goes there once they set up \
-             their controls",
+            "a person's name after the dot has at least 3 letters, digits or hyphens, isn't one a \
+             host keeps back, such as admin or support, and doesn't read as a temporary name or an \
+             owner's ID",
         ));
     }
-    if signup_code.is_none() && !may_take_without_code(name) {
+    let word = splint_core::agent_word(handle);
+    if signup_code.is_none() && !may_take_without_code(word) {
         return Err(Failure::HandleNotAllowed {
-            handle: name.to_owned(),
+            handle: word.to_owned(),
             domain: domain.to_owned(),
         });
     }
+    // The same temporary name as last time, where that join didn't finish, as it may hold it now.
+    let address = match Installed::load(home)? {
+        Some(found)
+            if found.agent.is_none()
+                && parse_address(&found.address).is_ok_and(|(was, at)| {
+                    at == domain
+                        && splint_core::is_temporary_name(was)
+                        && splint_core::agent_word(was) == word
+                }) =>
+        {
+            found.address
+        }
+        _ => address_of(&splint_core::temporary_name(word)?, domain),
+    };
+    let address = address.as_str();
     home.prepare_for_stand_in()?;
     let stand_in = OwnerKey::new(home);
     stand_in.stand_in_identity()?;
     let installed = match Installed::load(home)? {
         Some(found) => Installed {
             address: address.to_owned(),
+            owner_part: owner_part.map(str::to_owned),
             ..found
         },
-        None => Installed::create(address, stand_in.new_agent_backup()?)?,
+        None => Installed {
+            owner_part: owner_part.map(str::to_owned),
+            ..Installed::create(address, stand_in.new_agent_backup()?)?
+        },
     }
     .joined_here();
     installed.save(home)?;
@@ -494,9 +516,29 @@ async fn join_now(
     let Started::Running = auto::start(home)? else {
         return Err(Failure::Stopped);
     };
+    // Said where the agent reads first, as its name is its person's to give.
+    let named = match owner_part.and_then(|owner_part| {
+        Some((
+            owner_part,
+            splint_core::with_owner_part(address, owner_part).ok()?,
+        ))
+    }) {
+        Some((owner_part, named)) => format!(
+            "{} controls asks your person to approve you as {named}, which makes {owner_part} their \
+             name at {domain} for good, unless they have one there already.",
+            home.command()
+        ),
+        None => format!(
+            "Ask your person the name they go by, and run {} controls --name NAME: they approve you as \
+             {word}.NAME~{domain}, and NAME is then theirs at {domain} for good. If they have one \
+             there already, you get theirs.",
+            home.command()
+        ),
+    };
     let said = format!(
         "\
-You're {address}. You can start now.
+You're {address} for now, a temporary name. You can start now. Your name comes from your person once
+they set up their controls: {named}
 
 Until your person sets up their controls, you work without their oversight, and Splint treats you
 accordingly. You can deal with agents open to anyone, a few at a time, and invite an agent by its
@@ -507,7 +549,7 @@ their signature.
 Their controls are their own signature that you act for them, the limits code holds you to, and
 letting you say yes within those limits while they're away. To ask them to set those up, run
 
-  {splint} controls
+  {asking}
 
 It gives you computer_link to hand them, which opens on Splint on their own computer: owners sign
 only there, with their computer's chip or a key file locked with a passphrase, never on a host's
@@ -537,6 +579,11 @@ How and when you bring this up is yours. Never ask for or accept their recovery 
 
 Your Signet listens on {socket}.{not_at_login} Your token is only in {curl}, and nothing prints it.
 {splint} connect prints how to use it.",
+        asking = if owner_part.is_some() {
+            format!("{} controls", home.command())
+        } else {
+            format!("{} controls --name NAME", home.command())
+        },
         install = controls_install_line(domain),
         install_on_windows = controls_install_line_on_windows(domain),
         open = controls_open_line(domain),
@@ -1031,6 +1078,8 @@ async fn finish_confirming(
     drop(api);
     let confirmed = Installed {
         address: address.clone(),
+        // Its person's binding names it now, with their part or without.
+        owner_part: None,
         owner_elsewhere: Some(reply.owner_identity.clone()),
         backup: AgentBackup {
             commitment: reply.commitment.clone(),

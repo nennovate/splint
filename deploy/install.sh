@@ -48,6 +48,7 @@ export DEBIAN_FRONTEND=noninteractive
 readonly MAX_CONNECTIONS_PER_ADDRESS=128
 readonly SETTINGS=/etc/splint/host.env
 readonly LIMITS=/etc/splint/limits.env
+readonly KEPT_NAMES=/etc/splint/reserved-names
 # What a first install makes, for a host to hand out past its open limits or where it takes codes alone.
 readonly FIRST_SIGNUP_CODES=20
 
@@ -315,6 +316,8 @@ write_settings() {
     set_if_missing SPLINT_HOST_KEY_FILE /var/lib/splint/host.key
     # The host reads its limits from the file itself, and again as it runs, so a change needs no restart.
     set_if_missing SPLINT_LIMITS_FILE "$LIMITS"
+    # Names nobody here has as their own, such as brands, which any agent can still have as its handle.
+    set_if_missing SPLINT_RESERVED_NAMES "$KEPT_NAMES"
     # Anyone with an owner key can take an address here, within the limits in limits.env, unless
     # whoever runs it chose codes alone. Codes work either way.
     case "$signup" in
@@ -326,6 +329,10 @@ write_settings() {
     # The operator's own, so a later run leaves what's set alone. Every limit is here, at its usual number.
     if [ ! -f "$LIMITS" ]; then
         install -m 640 -o root -g splint "$here/limits.env" "$LIMITS"
+    fi
+    # The operator's own too, started from the names in deploy/reserved-names.
+    if [ ! -f "$KEPT_NAMES" ]; then
+        install -m 640 -o root -g splint "$here/reserved-names" "$KEPT_NAMES"
     fi
     add_missing_limits
     sed "s/@DOMAIN@/$domain/g" "$here/Caddyfile" >/etc/caddy/Caddyfile

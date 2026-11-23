@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """An agent that asks for its controls by a link takes up only an answer from someone the link reached.
 
-Rae joins on her own and asks for her controls with `splint controls`, on a machine her person isn't
-at. Splint on that machine takes her ask, as it does on any Mac or Linux machine an agent runs on, and
+Rae joins on her own, under a temporary name, and asks for her controls with `splint controls --name
+pat`, the name her person goes by, on a machine her person isn't at. Splint on that machine takes her
+ask, as it does on any Mac or Linux machine an agent runs on, and
 she still gets a link, in plain words, that carries the ask her key signed, and gets it again from
 `splint ask ID` while it waits. The link she gets is the one for Splint on her person's computer
 alone, as owners sign only there (Nenye, 2026-11-21), and no host serves a page to sign on. It lasts
@@ -11,7 +12,8 @@ link: she knows only Rae's address, reads Rae's public ID from her host, signs c
 own owner ID, and leaves them there, before Pat answers and after. Rae's `splint auto`, `splint finish`
 and `splint ask ID` take none of it, and she stays unclaimed. Pat, whom the link reached, approves it
 on Splint on her computer, which leaves the answer where the ask's ID says, with a MAC by that ID, and
-Rae takes it up with nothing pasted. Pat's first approval at her terminal makes her sign-in, a key file
+Rae takes it up with nothing pasted, as `rae.pat`. Pat's later agents, which ask with her name too, go
+under it as well. Pat's first approval at her terminal makes her sign-in, a key file
 locked with the passphrase she chooses then, as it is by default with no chip, so a program running
 as her that pipes a yes to the next approval gets nothing signed (issue 892). Two people's answers
 there when the agent looks get neither taken, and a stranger's answer isn't counted as a third. Asking
@@ -106,8 +108,8 @@ def approves(signup: Signup, person, port: int):
 
 def link_reaches(signup: Signup, person, port: int, asked: dict, address: str) -> None:
     """The person opens the agent's link on their computer and approves with their passphrase."""
-    status, _ = local("POST", port, "/local/asks", {"ask": asked.get("ask", ""), "address": address})
-    check(f"control: the link hands {person.name}'s computer the ask", status == 200, status)
+    status, taken = local("POST", port, "/local/asks", {"ask": asked.get("ask", ""), "address": address})
+    check(f"control: the link hands {person.name}'s computer the ask, which waits for them", status == 200 and taken.get("status") == "waiting", (status, taken))
     first = not sign_in_of(person, port)
     if not first:
         piped = signup.walk.run_as(person.name, "splint computer approve", "yes\n")
@@ -118,6 +120,16 @@ def link_reaches(signup: Signup, person, port: int, asked: dict, address: str) -
     check(f"control: {person.name} approves it", approved.returncode == 0 and "Approved 1" in approved.stdout, approved.stdout + approved.stderr)
     if first:
         check(f"{person.name}'s first approval made a sign-in locked with the passphrase chosen then", "locked with a passphrase" in sign_in_of(person, port), sign_in_of(person, port))
+
+
+def address_of(agent) -> str:
+    """The agent's address as its Signet says: one that joins on its own has a temporary name, and one
+    its person set up controls for goes under that person's name."""
+    return agent.api("GET", "/v0/identity")[1].get("address", "")
+
+
+def name_of(address: str) -> str:
+    return address.split("~")[0]
 
 
 def stranger_answers(signup: Signup, mallory, host: str, handle: str, control: bool = True) -> None:
@@ -160,10 +172,12 @@ def a_stranger_cant_take_over_an_agent_asking_by_link(signup: Signup, port: int)
     COMPUTERS.append(rae)
     mallory = signup.device("mallory")
     check("control: rae joins on her own", signup.walk.run_as("rae", f"splint join rae~{host}").returncode == 0)
-    said = signup.walk.run_as("rae", "splint controls")
+    rae.address = address_of(rae)
+    # Pat is the name her person goes by, which her ask carries for her controls to name her under.
+    said = signup.walk.run_as("rae", "splint controls --name pat")
     links = {name: (page, ask, at) for name, page, ask, at in LINK.findall(said.stdout)}
     taken = lambda: [one.get("address") for one in e2e.http_on_socket("GET", rae.dot / "run" / "computer.sock", "/v0/asks")[1].get("asks", [])]  # noqa: E731
-    check("control: Splint on rae's own machine took her ask", wait_until(lambda: taken() == [f"rae~{host}"], 20), said.stdout + said.stderr)
+    check("control: Splint on rae's own machine took her ask", wait_until(lambda: taken() == [rae.address], 20), said.stdout + said.stderr)
     # Bugs caught: an agent on a machine of its own given no link, as Splint there took its ask and
     # waited for a person who is somewhere else; and one that reads words, not JSON, told to give its
     # person a link that was never printed.
@@ -176,12 +190,12 @@ def a_stranger_cant_take_over_an_agent_asking_by_link(signup: Signup, port: int)
     asked = {"ask": ask, "id": found.group(1) if found else ""}
     # Bug caught: a link that went astray making whoever approves first her owner for a whole day.
     check("her ask, and so its link, lasts an hour", 0 < lasts(rae, asked["id"]) <= 3600, lasts(rae, asked["id"]))
-    longer = signup.walk.run_as("rae", "splint controls --hours 2 --json")
+    longer = signup.walk.run_as("rae", "splint controls --hours 2 --name pat --json")
     check("and she can't ask for a link that lasts longer", longer.returncode != 0, longer.stdout + longer.stderr)
     status, _ = rae.api("POST", "/v0/asks", {"changes": [{"change": "controls", "delegate": ""}], "hours": 24})
     check("nor can anything that skips splint and calls her Signet", status == 400, status)
 
-    stranger_answers(signup, mallory, host, "rae")
+    stranger_answers(signup, mallory, host, name_of(rae.address))
     # Bug caught: an agent asking by link taking whichever single owner's answer was kept for its key,
     # so anyone who knew its address became its owner, held its backup and read its owner's view.
     signup.walk.run_as("rae", "splint auto --once")
@@ -200,8 +214,9 @@ def a_stranger_cant_take_over_an_agent_asking_by_link(signup: Signup, port: int)
     done = signup.walk.run_as("rae", "splint auto --once")
     check("splint auto takes up pat's answer, with nothing pasted", wait_until(lambda: confirmed(rae), SIGNET_HEARS_SECONDS), done.stdout + done.stderr)
     pat_id = here(pat, port).get("identity")
-    _, found = e2e.http("GET", f"http://{host}/.well-known/splint/agents/rae")
-    check("and acts for pat, whom the link reached", bool(pat_id) and found.get("owner_identity") == pat_id, found.get("owner_identity", "")[:60])
+    rae.address = address_of(rae)
+    _, found = e2e.http("GET", f"http://{host}/.well-known/splint/agents/rae.pat")
+    check("and acts for pat, whom the link reached, under pat's name", bool(pat_id) and found.get("owner_identity") == pat_id and rae.address == f"rae.pat~{host}", (rae.address, found.get("owner_identity", "")[:60]))
     # Bug caught: whoever approved first by a link becoming the owner with nothing naming them, so an
     # agent the wrong person claimed reported only that its controls were set.
     owner_id = f"splint1{hashlib.sha256(e2e.decode(pat_id or '')).hexdigest()}"
@@ -209,9 +224,9 @@ def a_stranger_cant_take_over_an_agent_asking_by_link(signup: Signup, port: int)
     check("her status names the owner ID that approved", (standing.get("controls") or {}).get("owner_id") == owner_id, standing.get("controls"))
     check("and so do its words", owner_id in signup.walk.run_as("rae", "splint status").stdout)
 
-    stranger_answers(signup, mallory, host, "rae", control=False)
+    stranger_answers(signup, mallory, host, name_of(rae.address), control=False)
     signup.walk.run_as("rae", "splint auto --once")
-    _, after = e2e.http("GET", f"http://{host}/.well-known/splint/agents/rae")
+    _, after = e2e.http("GET", f"http://{host}/.well-known/splint/agents/{name_of(rae.address)}")
     check("a stranger answering afterwards changes nothing", after.get("owner_identity") == pat_id, after.get("owner_identity", "")[:60])
     return mallory, pat
 
@@ -220,19 +235,22 @@ def a_link_that_reached_two_people_gets_neither(signup: Signup, mallory, pat, pa
     host = signup.open_host
     sam = signup.device("sam")
     check("control: sam joins on his own", signup.walk.run_as("sam", f"splint join sam~{host}").returncode == 0)
-    stranger_answers(signup, mallory, host, "sam")
+    sam.address = address_of(sam)
+    stranger_answers(signup, mallory, host, name_of(sam.address))
     signup.walk.run_as("sam", "splint auto --once")
     # Bug caught: splint auto taking an answer for an agent that never asked for one.
     check("splint auto takes nothing for an agent that isn't asking", not confirmed(sam))
 
     # His own splint auto would take the first answer before the second came, so he runs finish here.
     sam.shell('pkill -f "$HOME/.splint/bin/splint auto" || true', signup.walk.work, timeout=30)
-    status, asked = sam.api("POST", "/v0/asks", {"changes": [{"change": "controls", "delegate": ""}]})
+    # Under a name nobody has at his host, so quin, who has none there, is asked, and pat's computer
+    # names him under the name she has there already.
+    status, asked = sam.api("POST", "/v0/asks", {"changes": [{"change": "controls", "delegate": "", "owner_part": "quin"}]})
     check("control: sam asks for his controls, as his link does", status == 200, status)
     quin_port = e2e.free_port()
     quin = on_their_computer(signup, "quin", quin_port)
-    link_reaches(signup, pat, pat_port, asked, f"sam~{host}")
-    link_reaches(signup, quin, quin_port, asked, f"sam~{host}")
+    link_reaches(signup, pat, pat_port, asked, sam.address)
+    link_reaches(signup, quin, quin_port, asked, sam.address)
     # Bug caught: anyone holding one person's answer, which is public by their owner ID, leaving it
     # again with no MAC or at another place in place of the one the ask named, so the agent takes the
     # other person's alone.
@@ -254,9 +272,9 @@ def stops_its_own_auto(signup: Signup, agent) -> None:
     agent.shell('pkill -f "$HOME/.splint/bin/splint auto" || true', signup.walk.work, timeout=30)
 
 
-def controls_asked(signup: Signup, agent) -> dict:
-    """The agent's `splint controls`, with the ask as its link carries it."""
-    said = json.loads(signup.walk.run_as(agent.name, "splint controls --json").stdout or "{}")
+def controls_asked(signup: Signup, agent, person: str) -> dict:
+    """The agent's `splint controls`, with the name its person goes by, and the ask as its link carries it."""
+    said = json.loads(signup.walk.run_as(agent.name, f"splint controls --name {person} --json").stdout or "{}")
     return said | {"ask": agent.api("GET", f"/v0/asks/{said.get('id', '')}")[1].get("ask", "")}
 
 
@@ -268,16 +286,19 @@ def asking_again_ends_the_link_before(signup: Signup, pat, port: int) -> None:
     vic.env["SPLINT_COMPUTER_SIGN_IN"] = "file"
     COMPUTERS.append(vic)
     check("control: vic joins on his own", signup.walk.run_as("vic", f"splint join vic~{host}").returncode == 0)
+    vic.address = address_of(vic)
     stops_its_own_auto(signup, vic)
-    astray, fresh = controls_asked(signup, vic), controls_asked(signup, vic)
-    check("control: each ask for controls is its own, with its own link", bool(astray["ask"]) and astray["id"] != fresh["id"], (astray, fresh))
+    # Pat has a name at vic's host by now, which Splint on vic's machine can't tell is his person's, so
+    # it leaves his ask to its link, for Splint on pat's computer to name him under hers.
+    astray, fresh = controls_asked(signup, vic, "pat"), controls_asked(signup, vic, "pat")
+    check("control: each ask for controls is its own, with its own link", bool(astray["ask"]) and astray["id"] != fresh["id"] and all(asked.get("computer_link") for asked in (astray, fresh)), (astray, fresh))
     status_of = lambda asked: vic.api("GET", f"/v0/asks/{asked['id']}")[1].get("status")  # noqa: E731
     check("asking again ends the ask before it, and leaves the new one waiting", (status_of(astray), status_of(fresh)) == ("not_approved", "waiting"), (status_of(astray), status_of(fresh)))
     # Bug caught: every link an agent ever handed out staying a live way to claim it for a day.
-    link_reaches(signup, pat, port, astray, f"vic~{host}")
+    link_reaches(signup, pat, port, astray, vic.address)
     signup.walk.run_as("vic", "splint auto --once")
     check("an answer left under the ended link is never taken", not wait_until(lambda: confirmed(vic), 10), vic.api("GET", "/v0/identity")[1])
-    link_reaches(signup, pat, port, fresh, f"vic~{host}")
+    link_reaches(signup, pat, port, fresh, vic.address)
     signup.walk.run_as("vic", "splint auto --once")
     check("control: the newest link's answer is taken up", wait_until(lambda: confirmed(vic), SIGNET_HEARS_SECONDS))
 
@@ -286,13 +307,14 @@ def asking_again_ends_the_link_before(signup: Signup, pat, port: int) -> None:
     wes.env["SPLINT_COMPUTER_SIGN_IN"] = "file"
     COMPUTERS.append(wes)
     check("control: wes joins on his own", signup.walk.run_as("wes", f"splint join wes~{host}").returncode == 0)
+    wes.address = address_of(wes)
     stops_its_own_auto(signup, wes)
-    answered = controls_asked(signup, wes)
-    link_reaches(signup, pat, port, answered, f"wes~{host}")
+    answered = controls_asked(signup, wes, "pat")
+    link_reaches(signup, pat, port, answered, wes.address)
     check("control: pat's answer waits, as nothing here has looked", not confirmed(wes))
     # Bug caught: an agent whose person approved just before it asked again ending that ask, so what
     # they approved was lost and they had to approve again.
-    again = controls_asked(signup, wes)
+    again = controls_asked(signup, wes, "pat")
     check("asking again takes up an answer already there, and asks nothing new", again.get("status") == "done" and again.get("id") == answered["id"] and wait_until(lambda: confirmed(wes), SIGNET_HEARS_SECONDS), again)
 
 
@@ -306,18 +328,19 @@ def an_answer_its_host_didnt_keep_is_given_to_pass_on(signup: Signup, pat, port:
     uma.env["SPLINT_COMPUTER_SIGN_IN"] = "file"
     COMPUTERS.append(uma)
     check("control: uma joins on her own", signup.walk.run_as("uma", f"splint join uma~{host}").returncode == 0)
+    uma.address = address_of(uma)
     # Joined now, as a host that starts again lets no more agents join from here for a while.
     kit = signup.device("kit")
     kit.env["SPLINT_COMPUTER_PORT"] = str(e2e.free_port())
     kit.env["SPLINT_COMPUTER_SIGN_IN"] = "file"
     COMPUTERS.append(kit)
     check("control: kit joins on her own", signup.walk.run_as("kit", f"splint join kit~{host}").returncode == 0)
-    said = json.loads(signup.walk.run_as("uma", "splint controls --hours 1 --json").stdout or "{}")
+    said = json.loads(signup.walk.run_as("uma", "splint controls --hours 1 --name pat --json").stdout or "{}")
     _, asked = uma.api("GET", f"/v0/asks/{said.get('id', '')}")
     # Bug caught: splint controls reading --hours as a host's name, and opening controls there.
     check("uma asks for her controls with --hours 1, and her ask lasts an hour", said.get("status") == "waiting" and bool(asked.get("ask")) and 0 < lasts(uma, said.get("id", "")) <= 3600, said)
-    status, _ = local("POST", port, "/local/asks", {"ask": asked.get("ask", ""), "address": f"uma~{host}"})
-    check("control: the link hands pat's computer the ask", status == 200, status)
+    status, taken = local("POST", port, "/local/asks", {"ask": asked.get("ask", ""), "address": uma.address})
+    check("control: the link hands pat's computer the ask, which waits for her", status == 200 and taken.get("status") == "waiting", (status, taken))
     stopped = signup.walk.run_as("hana", "splint host stop")
     check("control: uma's host stops", stopped.returncode == 0, stopped.stderr)
     approved = approves(signup, pat, port)
@@ -329,8 +352,8 @@ def an_answer_its_host_didnt_keep_is_given_to_pass_on(signup: Signup, pat, port:
         finished = signup.walk.run_as("uma", line.group(0))
         check("and uma takes it up from that line", finished.returncode == 0 and wait_until(lambda: confirmed(uma), SIGNET_HEARS_SECONDS), finished.stdout + finished.stderr)
         pat_id = here(pat, port).get("identity")
-        _, found = e2e.http("GET", f"http://{host}/.well-known/splint/agents/uma")
-        check("acting for pat", bool(pat_id) and found.get("owner_identity") == pat_id, found.get("owner_identity", "")[:60])
+        _, found = e2e.http("GET", f"http://{host}/.well-known/splint/agents/uma.pat")
+        check("acting for pat, under her name", bool(pat_id) and found.get("owner_identity") == pat_id, found.get("owner_identity", "")[:60])
     an_agent_is_given_only_the_link_to_its_persons_computer(signup, kit)
 
 
@@ -339,9 +362,9 @@ def an_agent_is_given_only_the_link_to_its_persons_computer(signup: Signup, kit)
     only on their own computers (Nenye, 2026-11-21). Bug caught: an agent handing its person a link to
     a page its host serves. That a host started with the old owner page settings publishes none is
     sim/host_operator.py's, as `splint host start` passes a host only its limits."""
-    asked = json.loads(signup.walk.run_as("kit", "splint controls --json").stdout or "{}")
+    asked = json.loads(signup.walk.run_as("kit", "splint controls --name kay --json").stdout or "{}")
     check("an agent is given only the link to Splint on its person's computer", asked.get("status") == "waiting" and "link" not in asked and str(asked.get("computer_link", "")).startswith("http://localhost:"), asked)
-    words = signup.walk.run_as("kit", "splint controls").stdout
+    words = signup.walk.run_as("kit", "splint controls --name kay").stdout
     check("in words too, with how to install Splint there", set(name for name, *_ in LINK.findall(words)) == {"computer_link"} and "controls.install" in words, words)
 
 

@@ -311,7 +311,7 @@ pub async fn status(home: &Home) -> Result<String, Failure> {
              it's asked for here by itself. To install Splint on their computer and open their \
              controls: {install}\n          On Windows, in PowerShell: {install_on_windows}\n          \
              With Splint there already: {open}, or on Windows: {open_on_windows}",
-            ask = format_args!("{} controls", home.command()),
+            ask = controls_command(home, &installed),
             install = controls_install_line(domain),
             install_on_windows = controls_install_line_on_windows(domain),
             open = controls_open_line(domain),
@@ -739,7 +739,7 @@ pub async fn standing(home: &Home) -> Result<Standing, Failure> {
         open: Some(controls_open_line(domain)),
         open_on_windows: Some(controls_open_line_on_windows(domain)),
         page: Some(format!("http://localhost:{DEFAULT_PORT}/owner")),
-        ask: (!set).then(|| format!("{} controls", home.command())),
+        ask: (!set).then(|| controls_command(home, &installed)),
         ask_for_changes: set.then(|| format!("{} ask CHANGES", home.command())),
     };
     let mut next = match (state, stopped) {
@@ -828,6 +828,15 @@ async fn host_clock(installed: &Installed) -> Option<String> {
         .clock_off()
         .await
         .map(splint_core::host_clock::described)
+}
+
+/// What an agent runs to ask its person to set up their controls: with the name they go by, which
+/// goes after its handle, unless it kept the one they gave when it joined.
+fn controls_command(home: &Home, installed: &Installed) -> String {
+    match installed.owner_part {
+        Some(_) => format!("{} controls", home.command()),
+        None => format!("{} controls --name NAME", home.command()),
+    }
 }
 
 #[cfg(test)]

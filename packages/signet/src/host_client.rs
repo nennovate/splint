@@ -241,6 +241,19 @@ impl Lookup<'_> {
             })
     }
 
+    /// The address an owner's ID in place of their name stands for, as its host gives it and the
+    /// binding there names, or any other address as it is, once someone answers there.
+    pub async fn name_form(&self, handle: &str, domain: &str) -> Result<String, HostError> {
+        self.host
+            .look_up_named(self.key, self.me, handle, domain)
+            .await
+            .map(|(_, address)| address)
+            .map_err(|error| match error {
+                HostError::Unreachable | HostError::TooMany => error,
+                _ => HostError::NoSuchContact,
+            })
+    }
+
     /// What's at an address says about its history, for the reader to check for itself.
     pub async fn history(&self, handle: &str, domain: &str) -> Result<String, HostError> {
         Ok(self
@@ -454,24 +467,42 @@ impl HostClient {
         handle: &str,
         domain: &str,
     ) -> Result<Found, HostError> {
-        let address = format!("{handle}~{domain}");
+        Ok(self.look_up_named(key, me, handle, domain).await?.0)
+    }
+
+    /// Who's at an address, with the address its binding names: the one looked up, or for one with an
+    /// owner's ID in place of their name, the name it stands for there.
+    async fn look_up_named(
+        &self,
+        key: &SigningKey,
+        me: &SplintId,
+        handle: &str,
+        domain: &str,
+    ) -> Result<(Found, String), HostError> {
+        let typed = format!("{handle}~{domain}");
         let resolved = self.resolved(key, me, handle, domain).await?;
         let agent = Identity::from_encoded(&resolved.identity)?;
         if agent.id() != &resolved.agent_id {
             return Err(HostError::BadAnswer);
         }
         let owner = Identity::from_encoded(&resolved.owner_identity)?;
+        // An owner's ID in place of their name stands for the name the host gives, for that owner.
+        let address = splint_core::address_named(&typed, &resolved.moved_to, owner.id())
+            .map_err(|_| HostError::BadAnswer)?;
         VerifiedBinding::verify_for(&resolved.binding, &owner, &agent, &address)?;
         // A host it left can still show its binding there, but its own signed history says where it
         // is, and a contact made at the old address would be dropped as relayed from elsewhere.
         if splint_core::changes::moved_elsewhere(&resolved.history, &agent, domain).is_some() {
             return Err(HostError::NotFound);
         }
-        Ok(Found {
-            agent,
-            owner,
-            binding: resolved.binding,
-        })
+        Ok((
+            Found {
+                agent,
+                owner,
+                binding: resolved.binding,
+            },
+            address,
+        ))
     }
 
     async fn resolved(
@@ -589,6 +620,48 @@ impl HostClient {
             .await
             .map_err(|_| HostError::Unreachable)?;
         read_capped(accepted(response)?, MAX_SHORT_ANSWER_BYTES).await
+    }
+
+    /// Who this host says has a name as their own, by owner ID: an owner whose name it is or whose
+    /// agent goes by it alone, `None` for nobody, and `Refused` for a name nobody can have here. A host
+    /// from before names were owners' says nothing, which reads as nobody.
+    pub async fn name_holder(&self, name: &str) -> Result<Option<String>, HostError> {
+        let response = self
+            .http
+            .get(self.url(&format!("{}/{name}", splint_core::host_api::NAMES_PATH)))
+            .send()
+            .await
+            .map_err(|_| HostError::Unreachable)?;
+        match response.status() {
+            reqwest::StatusCode::NOT_FOUND => Ok(None),
+            reqwest::StatusCode::FORBIDDEN => Err(HostError::Refused),
+            _ => {
+                let held: splint_core::host_api::NameHolder =
+                    read_capped(accepted(response)?, MAX_SHORT_ANSWER_BYTES).await?;
+                Ok(Some(held.owner))
+            }
+        }
+    }
+
+    /// An owner's name at this host, as it says, if they have one.
+    pub async fn owners_name(&self, owner: &SplintId) -> Result<Option<String>, HostError> {
+        let path = format!(
+            "{}/{}/name",
+            splint_core::host_api::OWNERS_NAME_PATH,
+            owner.as_str()
+        );
+        let response = self
+            .http
+            .get(self.url(&path))
+            .send()
+            .await
+            .map_err(|_| HostError::Unreachable)?;
+        if response.status() == reqwest::StatusCode::NOT_FOUND {
+            return Ok(None);
+        }
+        let named: splint_core::host_api::OwnersName =
+            read_capped(accepted(response)?, MAX_SHORT_ANSWER_BYTES).await?;
+        Ok(Some(named.name))
     }
 
     /// Signed by the backup key, so no proof of ours adds anything, and a proof by a stolen key

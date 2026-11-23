@@ -18,7 +18,7 @@ use serde::{Deserialize, Serialize};
 use splint_core::{SplintId, unix_now};
 
 use crate::Signet;
-use crate::agent_api::{ApiError, typed_address};
+use crate::agent_api::{ApiError, typed_address_named};
 use crate::asks::ASKS_PER_DAY;
 use crate::budget::NotTaken;
 use crate::host_client::HostError;
@@ -175,7 +175,7 @@ pub async fn ask(
     if signet.rules.agent_adds_contacts().await {
         return Err(ApiError::InviteInstead);
     }
-    body.address = typed_address(&body.address)?;
+    body.address = typed_address_named(&signet, &body.address).await?;
     if !body.id.is_well_formed() {
         return Err(ApiError::BadRequest("not an agent's ID"));
     }

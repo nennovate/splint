@@ -9,8 +9,9 @@ use serde::Deserialize;
 use serde::de::DeserializeOwned;
 use splint_core::host_api::{
     HeldOwnerView, HeldRules, JoinAnswer, JoinAnswers, JoinLimit, KnownOwner, ListsByHandle,
-    OWNER_AGENTS_PATH, OWNER_HANDLES_PATH, OWNERS_PATH, OwnerAgentsNotice, RecoveryNotice,
-    Resolved, RetirementNotice, RevocationNotice, RulesNotice,
+    NAMES_PATH, NameHolder, OWNER_AGENTS_PATH, OWNER_HANDLES_PATH, OWNERS_NAME_PATH, OWNERS_PATH,
+    OwnerAgentsNotice, OwnersName, RecoveryNotice, Resolved, RetirementNotice, RevocationNotice,
+    RulesNotice,
 };
 use splint_core::owner_call::owner_mail_path;
 use splint_core::owner_session::SESSION_HEADER;
@@ -20,6 +21,15 @@ use splint_core::{Identity, SplintId, VerifiedBinding, parse_address};
 
 use crate::failure::Failure;
 use crate::release::{other_protocol, speaking_ours};
+
+/// Who has a name at a host as their own, as that host says.
+pub enum NameHere {
+    /// An owner, by ID, whose name it is or whose agent goes by it alone.
+    Owner(String),
+    Nobody,
+    /// Nobody can have it there: it's kept back, or reads as a temporary name or an owner's ID.
+    Barred,
+}
 
 const TIMEOUT: Duration = Duration::from_secs(10);
 /// A host keeps at most 2 MiB of this, and the machine at the other end decides how much it sends.
@@ -152,6 +162,58 @@ impl HostCalls {
         Ok(info.open_signup)
     }
 
+    /// Who has a name at this host as their own, as the host says before anyone signs: an owner whose
+    /// name it is, or whose agent goes by it alone, nobody, or nobody can.
+    pub async fn name_holder(&self, name: &str) -> Result<NameHere, Failure> {
+        let answer = self
+            .http
+            .get(format!("{}{NAMES_PATH}/{name}", self.base))
+            .send()
+            .await
+            .map_err(|_| Failure::refused("couldn't reach that host, so try again"))?;
+        match answer.status() {
+            StatusCode::NOT_FOUND => Ok(NameHere::Nobody),
+            StatusCode::FORBIDDEN => Ok(NameHere::Barred),
+            status if status.is_success() => Ok(NameHere::Owner(
+                answer
+                    .json::<NameHolder>()
+                    .await
+                    .map_err(|_| Failure::refused("that host's answer doesn't make sense"))?
+                    .owner,
+            )),
+            status => Err(Failure::refused(format!(
+                "that host answered {status}, so try again"
+            ))),
+        }
+    }
+
+    /// An owner's name at this host, as the host says, if they have one.
+    pub async fn owners_name(&self, owner: &SplintId) -> Result<Option<String>, Failure> {
+        let answer = self
+            .http
+            .get(format!(
+                "{}{OWNERS_NAME_PATH}/{}/name",
+                self.base,
+                owner.as_str()
+            ))
+            .send()
+            .await
+            .map_err(|_| Failure::refused("couldn't reach that host, so try again"))?;
+        match answer.status() {
+            StatusCode::NOT_FOUND => Ok(None),
+            status if status.is_success() => Ok(Some(
+                answer
+                    .json::<OwnersName>()
+                    .await
+                    .map_err(|_| Failure::refused("that host's answer doesn't make sense"))?
+                    .name,
+            )),
+            status => Err(Failure::refused(format!(
+                "that host answered {status}, so try again"
+            ))),
+        }
+    }
+
     /// Whether someone already has this handle, as far as anyone can look up.
     pub async fn handle_taken(&self, handle: &str) -> Result<bool, Failure> {
         let url = format!("{}/.well-known/splint/agents/{handle}", self.base);
@@ -168,6 +230,18 @@ impl HostCalls {
                 "that host answered {status}, so try again"
             ))),
         }
+    }
+
+    /// An address as someone typed it, where an owner's ID in place of their name becomes the name it
+    /// stands for at that host, checked against the binding there: the one spelling that's kept and
+    /// shown. Any other address is as it is, with nothing asked.
+    pub async fn name_form(address: &str) -> Result<String, Failure> {
+        let (name, domain) = parse_address(address).map_err(Failure::not_an_address)?;
+        let (_, part) = splint_core::name_parts(name);
+        if part.and_then(splint_core::owner_id_start).is_none() {
+            return Ok(address.to_owned());
+        }
+        Ok(Self::new(domain)?.resolve(address).await?.moved_to)
     }
 
     /// Who has this name here, as the host says. The ID checks out against what's signed, and an agent
@@ -193,7 +267,10 @@ impl HostCalls {
             .map_err(|_| Failure::refused("that host's answer doesn't make sense"))?;
         let agent = Identity::from_encoded(&found.identity)?;
         let owner = Identity::from_encoded(&found.owner_identity)?;
-        VerifiedBinding::verify_for(&found.binding, &owner, &agent, address)?;
+        // An owner's ID in place of their name stands for the name the host gives, for that owner.
+        let at = splint_core::address_named(address, &found.moved_to, owner.id())
+            .map_err(|_| Failure::refused("that host's answer doesn't check out"))?;
+        VerifiedBinding::verify_for(&found.binding, &owner, &agent, &at)?;
         if agent.id() != &found.agent_id {
             return Err(Failure::refused("that host's answer doesn't check out"));
         }

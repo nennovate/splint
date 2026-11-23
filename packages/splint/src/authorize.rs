@@ -654,25 +654,36 @@ async fn joined_on_its_own(address: &str, key: &str) -> Result<Option<Identity>,
     Ok((ours && owner.is_unconfirmed_owner()).then_some(agent))
 }
 
-/// The owner's name on this host, which goes after the agent's handle. An owner who's confirmed an
-/// agent there before has one already, and the host holds them to it. Otherwise it's `--name`, or none.
-fn owner_part(home: &Home, address: &str, given: Option<&str>) -> Result<String, Failure> {
+/// The owner's name on this host, which goes after the agent's word. An owner who has one there has
+/// it already, as the host or what was authorized here says, and the host holds them to it. Otherwise
+/// it's `--name`. An agent under a temporary name has to get one, and one from before names were
+/// owners' can keep the name it has.
+async fn owner_part(
+    home: &Home,
+    owner: &splint_core::SplintId,
+    address: &str,
+    given: Option<&str>,
+) -> Result<String, Failure> {
     let (name, domain) = parse_address(address)?;
-    let known = load(home)?.into_iter().find_map(|record| {
+    let known_here = load(home)?.into_iter().find_map(|record| {
         let (name, there) = parse_address(&record.address).ok()?;
         (there == domain).then(|| name_parts(name).1.map(str::to_owned))?
     });
-    if let Some(known) = known {
-        return Ok(format!("{name}.{known}~{domain}"));
-    }
-    let Some(word) = given else {
+    let known = match known_here {
+        Some(known) => Some(known),
+        None => HostCalls::new(domain)?.owners_name(owner).await?,
+    };
+    let Some(word) = known.as_deref().or(given) else {
+        if splint_core::is_temporary_name(name) {
+            return Err(Failure::refused(
+                "this agent has a temporary name, and yours goes after its handle: add --name NAME, \
+                 the name you go by, so nothing was signed",
+            ));
+        }
         return Ok(address.to_owned());
     };
-    let named = format!("{name}.{word}~{domain}");
-    parse_address(&named).map_err(|_| {
-        Failure::refused("that name won't fit in an address, so nothing was signed")
-    })?;
-    Ok(named)
+    splint_core::named_under(address, word)
+        .map_err(|_| Failure::refused("that name won't go in an address, so nothing was signed"))
 }
 
 /// Sets up controls for an agent that joined on its own: says what that means, asks the same choices
@@ -700,7 +711,8 @@ async fn confirm(
          and your contacts, with this device holding the backup that can recover its ID.",
         what_youre_agreeing_to(home, address, key, agent.id(), &to_be)
     ))?;
-    let confirmed_at = owner_part(home, address, choices.name)?;
+    let owner_id = Identity::from_encoded(&owner_identity)?.id().clone();
+    let confirmed_at = owner_part(home, &owner_id, address, choices.name).await?;
     let mut draft = first_rules();
     choices.apply(&mut draft, &known)?;
     let (name, domain) = parse_address(address)?;

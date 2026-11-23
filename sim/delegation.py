@@ -452,9 +452,12 @@ def price_with_an_agreed_contact_waits(net: e2e.Network, payer: str, seller: str
 
 
 def sharing_an_owner(net: e2e.Network, agent: str, home: str, with_agent: str) -> None:
-    """A new agent bound to the owner another one already has, as when a person runs two."""
+    """A new agent bound to the owner another one already has, as when a person runs two. At the other's
+    host it goes under that owner's one name there, which the other has alone, as una.ula."""
     make_owners = net.make_owners
     net.owners[agent] = net.owners[with_agent]
+    if net.home[with_agent] == home:
+        net.names[agent] = f"{agent}.{net.names.get(with_agent, with_agent)}"
     net.make_owners = lambda agents: None
     try:
         net.add_owned_agents({agent: home})

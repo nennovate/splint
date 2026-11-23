@@ -344,6 +344,104 @@
    }
   },
   {
+   "name": "ask_for_controls_with_an_owner_part",
+   "status": "checked",
+   "case": "valid",
+   "check": "ask.verify",
+   "why": "An agent asks its person to set up controls with their name after its handle, as they gave it: the owner's side signs its binding at that name.",
+   "input": {
+    "ask": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1hc2sifQ.eyJ2IjoxLCJpZCI6IjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzg5YWJjZGVmIiwiYWdlbnQiOiJzcGxpbnQxZDdkODY1Y2M0MDg1MGQ5NTk4NTgwYjJlNDg2NzAzOTBjZWNiZjI2MDNhMjFlNzVlZDc3MWQ1NjcyZjM3NDU5OCIsIm93bmVyIjoic3BsaW50MTMwYjZhYjFmYWMyZjJjYjUyOGExMTQ1NWUyNDE0ZGNlMTA1ZjUyNjNlYjBhZjlmNGU5OWZlZmFjOTM2ZjM5OGUiLCJjaGFuZ2VzIjpbeyJjaGFuZ2UiOiJjb250cm9scyIsImRlbGVnYXRlIjoiQlAxaUlFS3hldENnV3lHajJuLVg0dzZZZ09wZnNZdVBLdDRKVlA1XzU1VUhicU5ScWQ1MGFlbTVSeTVkMllzeDFicm5HZUJPalgwaGItR2o2RVJCeE9JIiwib3duZXJfcGFydCI6ImplZmYifV0sImlzc3VlZF9hdCI6MTc5Mzc1MDQwMCwiZXhwaXJlc19hdCI6MTc5Mzc1NDAwMH0.5iIcmGMbhZKPoyL4uvD0jW2j9osxN1h6iChh7-t88892qQV5mQtLUfn4AaCu9eKuK2dSTS3Ut4ZjB3KftLyMIA",
+    "agent_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJQWmlGMXhLWHVpMFFMZWprTFZRY1RXRHVKOFFVYnZ1ZmxjTHNlTnNFUlI5Szh4UFRPVWhQbGo1Qlg4TnBpQjUxYzlLcFZkeWRiZ2JKTEJmd3Y2NVVmUSIsInNlYWwiOiJCTzNlSnduZFNSSE9YTklPVUtVT2NSMmxfT0NjUFFhZ0dWZVJHLWNieEFpZmhpRGxsRW9iZHdyUVN1ZXZtZ19Sd2RBWTFYTU9BMm9LZXNqUmJLN1NpbkEiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiIyNDVmMGI4YThkY2ZlYWYxYWM0MTg1ZGNhMjIzOWVkZGRkMTdlMGExNWUxYTNjOWJlYjlkZmMyYzEwNWFiNzI2In19",
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": true,
+    "id": "0123456789abcdef0123456789abcdef",
+    "changes": 1
+   }
+  },
+  {
+   "name": "controls_with_an_owner_part_that_isnt_a_handle",
+   "status": "checked",
+   "case": "hostile",
+   "check": "ask.verify",
+   "why": "An owner part is one handle: no dot, tilde or capitals.",
+   "input": {
+    "ask": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1hc2sifQ.eyJ2IjoxLCJpZCI6IjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzg5YWJjZGVmIiwiYWdlbnQiOiJzcGxpbnQxZDdkODY1Y2M0MDg1MGQ5NTk4NTgwYjJlNDg2NzAzOTBjZWNiZjI2MDNhMjFlNzVlZDc3MWQ1NjcyZjM3NDU5OCIsIm93bmVyIjoic3BsaW50MTMwYjZhYjFmYWMyZjJjYjUyOGExMTQ1NWUyNDE0ZGNlMTA1ZjUyNjNlYjBhZjlmNGU5OWZlZmFjOTM2ZjM5OGUiLCJjaGFuZ2VzIjpbeyJjaGFuZ2UiOiJjb250cm9scyIsImRlbGVnYXRlIjoiQlAxaUlFS3hldENnV3lHajJuLVg0dzZZZ09wZnNZdVBLdDRKVlA1XzU1VUhicU5ScWQ1MGFlbTVSeTVkMllzeDFicm5HZUJPalgwaGItR2o2RVJCeE9JIiwib3duZXJfcGFydCI6IkplZmYuU21pdGgifV0sImlzc3VlZF9hdCI6MTc5Mzc1MDQwMCwiZXhwaXJlc19hdCI6MTc5Mzc1NDAwMH0.NuamgnRgU35rUruMaBVF1nibzfHBclrfTjZefrmb4WjLP8ot4tQJbty4gAoXbzuh1gFRyDEJZifZ1m-AsC3r7w",
+    "agent_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJQWmlGMXhLWHVpMFFMZWprTFZRY1RXRHVKOFFVYnZ1ZmxjTHNlTnNFUlI5Szh4UFRPVWhQbGo1Qlg4TnBpQjUxYzlLcFZkeWRiZ2JKTEJmd3Y2NVVmUSIsInNlYWwiOiJCTzNlSnduZFNSSE9YTklPVUtVT2NSMmxfT0NjUFFhZ0dWZVJHLWNieEFpZmhpRGxsRW9iZHdyUVN1ZXZtZ19Sd2RBWTFYTU9BMm9LZXNqUmJLN1NpbkEiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiIyNDVmMGI4YThkY2ZlYWYxYWM0MTg1ZGNhMjIzOWVkZGRkMTdlMGExNWUxYTNjOWJlYjlkZmMyYzEwNWFiNzI2In19",
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "controls_with_no_owner_part_written_out",
+   "status": "checked",
+   "case": "hostile",
+   "check": "ask.verify",
+   "why": "An owner part left out is left out, so an ask has one spelling.",
+   "input": {
+    "ask": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1hc2sifQ.eyJ2IjoxLCJpZCI6IjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzg5YWJjZGVmIiwiYWdlbnQiOiJzcGxpbnQxZDdkODY1Y2M0MDg1MGQ5NTk4NTgwYjJlNDg2NzAzOTBjZWNiZjI2MDNhMjFlNzVlZDc3MWQ1NjcyZjM3NDU5OCIsIm93bmVyIjoic3BsaW50MTMwYjZhYjFmYWMyZjJjYjUyOGExMTQ1NWUyNDE0ZGNlMTA1ZjUyNjNlYjBhZjlmNGU5OWZlZmFjOTM2ZjM5OGUiLCJjaGFuZ2VzIjpbeyJjaGFuZ2UiOiJjb250cm9scyIsImRlbGVnYXRlIjoiQlAxaUlFS3hldENnV3lHajJuLVg0dzZZZ09wZnNZdVBLdDRKVlA1XzU1VUhicU5ScWQ1MGFlbTVSeTVkMllzeDFicm5HZUJPalgwaGItR2o2RVJCeE9JIiwib3duZXJfcGFydCI6bnVsbH1dLCJpc3N1ZWRfYXQiOjE3OTM3NTA0MDAsImV4cGlyZXNfYXQiOjE3OTM3NTQwMDB9.dRCrgRSod5G9zUxdLFT_8NVHiF_6vSyV0LJExsPqGq9jV_nP2Z6iMgmgL19Mme7hNOa2fCaIWo_IUYsRTB6LQQ",
+    "agent_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJQWmlGMXhLWHVpMFFMZWprTFZRY1RXRHVKOFFVYnZ1ZmxjTHNlTnNFUlI5Szh4UFRPVWhQbGo1Qlg4TnBpQjUxYzlLcFZkeWRiZ2JKTEJmd3Y2NVVmUSIsInNlYWwiOiJCTzNlSnduZFNSSE9YTklPVUtVT2NSMmxfT0NjUFFhZ0dWZVJHLWNieEFpZmhpRGxsRW9iZHdyUVN1ZXZtZ19Sd2RBWTFYTU9BMm9LZXNqUmJLN1NpbkEiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiIyNDVmMGI4YThkY2ZlYWYxYWM0MTg1ZGNhMjIzOWVkZGRkMTdlMGExNWUxYTNjOWJlYjlkZmMyYzEwNWFiNzI2In19",
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "ask_to_add_an_owner_part",
+   "status": "checked",
+   "case": "valid",
+   "check": "ask.verify",
+   "why": "An agent its person set up with no owner part asks them to add theirs, once: the owner's side signs a binding at its name with that part after its handle.",
+   "input": {
+    "ask": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1hc2sifQ.eyJ2IjoxLCJpZCI6IjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzg5YWJjZGVmIiwiYWdlbnQiOiJzcGxpbnQxZDdkODY1Y2M0MDg1MGQ5NTk4NTgwYjJlNDg2NzAzOTBjZWNiZjI2MDNhMjFlNzVlZDc3MWQ1NjcyZjM3NDU5OCIsIm93bmVyIjoic3BsaW50MTMwYjZhYjFmYWMyZjJjYjUyOGExMTQ1NWUyNDE0ZGNlMTA1ZjUyNjNlYjBhZjlmNGU5OWZlZmFjOTM2ZjM5OGUiLCJjaGFuZ2VzIjpbeyJjaGFuZ2UiOiJvd25lcl9wYXJ0IiwidG8iOiJqZWZmIn1dLCJpc3N1ZWRfYXQiOjE3OTM3NTA0MDAsImV4cGlyZXNfYXQiOjE3OTM3NTQwMDB9.9MCQCzwtG8gtwRf1iboBwxBD2nPmy6YdNcWJ98h4pMkSzMCIOWZ4jL5sB28y5jZR1ac1a3VLTjHXq9Z-Umj6CQ",
+    "agent_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJQWmlGMXhLWHVpMFFMZWprTFZRY1RXRHVKOFFVYnZ1ZmxjTHNlTnNFUlI5Szh4UFRPVWhQbGo1Qlg4TnBpQjUxYzlLcFZkeWRiZ2JKTEJmd3Y2NVVmUSIsInNlYWwiOiJCTzNlSnduZFNSSE9YTklPVUtVT2NSMmxfT0NjUFFhZ0dWZVJHLWNieEFpZmhpRGxsRW9iZHdyUVN1ZXZtZ19Sd2RBWTFYTU9BMm9LZXNqUmJLN1NpbkEiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiIyNDVmMGI4YThkY2ZlYWYxYWM0MTg1ZGNhMjIzOWVkZGRkMTdlMGExNWUxYTNjOWJlYjlkZmMyYzEwNWFiNzI2In19",
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": true,
+    "id": "0123456789abcdef0123456789abcdef",
+    "changes": 1
+   }
+  },
+  {
+   "name": "owner_part_with_a_setting",
+   "status": "checked",
+   "case": "hostile",
+   "check": "ask.verify",
+   "why": "An owner part changes no rule, so it's alone in its ask.",
+   "input": {
+    "ask": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1hc2sifQ.eyJ2IjoxLCJpZCI6IjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzg5YWJjZGVmIiwiYWdlbnQiOiJzcGxpbnQxZDdkODY1Y2M0MDg1MGQ5NTk4NTgwYjJlNDg2NzAzOTBjZWNiZjI2MDNhMjFlNzVlZDc3MWQ1NjcyZjM3NDU5OCIsIm93bmVyIjoic3BsaW50MTMwYjZhYjFmYWMyZjJjYjUyOGExMTQ1NWUyNDE0ZGNlMTA1ZjUyNjNlYjBhZjlmNGU5OWZlZmFjOTM2ZjM5OGUiLCJjaGFuZ2VzIjpbeyJjaGFuZ2UiOiJvd25lcl9wYXJ0IiwidG8iOiJqZWZmIn0seyJjaGFuZ2UiOiJwYXVzZWQiLCJ0byI6dHJ1ZX1dLCJpc3N1ZWRfYXQiOjE3OTM3NTA0MDAsImV4cGlyZXNfYXQiOjE3OTM3NTQwMDB9.WHsL9fShZ9uvDUC3x-dDS8K8ZVJo01EnqqD_fisShZU4_ssaALrcPC387POFX9UK_FLS2Ih0kbBNnREYCNk5UA",
+    "agent_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJQWmlGMXhLWHVpMFFMZWprTFZRY1RXRHVKOFFVYnZ1ZmxjTHNlTnNFUlI5Szh4UFRPVWhQbGo1Qlg4TnBpQjUxYzlLcFZkeWRiZ2JKTEJmd3Y2NVVmUSIsInNlYWwiOiJCTzNlSnduZFNSSE9YTklPVUtVT2NSMmxfT0NjUFFhZ0dWZVJHLWNieEFpZmhpRGxsRW9iZHdyUVN1ZXZtZ19Sd2RBWTFYTU9BMm9LZXNqUmJLN1NpbkEiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiIyNDVmMGI4YThkY2ZlYWYxYWM0MTg1ZGNhMjIzOWVkZGRkMTdlMGExNWUxYTNjOWJlYjlkZmMyYzEwNWFiNzI2In19",
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
+   "name": "owner_part_that_isnt_a_handle",
+   "status": "checked",
+   "case": "hostile",
+   "check": "ask.verify",
+   "why": "An owner part is one handle, never a whole address.",
+   "input": {
+    "ask": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1hc2sifQ.eyJ2IjoxLCJpZCI6IjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzg5YWJjZGVmIiwiYWdlbnQiOiJzcGxpbnQxZDdkODY1Y2M0MDg1MGQ5NTk4NTgwYjJlNDg2NzAzOTBjZWNiZjI2MDNhMjFlNzVlZDc3MWQ1NjcyZjM3NDU5OCIsIm93bmVyIjoic3BsaW50MTMwYjZhYjFmYWMyZjJjYjUyOGExMTQ1NWUyNDE0ZGNlMTA1ZjUyNjNlYjBhZjlmNGU5OWZlZmFjOTM2ZjM5OGUiLCJjaGFuZ2VzIjpbeyJjaGFuZ2UiOiJvd25lcl9wYXJ0IiwidG8iOiJqZWZmfmhvc3QuZXhhbXBsZSJ9XSwiaXNzdWVkX2F0IjoxNzkzNzUwNDAwLCJleHBpcmVzX2F0IjoxNzkzNzU0MDAwfQ.AeGXJsDeURWs-F6Pvrhr8nZpI7um4wWrjEUoFTjTGCccONovAOuQ0RsKJszo8-1yq9tXErftgpYVnP79bKdBQA",
+    "agent_identity": "eyJ2Ijo0LCJhbGciOiJFUzI1NiIsImtleSI6IkJQWmlGMXhLWHVpMFFMZWprTFZRY1RXRHVKOFFVYnZ1ZmxjTHNlTnNFUlI5Szh4UFRPVWhQbGo1Qlg4TnBpQjUxYzlLcFZkeWRiZ2JKTEJmd3Y2NVVmUSIsInNlYWwiOiJCTzNlSnduZFNSSE9YTklPVUtVT2NSMmxfT0NjUFFhZ0dWZVJHLWNieEFpZmhpRGxsRW9iZHdyUVN1ZXZtZ19Sd2RBWTFYTU9BMm9LZXNqUmJLN1NpbkEiLCJyZWNvdmVyeSI6eyJydWxlIjoiYmFja3VwX2tleSIsImNvbW1pdG1lbnQiOiIyNDVmMGI4YThkY2ZlYWYxYWM0MTg1ZGNhMjIzOWVkZGRkMTdlMGExNWUxYTNjOWJlYjlkZmMyYzEwNWFiNzI2In19",
+    "now": 1793750400
+   },
+   "expect": {
+    "ok": false,
+    "reason": "malformed"
+   }
+  },
+  {
    "name": "ask_ended",
    "status": "checked",
    "case": "hostile",

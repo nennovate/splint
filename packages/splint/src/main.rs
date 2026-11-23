@@ -516,6 +516,21 @@ async fn join_as_asked(home: &Home, words: &[&str]) -> Result<join::Joined, Fail
     join::join(home, &address, way == JoinWay::OwnerFirst, code.as_deref()).await
 }
 
+/// `splint controls`'s words after `controls`, as `splint ask` takes them: `--hours N` and `--name
+/// NAME`, each once, in either order. Anything else, such as a host, is its person's form.
+fn controls_words<'a>(words: &[&'a str]) -> Option<Vec<&'a str>> {
+    let mut asked = vec!["--controls"];
+    for pair in words.chunks(2) {
+        match pair {
+            [flag @ ("--hours" | "--name"), value] if !asked.contains(flag) => {
+                asked.extend([*flag, *value]);
+            }
+            _ => return None,
+        }
+    }
+    Some(asked)
+}
+
 /// `splint finish`'s words after `finish`: the answer, and whether a code comes on stdin anyway.
 fn finish_words<'a>(words: &[&'a str]) -> Option<(&'a str, bool)> {
     match words {
@@ -580,10 +595,10 @@ async fn run_json(chosen: Option<&str>, words: &[&str]) -> Result<serde_json::Va
             taking_up::finish_given(&home, answer, with_code).await?;
             as_json(status::standing(&home).await?)
         }
-        ["controls"] => Ok(asks::ask(&home, &["--controls"]).await?.json()),
-        ["controls", "--hours", hours] => Ok(asks::ask(&home, &["--controls", "--hours", hours])
-            .await?
-            .json()),
+        ["controls", rest @ ..] if controls_words(rest).is_some() => {
+            let asked = controls_words(rest).ok_or(Failure::Usage)?;
+            Ok(asks::ask(&home, &asked).await?.json())
+        }
         ["ask", id] if !id.starts_with('-') => Ok(asks::status(&home, id).await?.json()),
         ["ask", flags @ ..] => Ok(asks::ask(&home, flags).await?.json()),
         ["switch-host", rest @ ..] => Ok(switch_host::run(&home, rest).await?.json()),
@@ -637,11 +652,11 @@ async fn run(chosen: Option<&str>, words: &[&str]) -> Result<String, Failure> {
         }
         ["status"] => status::status(&home).await,
         ["page"] => page::serve(home, None).await,
-        ["controls"] => Ok(asks::ask(&home, &["--controls"]).await?.in_words()),
         // Before the forms that take a host, which this would otherwise read `--hours` as.
-        ["controls", "--hours", hours] => Ok(asks::ask(&home, &["--controls", "--hours", hours])
-            .await?
-            .in_words()),
+        ["controls", rest @ ..] if controls_words(rest).is_some() => {
+            let asked = controls_words(rest).ok_or(Failure::Usage)?;
+            Ok(asks::ask(&home, &asked).await?.in_words())
+        }
         ["ask", id] if !id.starts_with('-') => Ok(asks::status(&home, id).await?.in_words()),
         ["ask", flags @ ..] => Ok(asks::ask(&home, flags).await?.in_words()),
         ["switch-host", rest @ ..] => Ok(switch_host::run(&home, rest).await?.in_words()),

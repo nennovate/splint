@@ -424,12 +424,55 @@ impl Contacts {
     }
 
     /// Who `found` acts for at `address`, if its owner's binding checks out under the newest copies of
-    /// both IDs, with no recovery of either that parts ways.
+    /// both IDs, with no recovery of either that parts ways. The binding names the agent at that host,
+    /// under the name its owner gave it then, which a new owner changes, as `ana-7k3p2a` becomes
+    /// `ana.jeff` when jeff sets up controls, so an address it went by before still counts.
     pub fn owner_by_binding(&self, found: &Found, address: &str) -> Option<Identity> {
         let owner = self.known.newest(&found.owner).ok()?;
         let agent = self.known.newest(&found.agent).ok()?;
-        VerifiedBinding::verify_for(&found.binding, &owner, &agent, address).ok()?;
-        Some(owner)
+        let bound = VerifiedBinding::verify(&found.binding, &owner, &agent).ok()?;
+        splint_core::same_host(bound.address(), address).then_some(owner)
+    }
+
+    /// The address of a contact pinned here that an address with an owner's ID in place of their name
+    /// stands for: the same handle and host, for an owner whose ID starts as the form says. Asked of
+    /// nobody, so naming one tells no host anything.
+    pub async fn named_by_id_form(&self, typed: &str) -> Option<String> {
+        let pinned = self.pinned.lock().await;
+        pinned.iter().find_map(|(address, pinned)| {
+            let found = pinned.read().ok()?;
+            let owner = self.known.newest_or_same(&found.owner);
+            splint_core::address_named(typed, address, owner.id())
+                .ok()
+                .filter(|named| named == address)
+        })
+    }
+
+    /// Every other address an agent is pinned at, at the same host, follows a newer statement of who it
+    /// acts for, so they all say the same and none goes on naming an owner it has left.
+    fn carry_over(pinned: &mut HashMap<String, Pinned>, address: &str, found: &Found) {
+        let Ok(next) = VerifiedBinding::verify(&found.binding, &found.owner, &found.agent) else {
+            return;
+        };
+        for (other, held) in pinned.iter_mut() {
+            let Ok(was) = held.read() else {
+                continue;
+            };
+            let behind = was.agent.id() == found.agent.id()
+                && other != address
+                && splint_core::same_host(other, address)
+                && was.binding != found.binding
+                && next
+                    .may_replace(
+                        &was.owner,
+                        VerifiedBinding::verify_history(&was.binding, &was.owner, &was.agent)
+                            .map_or(0, |binding| binding.seq()),
+                    )
+                    .is_ok();
+            if behind {
+                *held = Pinned::of(found);
+            }
+        }
     }
 
     /// For when this agent gets a new owner, whose contacts these aren't.
@@ -476,9 +519,13 @@ impl Contacts {
         let pinned_owner = self.known.newest_or_same(&found.owner);
         let agent = self.known.newest_or_same(sender);
         let owner = self.known.newest_or_same(&owner);
-        let Ok(next) = VerifiedBinding::verify_for(binding, &owner, &agent, address) else {
+        // At this address, or at the same host under a name a new owner gave it.
+        let Ok(next) = VerifiedBinding::verify(binding, &owner, &agent) else {
             return Ok(());
         };
+        if !splint_core::same_host(next.address(), address) {
+            return Ok(());
+        }
         if next.compact() == found.binding {
             return Ok(());
         }
@@ -505,6 +552,7 @@ impl Contacts {
             binding: next.compact().to_owned(),
         };
         pinned.insert(address.to_owned(), Pinned::of(&found));
+        Self::carry_over(&mut pinned, address, &found);
         state_file::save(&self.path, &pinned).map_err(|_| HostError::LocalStorage)
     }
 
@@ -607,6 +655,7 @@ impl Contacts {
         self.asks.note_agreement(address)?;
         let mut pinned = self.pinned.lock().await;
         pinned.insert(address.to_owned(), Pinned::of(&found));
+        Self::carry_over(&mut pinned, address, &found);
         state_file::save(&self.path, &pinned).map_err(|_| HostError::LocalStorage)?;
         Ok(found)
     }

@@ -39,7 +39,7 @@ import sys
 import time
 
 import e2e
-from agent_signup import Signup, registered
+from agent_signup import Signup, handle_of, registered
 from e2e import check, http, wait_until
 from install import ARRIVE_SECONDS, Person, signet_pid
 from owner_api import Session
@@ -256,8 +256,10 @@ def only_its_owner_leaves_anything_for_an_agent_and_only_sealed(signup: Signup, 
 
         # A stand-in for an owner who hasn't confirmed holds its key on the agent's own machine.
         sol = joined_on_its_own(signup, "sol")
-        sol_id = registered(host, "sol")["agent_id"]
-        for_sol = sealed_words("for sol", registered(host, "sol")["identity"], sol_id)
+        # Under the temporary name it joined with, as nobody has set up its controls.
+        sols = registered(host, handle_of(sol.address))
+        sol_id = sols["agent_id"]
+        for_sol = sealed_words("for sol", sols["identity"], sol_id)
         sols_path = f"/v0/owner-mail/{sol_id}"
         by_stand_in = proof_by(sol, for_sol["body"], to=sols_path)
         check("control: the stand-in's key signs a proof", by_stand_in.count(".") == 2, by_stand_in)
@@ -280,7 +282,7 @@ def only_its_owner_leaves_anything_for_an_agent_and_only_sealed(signup: Signup, 
     # Bug caught: something left for dan that his Signet can't open holding up what she signed after
     # it. Not opening proves nothing, as it's how a lost sealing key looks, so it stays at the host
     # until that key is back or the host's week runs out, and counts as held.
-    for_another = e2e.sealed_owner_mail(registered(host, "sol")["identity"], "person_text", second["signed"])
+    for_another = e2e.sealed_owner_mail(sols["identity"], "person_text", second["signed"])
     after = sealed_words("after one that won't open")
     os.kill(pid, signal.SIGSTOP)
     try:

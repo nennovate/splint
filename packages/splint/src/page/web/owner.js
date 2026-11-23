@@ -211,7 +211,11 @@ function now() {
 
 function addressParts(address) {
   const [handle, domain] = String(address).split("~");
-  return { handle, domain, name: handle.split(".")[0] };
+  const word = handle.split(".")[0];
+  // A temporary name, before the person names it under theirs, is the word it chose and a code.
+  const temporary = /^(.+)-([a-z2-7]{6})$/.exec(word);
+  const name = temporary && /[2-7]/.test(temporary[2]) ? temporary[1] : word;
+  return { handle, domain, name };
 }
 
 // ---------- Signing on this computer ----------
@@ -1930,12 +1934,14 @@ function askLines(ask) {
 /**
  * An ask's lines, less the one setting the agent up, which the title says already ("Lia wants to act
  * for you", with its address). The owner key writes one line for each change, in order, so the line
- * left out is exactly that change's; where they don't line up, every line shows.
+ * left out is exactly that change's; where they don't line up, every line shows. One that names the
+ * person's own part after its handle stays, as the title doesn't say the name they're approving.
  */
 function linesBeyondJoining(ask) {
   const said = Array.isArray(ask.said) ? ask.said.map(String) : [];
   const changes = Array.isArray(ask.changes) ? ask.changes : [];
-  const kept = said.length === changes.length ? said.filter((_, index) => !(changes[index] && changes[index].change === "controls")) : said;
+  const joining = (change) => change && change.change === "controls" && !change.owner_part && !ask.owner_part;
+  const kept = said.length === changes.length ? said.filter((_, index) => !joining(changes[index])) : said;
   return [...kept, ...(ask.kinds || []).flatMap((kind) => (kind.lines || [])).map(String)];
 }
 
@@ -2570,6 +2576,7 @@ const LINKED_KINDS = {
   step: () => "Say yes to something it's holding for you",
   where_paid: () => "Change where you get paid",
   host: () => "Move it to another host",
+  owner_part: () => "Add your name to its address",
 };
 
 /**

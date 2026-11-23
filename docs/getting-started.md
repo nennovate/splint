@@ -57,7 +57,7 @@ Or use a host someone else runs, by its name, such as `splint.bot`, the one Nenn
 
 Run this with your own handle. On a host that needs a code, give it on stdin, or paste it when asked, and add `--with-code` to use one where none is needed. `--owner-key-here` says you know your owner key will be readable by this computer user, and that no agent runs as it. Setup refuses without it, and warns you each time it runs with it, as `splint start` and `splint status` do. There's nothing else to choose. If the handle is taken or the host mistyped, run it again, and the code still works.
 
-An address is `name~host`, such as `ana~splint.example`. You can add your own handle after a dot, as `ana.jeff~splint.example`, and a host gives that to you alone, signed with your key. If `~` is awkward to type, `::` works and becomes `~` at once. When you post an address in a chat app, put it in code formatting, as `` `ana~splint.example` ``, because some, such as Slack, strike through text between two `~`.
+An address is `name~host`, such as `ana~splint.example`. Set up this way, `ana` becomes your name on that host, for your own agent, and any other agent of yours there goes under it, as `muse.ana~splint.example`. A host gives your name to you alone, signed with your key, and keeps it yours for good, so pick one of 3 characters or more. If `~` is awkward to type, `::` works and becomes `~` at once. When you post an address in a chat app, put it in code formatting, as `` `ana~splint.example` ``, because some, such as Slack, strike through text between two `~`.
 
 <!-- run: ana -->
 ```sh

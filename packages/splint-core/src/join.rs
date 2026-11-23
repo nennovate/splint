@@ -14,7 +14,7 @@ use crate::identity::hex;
 use crate::rules::VerifiedRules;
 use crate::{
     AgentKeys, Error, Identity, RecoveryRule, SplintId, VerifiedBinding, jws, parse_address,
-    same_handle_and_host,
+    same_host,
 };
 
 const VERSION: u8 = 1;
@@ -104,7 +104,7 @@ impl JoinReply {
     /// The same for an agent that joined before its owner confirmed, so it already has an ID and an
     /// address. `moved` is that ID once its stand-in has moved the rule to the backup the owner's
     /// device made, which the agent's machine signs first and sends nowhere unless this passes. Says
-    /// who the owner is and the address they signed, which keeps the handle and may add their part.
+    /// who the owner is and the address they signed, at the same host, under a name of their choosing.
     pub fn check_confirming(
         &self,
         moved: &Identity,
@@ -116,7 +116,7 @@ impl JoinReply {
             return Err(Error::ProofMismatch);
         }
         let address = VerifiedBinding::check_from_owner(&self.binding, &owner, moved)?;
-        if !same_handle_and_host(&address, address_now) {
+        if !same_host(&address, address_now) {
             return Err(Error::ProofMismatch);
         }
         let rules = VerifiedRules::verify(&self.rules, &owner, 0, now)?;
@@ -138,9 +138,7 @@ impl JoinReply {
         let owner = self.confirming_owner()?;
         let address = VerifiedBinding::check_ahead(&self.binding, &owner, held, &self.commitment)?;
         let rules = VerifiedRules::verify(&self.rules, &owner, 0, now)?;
-        if !same_handle_and_host(&address, held_address)
-            || rules.agent() != held.id()
-            || !rules.names_nobody()
+        if !same_host(&address, held_address) || rules.agent() != held.id() || !rules.names_nobody()
         {
             return Err(Error::ProofMismatch);
         }
@@ -355,7 +353,7 @@ pub fn answering_ask(kept: &JoinAnswer, ask_id: &str) -> Result<(JoinReply, Iden
 }
 
 /// Lowercase hex of exactly `bytes` bytes, its one spelling.
-fn lower_hex(text: &str, bytes: usize) -> Result<Vec<u8>, Error> {
+pub(crate) fn lower_hex(text: &str, bytes: usize) -> Result<Vec<u8>, Error> {
     let lower = |byte: &u8| matches!(byte, b'0'..=b'9' | b'a'..=b'f');
     if text.len() != bytes.saturating_mul(2) || !text.as_bytes().iter().all(lower) {
         return Err(Error::Malformed);
@@ -660,7 +658,7 @@ mod tests {
         );
         assert!(
             reply
-                .check_confirming_for_keeping(&agent, "bob~host.example", NOW)
+                .check_confirming_for_keeping(&agent, "ana~elsewhere.example", NOW)
                 .is_err()
         );
 
@@ -693,7 +691,7 @@ mod tests {
         );
         assert!(
             reply
-                .check_confirming(&moved, "bob~host.example", NOW)
+                .check_confirming(&moved, "ana~elsewhere.example", NOW)
                 .is_err()
         );
 

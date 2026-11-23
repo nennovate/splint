@@ -813,7 +813,8 @@ def agents_are_the_operators_to_limit(net: e2e.Network) -> None:
         return net.register_on_a(key, owner, handle, identity, agent_id)
 
     owner = new_owner(work / "busy-owner")
-    answers = [register(owner, f"busy-{number}") for number in range(AGENTS_PER_OWNER + 1)]
+    # Each under the owner's one name here, as an owner's agents are named.
+    answers = [register(owner, f"busy{number}.busy") for number in range(AGENTS_PER_OWNER + 1)]
     check(f"an owner gets the {AGENTS_PER_OWNER} this operator allows, not the usual 8", answers == [200] * AGENTS_PER_OWNER + [429], answers)
 
     host = net.domain["a"]

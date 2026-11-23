@@ -137,6 +137,8 @@ class Thief:
     def __init__(self, net: e2e.Network, name: str, agent: str) -> None:
         self.net, self.agent = net, agent
         self.owner = new_owner(net.work / f"{name}-owner")
+        # A new owner names the agent under their own name, so the thief's shows: zara.zarathief.
+        self.renamed = net.under(agent, name.replace("-", ""))
         self.key = net.work / f"{name}-agent.key"
         new_key(self.key)
         self.public = e2e.agent_keys(self.key)
@@ -152,7 +154,7 @@ class Thief:
         ))
         status, answer = tell_host(net, agent, handed["identity"])
         check("control: the host takes the thief's recovery of the agent's key", status == 200, answer)
-        half = to.sign("bind", "--agent", handed["identity"], "--address", net.address(agent), "--backup", next_backup["file"])
+        half = to.sign("bind", "--agent", handed["identity"], "--address", self.renamed, "--backup", next_backup["file"])
         status, answer = self.registers(to, handed["identity"], accepted(half, self.key, handed["release"]))
         check("control: and the move to the thief's owner", status == 200, answer)
         return handed["identity"]
@@ -178,6 +180,7 @@ def a_thief_with_the_agents_backup_doesnt_keep_the_agent(net: e2e.Network) -> No
     thief = Thief(net, "zara-thief", "zara")
     their_identity = thief.takes_it()
     check("the host goes by the thief's owner for now", host_row(net, "zara", "owner_id") == thief.owner.id)
+    check("under a name of the thief's own, as a new owner can't keep the old one", host_row(net, "zara", "handle") == "zara.zarathief", host_row(net, "zara", "handle"))
     rules = thief.owner.sign("rules", "--agent", net.ids["zara"], stdin=json.dumps(e2e.rules_draft([net.contact_entry("abel")])))
     check("control: and the thief's rules", http("PUT", f"http://{net.domain['a']}/v0/rules", {"rules": rules})[0] == 200)
     check("control: so the thief's key can send", thief.sends("from the thief", their_identity, "abel")[0] == 200)
@@ -190,6 +193,8 @@ def a_thief_with_the_agents_backup_doesnt_keep_the_agent(net: e2e.Network) -> No
     status, answer = tell_host(net, "zara", recovered.identity)
     check("the owner recovers in time", status == 200, answer)
     check("and the host holds them again, not the thief's owner", host_row(net, "zara", "owner_id") == net.owners["zara"].id, host_row(net, "zara", "owner_id"))
+    # Bug caught: the agent coming back under the thief's name, which its owner couldn't sign.
+    check("under the name it had", host_row(net, "zara", "handle") == net.address("zara").split("~")[0], host_row(net, "zara", "handle"))
     check("the agent's ID is as it was before the thief's recovery of it", host_row(net, "zara", "identity") == real_identity)
     check("the thief's rules went with them", net.postgres.sql("host_a", f"SELECT count(*) FROM rules WHERE agent = '{net.ids['zara']}'") == "0")
     check("the thief's key can't send now", thief.sends("after the recovery", their_identity, "abel")[0] != 200)
@@ -210,6 +215,8 @@ def a_thief_with_the_agents_backup_doesnt_keep_the_agent(net: e2e.Network) -> No
     status, answer = net.agent("zara", "PUT", "/v0/owner/binding", {"binding": binding})
     check("the new owner key signs it back in", status == 200, (status, answer))
     check("so it's found again", wait_until(lambda: resolved(net, "zara")[0] == 200), resolved(net, "zara"))
+    status, left = http("GET", f"http://{net.domain['a']}/.well-known/splint/agents/zara.zarathief")
+    check("and by the name the thief gave it, which points back", status == 200 and left.get("moved_to") == net.address("zara"), (status, left))
     check("under the real agent's copy of its ID", host_row(net, "zara", "identity") == next_rule["identity"])
     check("and new rules", net.put_rules("zara", net.sign_rules("zara", [net.contact_entry("abel")]))[0] == 200)
 
@@ -254,12 +261,13 @@ def moving_it_on_again_doesnt_get_away(net: e2e.Network) -> None:
     next_backup = accomplice.new_agent_backup()
     moved = json.loads(thief.owner.sign("transfer", "--agent", identity, "--backup", str(their_backup), "--to", accomplice.id, "--commitment", next_backup["commitment"]))
     tell_host(net, "bea", moved["identity"])
-    half = accomplice.sign("bind", "--agent", moved["identity"], "--address", net.address("bea"), "--backup", next_backup["file"])
+    half = accomplice.sign("bind", "--agent", moved["identity"], "--address", net.under("bea", "accomplice"), "--backup", next_backup["file"])
     status, answer = thief.registers(accomplice, moved["identity"], accepted(half, thief.key, moved["release"]))
     check("control: the thief moves it on to someone else", status == 200 and host_row(net, "bea", "owner_id") == accomplice.id, answer)
     recovered = recover_owner(net, "bea", "bea-owner")
     tell_host(net, "bea", recovered.identity)
     check("a recovery of the owner it left still takes it back", host_row(net, "bea", "owner_id") == net.owners["bea"].id, host_row(net, "bea", "owner_id"))
+    check("under the name it had before either move", host_row(net, "bea", "handle") == net.address("bea").split("~")[0], host_row(net, "bea", "handle"))
 
 
 def past_the_wait_a_move_stands(net: e2e.Network) -> None:

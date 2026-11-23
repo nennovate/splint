@@ -48,8 +48,8 @@ pub fn is_valid_name(name: &str) -> bool {
 /// signing up for nothing can't sweep them all up. Provisional.
 pub const MIN_HANDLE_CHARS_WITHOUT_CODE: usize = 3;
 /// Handles that would pass for whoever runs a host, or for Splint, so nobody takes one with no signup
-/// code. Whoever runs a host can still give one out with a code. Neither does any handle starting
-/// `splint`. Provisional.
+/// code, as a handle or as their own name. Whoever runs a host can still give one out with a code.
+/// Neither goes for any handle starting `splint`. Provisional.
 const RESERVED_HANDLES: &[&str] = &[
     "abuse",
     "account",
@@ -108,6 +108,192 @@ pub fn same_handle_and_host(one: &str, other: &str) -> bool {
         (Ok((one_name, one_domain)), Ok((other_name, other_domain))) => {
             one_domain == other_domain && name_parts(one_name).0 == name_parts(other_name).0
         }
+        _ => false,
+    }
+}
+
+/// `ana~splint.example` with `jeff` after its handle, as `ana.jeff~splint.example`: the address an
+/// owner's binding names when they give an agent that has no owner part yet theirs. An agent under a
+/// [temporary name](temporary_name) keeps only the word it chose, so `ana-7k3p2a` becomes `ana.jeff`
+/// too. One that has an owner part already keeps it, so this refuses it, as it does a name that
+/// wouldn't fit or a part that isn't an owner's name.
+pub fn with_owner_part(address: &str, owner_part: &str) -> Result<String, Error> {
+    let (name, domain) = parse_address(address)?;
+    if name_parts(name).1.is_some() || !is_valid_handle(owner_part) || looks_like_an_id(owner_part)
+    {
+        return Err(Error::Malformed);
+    }
+    let word = agent_word(name);
+    let named = format!("{word}{OWNER_SEPARATOR}{owner_part}{ADDRESS_SEPARATOR}{domain}");
+    parse_address(&named)?;
+    Ok(named)
+}
+
+/// The address an owner's binding names an agent at when they set up its controls or take it over: the
+/// word its name is made from, their name after it, at the same host, whatever it's called now, so
+/// `ana-7k3p2a`, `ana` and `ana.mal` all become `ana.jeff`.
+pub fn named_under(address: &str, owner_part: &str) -> Result<String, Error> {
+    let (name, domain) = parse_address(address)?;
+    if !is_valid_handle(owner_part) || looks_like_an_id(owner_part) {
+        return Err(Error::Malformed);
+    }
+    let named = format!(
+        "{}{OWNER_SEPARATOR}{owner_part}{ADDRESS_SEPARATOR}{domain}",
+        agent_word(name)
+    );
+    parse_address(&named)?;
+    Ok(named)
+}
+
+/// How many characters of code follow the word in a temporary name. At least one is a digit, so no
+/// word of letters alone, such as `london` in `anna-london`, reads as one.
+const TEMPORARY_CODE_CHARS: usize = 6;
+const DIGITS_IN_BASE32: &[u8] = b"234567";
+
+/// The name an agent nobody has set up controls for joins under: the word it chose, a hyphen and a
+/// random code, as `muse-7k3p2a`. Its person's controls give it a name under theirs, as
+/// `muse.jeff`, and this one is let go a while later. Provisional.
+pub fn temporary_name(word: &str) -> Result<String, Error> {
+    use aws_lc_rs::rand::{SecureRandom, SystemRandom};
+    let mut random = [0_u8; TEMPORARY_CODE_CHARS];
+    SystemRandom::new()
+        .fill(&mut random)
+        .map_err(|_| Error::Crypto)?;
+    let mut code: Vec<u8> = random
+        .iter()
+        .map(|byte| {
+            crate::pairing::BASE32_LETTERS
+                .get(usize::from(byte & 0x1f))
+                .copied()
+        })
+        .collect::<Option<_>>()
+        .ok_or(Error::Crypto)?;
+    if !code.iter().any(|byte| DIGITS_IN_BASE32.contains(byte))
+        && let (Some(last), Some(first)) = (code.last_mut(), random.first())
+    {
+        *last = DIGITS_IN_BASE32
+            .get(usize::from(*first) % DIGITS_IN_BASE32.len())
+            .copied()
+            .ok_or(Error::Crypto)?;
+    }
+    let code = String::from_utf8(code).map_err(|_| Error::Crypto)?;
+    let name = format!("{word}-{code}");
+    if name_parts(word).1.is_some() || !is_valid_handle(word) || !is_valid_name(&name) {
+        return Err(Error::Malformed);
+    }
+    Ok(name)
+}
+
+/// Whether a name is a temporary one: no owner part, and a word, a hyphen and a code of 6 lowercase
+/// base32 characters, at least one a digit.
+pub fn is_temporary_name(name: &str) -> bool {
+    temporary_word(name).is_some()
+}
+
+fn temporary_word(name: &str) -> Option<&str> {
+    let (handle, owner) = name_parts(name);
+    let (word, code) = handle.rsplit_once('-')?;
+    let shaped = owner.is_none()
+        && !word.is_empty()
+        && code.len() == TEMPORARY_CODE_CHARS
+        && code
+            .bytes()
+            .all(|byte| crate::pairing::BASE32_LETTERS.contains(&byte))
+        && code.bytes().any(|byte| DIGITS_IN_BASE32.contains(&byte));
+    shaped.then_some(word)
+}
+
+/// The word an agent's name is made from: the handle before any owner part, and for a temporary
+/// name, the word before its code.
+pub fn agent_word(name: &str) -> &str {
+    temporary_word(name).unwrap_or_else(|| name_parts(name).0)
+}
+
+/// How many characters an owner's ID takes after an agent's handle in place of their name.
+pub const OWNER_ID_FORM_CHARS: usize = 26;
+
+/// An owner's ID as it goes after an agent's handle in place of their name: its first 128 bits in
+/// lowercase base32, as a pairing code writes them. `muse.<that>~host` reaches the agent its host
+/// names `muse.<their name>~host`, which is what's kept and shown from then on.
+pub fn owner_id_form(owner: &crate::SplintId) -> Result<String, Error> {
+    let start = owner
+        .as_str()
+        .strip_prefix(crate::identity::ID_PREFIX)
+        .and_then(|hash| hash.get(..32))
+        .ok_or(Error::Malformed)?;
+    let bytes: [u8; 16] = crate::join::lower_hex(start, 16)?
+        .try_into()
+        .map_err(|_| Error::Malformed)?;
+    Ok(crate::pairing::to_base32(&bytes))
+}
+
+/// The start of an owner's ID, in its own spelling, that an owner part in ID form names, or `None`
+/// for one that's a name.
+pub fn owner_id_start(owner_part: &str) -> Option<String> {
+    let bytes = crate::pairing::from_base32(owner_part).ok()?;
+    Some(format!(
+        "{}{}",
+        crate::identity::ID_PREFIX,
+        crate::identity::hex(&bytes)
+    ))
+}
+
+/// The address an answer about `typed` is for. Where `typed` names an owner by their ID in place of
+/// their name, as `muse.<ID form>~host`, that's the address its host said it stands for, `moved_to`:
+/// at the same host, with the same handle, for an owner whose ID starts as the form says, which a
+/// caller checks against the binding before taking it. That's what's kept and shown from then on, as
+/// an address has one spelling. Anything else is `typed` itself.
+pub fn address_named(
+    typed: &str,
+    moved_to: &str,
+    owner: &crate::SplintId,
+) -> Result<String, Error> {
+    let (name, domain) = parse_address(typed)?;
+    let (handle, part) = name_parts(name);
+    let Some(start) = part.and_then(owner_id_start) else {
+        return Ok(typed.to_owned());
+    };
+    let (named, named_at) = parse_address(moved_to)?;
+    let (named_handle, named_part) = name_parts(named);
+    if named_at != domain
+        || named_handle != handle
+        || named_part.is_none_or(looks_like_an_id)
+        || !owner.as_str().starts_with(&start)
+    {
+        return Err(Error::ProofMismatch);
+    }
+    Ok(moved_to.to_owned())
+}
+
+/// Whether an owner part could be read as an owner's ID, so no name is ever one.
+fn looks_like_an_id(owner_part: &str) -> bool {
+    owner_part.len() == OWNER_ID_FORM_CHARS
+        && owner_part
+            .bytes()
+            .all(|byte| crate::pairing::BASE32_LETTERS.contains(&byte))
+}
+
+/// Whether `name` may be an owner's name at a host, which goes after their agents' handles and, alone,
+/// names their own agent: one a host gives out with no code, and none that reads as a temporary name or
+/// an owner's ID. A host's operator can keep more back.
+pub fn may_be_owner_name(name: &str) -> bool {
+    may_be_owner_name_with_code(name) && may_take_without_code(name)
+}
+
+/// The same where whoever runs the host gives it out with a signup code, as they can a short handle or
+/// one that would pass for the host: one handle that reads as neither a temporary name nor an owner's ID.
+pub fn may_be_owner_name_with_code(name: &str) -> bool {
+    name_parts(name).1.is_none()
+        && is_valid_handle(name)
+        && !is_temporary_name(name)
+        && !looks_like_an_id(name)
+}
+
+/// Whether two addresses are at the same host, whatever their names: all a new owner's binding keeps,
+/// as they choose the agent's name under their own.
+pub fn same_host(one: &str, other: &str) -> bool {
+    match (parse_address(one), parse_address(other)) {
+        (Ok((_, one_domain)), Ok((_, other_domain))) => one_domain == other_domain,
         _ => false,
     }
 }
@@ -505,5 +691,61 @@ mod tests {
             Ok("splint:ana~splint.example")
         );
         assert!(link_form("ana~Splint.example").is_err());
+    }
+
+    /// Bug caught: a temporary name or an owner's ID passing for an owner's name, a word of letters
+    /// alone read as a temporary name, or an ID form that doesn't name the ID it came from.
+    #[test]
+    fn an_owners_name_is_never_a_temporary_name_or_an_id() {
+        let made = temporary_name("muse").unwrap();
+        assert!(
+            is_temporary_name(&made) && agent_word(&made) == "muse",
+            "{made}"
+        );
+        assert!(!may_be_owner_name(&made), "{made}");
+        assert!(!is_temporary_name("anna-london") && may_be_owner_name("anna-london"));
+        assert_eq!(
+            with_owner_part(&format!("{made}~host.example"), "jeff").as_deref(),
+            Ok("muse.jeff~host.example")
+        );
+        // Controls name it under its owner whatever it's called, and adding a name adds one only once.
+        assert_eq!(
+            named_under("muse.mal~host.example", "jeff").as_deref(),
+            Ok("muse.jeff~host.example")
+        );
+        assert!(with_owner_part("muse.mal~host.example", "jeff").is_err());
+        let owner = crate::test_identity(&crate::SigningKey::generate().unwrap());
+        let form = owner_id_form(owner.id()).unwrap();
+        assert!(
+            owner
+                .id()
+                .as_str()
+                .starts_with(&owner_id_start(&form).unwrap())
+        );
+        assert!(!may_be_owner_name(&form));
+        assert!(with_owner_part("muse~host.example", &form).is_err());
+        assert!(owner_id_start("anna").is_none());
+        // An ID form stands for the name its host gives, only for that owner, handle and host.
+        let typed = format!("muse.{form}~host.example");
+        assert_eq!(
+            address_named(&typed, "muse.jeff~host.example", owner.id()).as_deref(),
+            Ok("muse.jeff~host.example")
+        );
+        let stranger = crate::test_identity(&crate::SigningKey::generate().unwrap());
+        let another_form = format!(
+            "muse.{}~host.example",
+            owner_id_form(stranger.id()).unwrap()
+        );
+        for (moved_to, bound_for) in [
+            ("muse.jeff~host.example", stranger.id()),
+            ("lea.jeff~host.example", owner.id()),
+            ("muse.jeff~elsewhere.example", owner.id()),
+            (another_form.as_str(), owner.id()),
+        ] {
+            assert!(
+                address_named(&typed, moved_to, bound_for).is_err(),
+                "{moved_to}"
+            );
+        }
     }
 }

@@ -79,7 +79,16 @@ def tell_host(net: e2e.Network, agent: str, identity: str) -> int:
 
 
 def contact_of(net: e2e.Network, agent: str, other: str) -> dict:
-    return json.loads((net.work / agent / "contacts.json").read_text()).get(net.address(other), {})
+    """What an agent's Signet pinned for a contact: at its address, or by its ID where a new owner
+    renamed it, as the pin stays at the address it was made at, which points on for good."""
+    pins = json.loads((net.work / agent / "contacts.json").read_text())
+    if net.address(other) in pins:
+        return pins[net.address(other)]
+
+    def bound_agent(pin: dict) -> str:
+        return json.loads(e2e.decode(pin["binding"].split("~")[0].split(".")[1])).get("agent", "")
+
+    return next((pin for pin in pins.values() if bound_agent(pin) == net.ids[other]), {})
 
 
 def changes_on_file(net: e2e.Network, agent: str, other: str) -> dict:
@@ -390,7 +399,9 @@ def an_agent_moves_to_a_new_owner(net: e2e.Network) -> None:
     check("the agent's next backup is the new owner's", owner_key_tool("check-backup", "--dir", str(new.dir), "--agent", handed["identity"], "--backup", next_backup["file"]).returncode == 0)
     wrong_backup = owner_key_tool("bind", "--dir", str(new.dir), "--agent", handed["identity"], "--address", address, "--backup", str(new.dir / "backup.key"))
     check("a new owner's tool says if they don't hold what can recover it", wrong_backup.returncode != 0, wrong_backup.stdout)
-    binding = new.sign("bind", "--agent", handed["identity"], "--address", address, "--backup", next_backup["file"])
+    # A new owner names the agent under their own name, at the same host.
+    renamed = f"tara.newt~{net.domain['a']}"
+    binding = new.sign("bind", "--agent", handed["identity"], "--address", renamed, "--backup", next_backup["file"])
     body = {"identity": handed["identity"], "new_owner_identity": new.identity, "release": handed["release"], "binding": binding}
 
     check("a fooled agent can't move itself", http("PUT", f"http://127.0.0.1:{net.signet_port['tara']}/v0/owner/transfer", body, net.tokens["tara"])[0] == 401)
@@ -401,8 +412,9 @@ def an_agent_moves_to_a_new_owner(net: e2e.Network) -> None:
     check("nor one the old owner didn't sign", transfer({**body, "release": forged_release})[0] == 403)
     their_owner_half = mallory.bind(handed["identity"], address)
     check("nor someone else's statement with this release", transfer({**body, "binding": their_owner_half, "new_owner_identity": mallory.identity})[0] == 403)
-    elsewhere = new.sign("bind", "--agent", handed["identity"], "--address", f"elsewhere~{net.domain['a']}", "--backup", next_backup["file"])
-    check("nor one for another address", transfer({**body, "binding": elsewhere})[0] == 403)
+    # Bug caught: a new owner's word taking the agent to another host, which only a move does.
+    elsewhere = new.sign("bind", "--agent", handed["identity"], "--address", f"tara.newt~{net.domain['b']}", "--backup", next_backup["file"])
+    check("nor one for another host", transfer({**body, "binding": elsewhere})[0] == 403)
     agent_key = net.key_of("tara")
     # A thief with the agent's key goes straight to the host, with an owner of their own.
     theirs = accepted(mallory.bind(identity, address), agent_key)
@@ -414,6 +426,7 @@ def an_agent_moves_to_a_new_owner(net: e2e.Network) -> None:
 
     status, taken = transfer(body)
     check("with the old owner's release and the new owner's word it moves", status == 200, taken)
+    net.names["tara"] = "tara.newt"
     check("and the new owner has rules to sign", taken["needs"] == ["rules"], taken)
     now = who(net, "tara")
     check("its ID hasn't changed", now["agent_id"] == tara_id, now)
@@ -500,11 +513,13 @@ def a_transfer_can_take_the_key_away_from_the_old_owner(net: e2e.Network) -> Non
         "transfer", "--agent", identity, "--backup", net.agent_backups["vera"]["file"], "--to", new.id,
         "--commitment", next_backup["commitment"], "--new-key", shown["key"],
     ))
-    binding = new.sign("bind", "--agent", handed["identity"], "--address", net.address("vera"), "--backup", next_backup["file"])
+    renamed = net.under("vera", "veranew")
+    binding = new.sign("bind", "--agent", handed["identity"], "--address", renamed, "--backup", next_backup["file"])
     status, taken = http("PUT", f"{url}/v0/owner/transfer", {
         "identity": handed["identity"], "new_owner_identity": new.identity, "release": handed["release"], "binding": binding,
     }, new_token)
     check("it takes the agent over", status == 200, taken)
+    net.goes_by("vera", renamed)
     shown = http("GET", f"{url}/v0/identity", token=net.tokens["vera"])[1]
     check("with the same ID and its own key", shown["agent_id"] == vera_id and shown["recovering"] is False and shown["owner_id"] == new.id, shown)
 
@@ -795,7 +810,6 @@ def a_recovered_owners_old_key_stops_counting_at_a_partner(net: e2e.Network) -> 
 def a_new_owner_cant_read_what_the_old_one_had(net: e2e.Network) -> None:
     a_pair(net, "pax", "quill")
     old, pax_id = net.owners["pax"], net.ids["pax"]
-    address = net.address("pax")
     new = new_owner(net.work / "pax-new-owner")
     identity = who(net, "pax")["identity"]
     backup = net.agent_backups["pax"]["file"]
@@ -821,9 +835,11 @@ def a_new_owner_cant_read_what_the_old_one_had(net: e2e.Network) -> None:
     inbox_before = {row["seq"] for row in net.host_inbox("pax")}
     next_backup = new.new_agent_backup()
     handed = json.loads(old.sign("transfer", "--agent", identity, "--backup", backup, "--to", new.id, "--commitment", next_backup["commitment"]))
-    binding = new.sign("bind", "--agent", handed["identity"], "--address", address, "--backup", next_backup["file"])
+    renamed = net.under("pax", "paxnew")
+    binding = new.sign("bind", "--agent", handed["identity"], "--address", renamed, "--backup", next_backup["file"])
     status, taken = http("PUT", f"http://127.0.0.1:{net.signet_port['pax']}/v0/owner/transfer", {"identity": handed["identity"], "new_owner_identity": new.identity, "release": handed["release"], "binding": binding}, old.token)
     check("control: the agent moves", status == 200, taken)
+    net.goes_by("pax", renamed)
     net.owners["pax"] = Owner(new.dir, new.key, new.identity, new.id, old.token)
     net.agent_backups["pax"] = next_backup
 

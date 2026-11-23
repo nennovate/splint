@@ -22,10 +22,12 @@ has network limits.
 """
 
 import argparse
+import base64
 import hashlib
 import json
 import os
 import re
+import secrets
 import shutil
 import socket
 import subprocess
@@ -80,6 +82,33 @@ def fetch_text(url: str) -> tuple[int, str, str]:
 def registered(host: str, handle: str) -> dict | None:
     status, found = http("GET", f"http://{host}/.well-known/splint/agents/{handle}")
     return found if status == 200 else None
+
+
+def handle_of(address: str) -> str:
+    return address.split("~")[0]
+
+
+def address_now(walk: Walkthrough, name: str, splint: str = "splint") -> str:
+    """Where an agent is, as `splint status --json` says. One that joined at once is at a temporary name
+    its own Splint made up, so this is how whoever runs it knows the name."""
+    done = walk.run_as(name, f"{splint} status --json")
+    try:
+        return json.loads(done.stdout).get("address") or ""
+    except ValueError:
+        return ""
+
+
+def temporary_for(word: str, host: str, address: str) -> bool:
+    """Whether an address is a temporary name at this host made from this word, as an agent nobody has
+    set up controls for joins under: the word, a hyphen and 6 lowercase base32 characters, one a digit."""
+    found = re.fullmatch(rf"{re.escape(word)}-([a-z2-7]{{6}})~{re.escape(host)}", address or "")
+    return found is not None and any(char in "234567" for char in found.group(1))
+
+
+def a_temporary_name(word: str) -> str:
+    """A temporary name made from this word, shaped as `splint join` makes one, for an agent calling its
+    host itself."""
+    return f"{word}-{base64.b32encode(os.urandom(5)).decode().lower()[:5]}{secrets.choice('234567')}"
 
 
 def commands_in(document: str, starting: str) -> list[str]:
@@ -158,7 +187,8 @@ def the_official_document_is_all_an_agent_needs(signup: Signup) -> str:
     check("as markdown", kind.startswith("text/markdown"), kind)
     check("and the same at its bare address", fetch_text(f"http://{host}/")[1] == page)
     check("it starts by saying where the official copy is", next(line.strip() for line in page.splitlines() if "https://" in line) == OFFICIAL, page[:400])
-    check("it says the address it'll give", f"`<handle>~{host}`" in page, page)
+    # Bug caught: a page saying an agent here is `<handle>~host`, which only its owner's own agent is now.
+    check("it says the addresses it gives: under the agent's person's name, and a temporary one before their controls", f"`<handle>.<its person's name>~{host}`" in page and f"`<handle>-<code>~{host}`" in page, page)
     check("and nothing on it is left unfilled", "{" not in page and "}" not in page, page)
     check("it says signups are open here", "Signups: open" in page, page)
     check("and its protocol", "Protocol: 1" in page, page)
@@ -645,7 +675,8 @@ def a_hosts_page_cant_change_what_is_installed_or_told(signup: Signup, official:
         signup.clean_device("tam")
         fetched_only_from_the_repository(signup, "tam", commands_in(official, "curl -fsSL")[0], "the agent, following the official copy,")
         joined = signup.walk.run_as("tam", f"~/.splint/bin/splint join tam {host}")
-        check("it joins that host on its own", joined.returncode == 0 and registered(host, "tam") is not None, joined.stderr)
+        tam_address = address_now(signup.walk, "tam", "~/.splint/bin/splint")
+        check("it joins that host on its own, under a temporary name", joined.returncode == 0 and temporary_for("tam", host, tam_address) and registered(host, handle_of(tam_address)) is not None, joined.stdout + joined.stderr)
         check("and nothing of the host's page is in what it prints", EVIL not in joined.stdout + joined.stderr, joined.stdout)
         refused = signup.walk.run_as("tam", f"~/.splint/bin/splint ask-owner '{TAMPERED_FOR_THE_OWNER}'")
         check("a reason copied from the page, with a command in it, is refused", refused.returncode != 0 and refused.stdout == "", refused.stdout)
@@ -660,7 +691,7 @@ def a_hosts_page_cant_change_what_is_installed_or_told(signup: Signup, official:
         install_line = commands_in(message, "curl")[0].split(" -s -- controls ")[0]
         fetched_only_from_the_repository(signup, "tamsin", install_line, "the owner, from the message,")
         key = signup.walk.people["tam"].api("GET", "/v0/identity")[1]["key"]
-        signed = signup.authorize(signup.walk.people["tamsin"], f"~/.splint/bin/splint authorize tam~{host} {key} --name tamsin")
+        signed = signup.authorize(signup.walk.people["tamsin"], f"~/.splint/bin/splint authorize {tam_address} {key} --name tamsin")
         check("the owner's device confirms it, through that host", signed.returncode == 0, signed.stderr)
         done = signup.finish(signup.walk.people["tam"], "~/.splint/bin/" + FINISH_LINE.search(signed.stdout).group(0))
         check("splint finish takes it up", done.returncode == 0 and registered(host, "tam.tamsin") is not None, done.stderr)
@@ -763,9 +794,10 @@ def open_signups_have_limits_of_their_own(signup: Signup) -> None:
     check("one IPv6 customer is one network", [register(f"2001:db8:1:1::{n}") for n in range(1, 5)] == [200] * 3 + [429])
     check("someone else isn't held up by that", register("203.0.113.2") == 200)
 
+    # An owner's agents go under their one name here.
     same_owner = owner()
-    per_owner = [register(f"192.0.2.{n}", same_owner) for n in range(1, 9)]
-    status, said = register_answer(host, work, f"agent-{next(number)}", same_owner, "192.0.2.9")
+    per_owner = [register(f"192.0.2.{n}", same_owner, handle=f"agent-{next(number)}.solo") for n in range(1, 9)]
+    status, said = register_answer(host, work, f"agent-{next(number)}.solo", same_owner, "192.0.2.9")
     check("an owner gets 8, wherever from", per_owner == [200] * 8 and status == 429, (per_owner, status))
     # Issue 716. Bug caught: a person at their owner's cap told to try again later, for a limit that
     # time never lifts, as one sentence stood for five limits.
@@ -791,8 +823,12 @@ def open_signups_have_limits_of_their_own(signup: Signup) -> None:
     # A folder of its own, as an agent key made again at the same path keeps its old sealing key.
     coded = work / "coded"
     coded.mkdir()
-    status = raw_register(host, coded, "support", owner(), "192.0.2.202", a_code("support"))
-    check("with a code, whoever runs the host can give one out", status == 200, status)
+    status = raw_register(host, coded, "support.ops", owner(), "192.0.2.202", a_code("support"))
+    check("with a code, whoever runs the host can give one out, as an agent's handle under its owner's name", status == 200, status)
+    # A name alone is an owner's, and their own agent's address, which a code gives out as it does a
+    # handle. Bug caught: a code that let in `support.ops` refusing the host's own `support`.
+    status = raw_register(host, coded, "support", owner(), "192.0.2.203", a_code("support-alone"))
+    check("and as someone's own name, with a code", status == 200, status)
     agents_with_no_controls_have_room_of_their_own(signup, host, work, time_passes)
     check("a network whose agents went unused gets room again", wait_until(lambda: register("203.0.113.1") == 200))
 
@@ -801,40 +837,41 @@ def agents_with_no_controls_have_room_of_their_own(signup: Signup, host: str, wo
     """The same host, which takes 2 open signups nobody has used and 3 for owners with no controls.
     Agents with no controls yet cost nothing, so a flood of them each sends something that costs
     nothing too: one invite, to nobody. Each agent here calls its host itself, as a stolen key
-    would."""
+    would, under a temporary name shaped as `splint join` makes one."""
     time_passes("1 day")
     number = iter(range(1000))
-    joined: dict[str, tuple[e2e.Owner, str, Path]] = {}
+    joined: dict[str, tuple[e2e.Owner, str, Path, str]] = {}
 
-    def stand_in(handle: str = "") -> tuple[int, str]:
-        handle = handle or f"newcomer-{next(number)}"
-        owner = new_owner(work / f"{handle}-owner", unconfirmed=True)
-        answer = register_answer(host, work, handle, owner, f"192.0.2.{150 + len(joined)}")
+    def stand_in(word: str = "") -> tuple[int, str]:
+        word = word or f"newcomer-{next(number)}"
+        name = a_temporary_name(word)
+        owner = new_owner(work / f"{name}-owner", unconfirmed=True)
+        answer = register_answer(host, work, name, owner, f"192.0.2.{150 + len(joined)}")
         if answer[0] == 200:
-            agent_id = signup.sql("lia", f"SELECT id FROM agents WHERE handle = '{handle}'")
-            joined[handle] = (owner, agent_id, work / f"{handle}.key")
+            agent_id = signup.sql("lia", f"SELECT id FROM agents WHERE handle = '{name}'")
+            joined[word] = (owner, agent_id, work / f"{name}.key", name)
         return answer
 
-    def entry(handle: str) -> dict:
-        return {"agent": joined[handle][1], "address": f"{handle}~{host}", "label": handle, "status": "allowed", "types": e2e.EXAMPLE_TYPES, "text": True, "pinned_by": "owner"}
+    def entry(word: str) -> dict:
+        return {"agent": joined[word][1], "address": f"{joined[word][3]}~{host}", "label": word, "status": "allowed", "types": e2e.EXAMPLE_TYPES, "text": True, "pinned_by": "owner"}
 
-    def rules(handle: str, *contacts: str) -> int:
-        owner, agent_id, _ = joined[handle]
+    def rules(word: str, *contacts: str) -> int:
+        owner, agent_id, _, _ = joined[word]
         signed = owner.sign("rules", "--agent", agent_id, stdin=json.dumps(e2e.rules_draft([entry(other) for other in contacts])))
         return http("PUT", f"http://{host}/v0/rules", {"rules": signed})[0]
 
-    def send(handle: str, recipient: str, body: str) -> int:
-        _, agent_id, key = joined[handle]
+    def send(word: str, recipient: str, body: str) -> int:
+        _, agent_id, key, _ = joined[word]
         envelope = e2e.signed_envelope(key, agent_id, recipient, body)
         return http("POST", f"http://{host}/v0/outbound", {"envelope": envelope, "recipient_host": host})[0]
 
-    def invite_nobody(handle: str) -> int:
-        _, agent_id, key = joined[handle]
+    def invite_nobody(word: str) -> int:
+        _, agent_id, key, name = joined[word]
         nobody = "splint1" + "e" * 64
         now = int(time.time())
-        payload = {"v": 1, "from": agent_id, "from_address": f"{handle}~{host}", "to": f"nobody~{host}", "to_agent": nobody, "issued_at": now, "expires_at": now + 3600, "nonce": e2e.encode(os.urandom(16))}
+        payload = {"v": 1, "from": agent_id, "from_address": f"{name}~{host}", "to": f"nobody~{host}", "to_agent": nobody, "issued_at": now, "expires_at": now + 3600, "nonce": e2e.encode(os.urandom(16))}
         invite = e2e.sign_jws(key, "splint-invite", e2e.compact_json(payload))
-        return send(handle, nobody, e2e.compact_json({"step": "invite", "invite": invite}).decode())
+        return send(word, nobody, e2e.compact_json({"step": "invite", "invite": invite}).decode())
 
     flood = [stand_in("sam")[0], stand_in("sid")[0]]
     check("control: two agents join on their own", flood == [200, 200], flood)
@@ -847,7 +884,8 @@ def agents_with_no_controls_have_room_of_their_own(signup: Signup, host: str, wo
     # Each counts as used once its own message is delivered, a moment apart. With one not yet, the
     # newcomer below would leave no room among those nobody has used, and the last join would be refused
     # for that rather than for the cap on agents with no controls.
-    check("control: and the host counts both as used", wait_until(lambda: signup.sql("lia", "SELECT count(*) FROM agents WHERE handle IN ('sam', 'sid') AND has_sent") == "2"))
+    used = f"SELECT count(*) FROM agents WHERE handle IN ('{joined['sam'][3]}', '{joined['sid'][3]}') AND has_sent"
+    check("control: and the host counts both as used", wait_until(lambda: signup.sql("lia", used) == "2"))
     check("once something they sent is delivered, there's room for a newcomer", wait_until(lambda: stand_in()[0] == 200), joined.keys())
     status, said = stand_in()
     check("agents with no controls, used or not, can't take every open place", status == 429 and "no controls" in said, (status, said))
@@ -896,12 +934,12 @@ def a_flood_of_owners_makes_room_for_a_newcomer(signup: Signup) -> None:
         return signup.sql("mia", f"SELECT status FROM outbound WHERE message_id = '{message_id}'") == "delivered"
 
     same_owner = new_owner(work / "sol-owner")
-    first = [join(handle)[0] for handle in ("una", "uli")] + [join(handle, same_owner)[0] for handle in ("sol", "sal")]
-    check("control: four agents join, two of them for one owner", first == [200] * 4, first)
+    first = [join(handle)[0] for handle in ("una", "uli")] + [join(handle, same_owner)[0] for handle in ("sol", "sal.sol")]
+    check("control: four agents join, two of them for one owner, the second under the first's name", first == [200] * 4, first)
     noa = NoticeOnlySender(signup, host)
-    signed = [rules("una", "uli", also=(noa.entry,)), rules("uli", "una"), rules("sol", "sal"), rules("sal", "sol")]
+    signed = [rules("una", "uli", also=(noa.entry,)), rules("uli", "una"), rules("sol", "sal.sol"), rules("sal.sol", "sol")]
     check("control: each owner signs the other in, and una's lets noa in too", signed == [200] * 4, signed)
-    sent = [send("una", "uli"), send("sol", "sal")]
+    sent = [send("una", "uli"), send("sol", "sal.sol")]
     check("control: una writes to uli, and sol to sal, and both are let in", all(sent) and wait_until(lambda: all(delivered(one) for one in sent)), sent)
     noa.tells(f"una~{host}", joined["una"][1])
     flood = [join(f"flood-{n}")[0] for n in range(2)]

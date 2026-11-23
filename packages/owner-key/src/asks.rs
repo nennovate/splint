@@ -66,6 +66,11 @@ struct One {
     /// copy on, so rules another of the owner's sign-ins signed check out.
     #[serde(default)]
     owner_identity: Option<String>,
+    /// For an ask for controls, or to add an owner part: the owner's name the binding names the agent
+    /// under, which Splint on this computer chose: their name at that host, or the one the ask names,
+    /// once the host said nobody has it. One adding an owner part adds the one it names, or nothing.
+    #[serde(default)]
+    owner_part: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -164,6 +169,8 @@ struct Checked {
     identity: Identity,
     ask: VerifiedAsk,
     terms: Option<StepTerms>,
+    /// The address what's signed names the agent at, where that isn't the one it has now.
+    becomes: Option<String>,
 }
 
 /// Approves, with one prompt, the asks given that it names in full: in order, as many as fit, a held
@@ -180,12 +187,18 @@ pub fn approve(dir: &Path, schemas: &Schemas, given: Given) -> Result<Answered, 
         let checked = Identity::from_encoded(&one.identity).and_then(|identity| {
             let ask = VerifiedAsk::verify(&one.ask, &identity, now)?;
             parse_address(&one.address)?;
+            let bound = bound_at(&one, &ask)?;
             mine(dir, &owner, &ask)?;
             kinds_given(&one, &ask)?;
             let terms = step_terms(dir, &one, &ask)?;
-            Ok((identity, ask, terms))
+            Ok((
+                identity,
+                ask,
+                terms,
+                (bound != one.address).then_some(bound),
+            ))
         });
-        let (identity, ask, terms) = match checked {
+        let (identity, ask, terms, becomes) = match checked {
             Ok(checked) => checked,
             Err(error) => {
                 refused.push(Refused {
@@ -210,6 +223,7 @@ pub fn approve(dir: &Path, schemas: &Schemas, given: Given) -> Result<Answered, 
                 identity,
                 ask,
                 terms,
+                becomes,
             });
         }
     }
@@ -224,12 +238,13 @@ pub fn approve(dir: &Path, schemas: &Schemas, given: Given) -> Result<Answered, 
         }
         return Err(Error::Malformed);
     }
-    let shown: Vec<(&VerifiedAsk, &str, Option<&StepTerms>, &[Schema])> = this_touch
+    let shown: Vec<prompt::AskShown<'_>> = this_touch
         .iter()
         .map(|taken| {
             (
                 &taken.ask,
                 taken.one.address.as_str(),
+                taken.becomes.as_deref(),
                 taken.terms.as_ref(),
                 taken.one.kinds.as_slice(),
             )
@@ -296,18 +311,47 @@ pub fn describe(dir: &Path, given: Given) -> Result<Described, Error> {
         let identity = Identity::from_encoded(&one.identity)?;
         let ask = VerifiedAsk::verify(&one.ask, &identity, now)?;
         parse_address(&one.address)?;
+        let bound = bound_at(one, &ask)?;
         if ask.changes().len() > prompt::MOST_NAMED {
             return Err(Error::Malformed);
         }
         kinds_given(one, &ask)?;
         let terms = step_terms(dir, one, &ask)?;
+        let becomes = (bound != one.address).then_some(bound.as_str());
         asks.push(DescribedAsk {
             id: ask.id().to_owned(),
-            said: prompt::ask_lines(&ask, &one.address, terms.as_ref(), &one.kinds),
+            said: prompt::ask_lines(&ask, &one.address, becomes, terms.as_ref(), &one.kinds),
             written: terms.map(|terms| terms.written).unwrap_or_default(),
         });
     }
     Ok(Described { asks })
+}
+
+/// The address a binding this touch signs for an ask names: the agent's own, or its word with the
+/// owner's name after it, which has to fit there, or the ask isn't shown or signed. That's the name
+/// Splint on this computer chose for an ask for controls, or the ask's own, and for an ask to add an
+/// owner part, the one it names. An owner's agent is never set up under a temporary name.
+fn bound_at(one: &One, ask: &VerifiedAsk) -> Result<String, Error> {
+    let owner_part = match (ask.adds_owner_part(), one.owner_part.as_deref()) {
+        (Some(asked), Some(chosen)) if asked != chosen => return Err(Error::Malformed),
+        (_, Some(chosen)) if ask.asks_for_controls() || ask.adds_owner_part().is_some() => {
+            Some(chosen)
+        }
+        _ => ask.owner_part(),
+    };
+    match owner_part {
+        Some(owner_part) if ask.adds_owner_part().is_some() => {
+            splint_core::with_owner_part(&one.address, owner_part)
+        }
+        Some(owner_part) => splint_core::named_under(&one.address, owner_part),
+        None if ask.asks_for_controls()
+            && parse_address(&one.address)
+                .is_ok_and(|(name, _)| splint_core::is_temporary_name(name)) =>
+        {
+            Err(Error::Malformed)
+        }
+        None => Ok(one.address.clone()),
+    }
 }
 
 /// Whether this device signs for the agent behind an ask at all, checked before any prompt names it:
@@ -447,7 +491,7 @@ fn sign_one(
         let answer = signing::controls(
             device,
             identity,
-            &one.address,
+            &bound_at(one, ask)?,
             &backup,
             draft,
             Some(&delegate),
@@ -495,6 +539,21 @@ fn sign_one(
             return Err(Error::Malformed);
         }
         let binding = signing::binding_from_memory(device, identity, to)?;
+        return Ok(Approved {
+            id: ask.id().to_owned(),
+            answer: Some(binding),
+            rules: None,
+            approval: None,
+            where_paid: None,
+            body: None,
+            proof: None,
+        });
+    }
+    // An owner part is the owner's binding at the agent's name with their part after its handle,
+    // signed with the vouch kept here as a move is. Its host refuses it unless that part is this
+    // owner's there, or free, and the name had none.
+    if ask.adds_owner_part().is_some() {
+        let binding = signing::binding_from_memory(device, identity, &bound_at(one, ask)?)?;
         return Ok(Approved {
             id: ask.id().to_owned(),
             answer: Some(binding),
@@ -563,7 +622,7 @@ mod tests {
     use crate::sign_in::Holding;
     use splint_core::asks::{Change, sign_ask};
     use splint_core::rules::{Level, VerifiedRules};
-    use splint_core::{RecoveryRule, SealingKey, SplintId};
+    use splint_core::{JoinReply, RecoveryRule, SealingKey, SplintId, VerifiedBinding};
 
     fn scratch(name: &str) -> std::path::PathBuf {
         let dir = std::env::temp_dir().join(format!("owner-key-{name}-{}", std::process::id()));
@@ -600,6 +659,7 @@ mod tests {
             kinds: Vec::new(),
             in_force: None,
             owner_identity: None,
+            owner_part: None,
         }
     }
 
@@ -635,6 +695,7 @@ mod tests {
             owner.identity.id(),
             vec![Change::Controls {
                 delegate: SigningKey::generate().unwrap().public_key().encoded(),
+                owner_part: None,
             }],
             unix_now(),
             3600,
@@ -885,7 +946,7 @@ mod tests {
         let verified = VerifiedAsk::verify(&step, &muse, unix_now()).unwrap();
         let terms = step_terms(&dir, &given, &verified).unwrap();
         let prompt = prompt::for_asks(
-            &[(&verified, "muse~host.example", terms.as_ref(), &[])],
+            &[(&verified, "muse~host.example", None, terms.as_ref(), &[])],
             None,
         );
         let words = prompt.words();
@@ -924,7 +985,7 @@ mod tests {
         given.draft = Some(many);
         let terms = step_terms(&dir, &given, &verified).unwrap();
         let prompt = prompt::for_asks(
-            &[(&verified, "muse~host.example", terms.as_ref(), &[])],
+            &[(&verified, "muse~host.example", None, terms.as_ref(), &[])],
             None,
         );
         let (_, written) = prompt
@@ -1143,6 +1204,7 @@ mod tests {
             stand_in.id(),
             vec![Change::Controls {
                 delegate: SigningKey::generate().unwrap().public_key().encoded(),
+                owner_part: None,
             }],
             now,
             3600,
@@ -1398,14 +1460,114 @@ mod tests {
         let terms = step_terms(&dir, &held, &step).unwrap();
         let prompt = prompt::for_asks(
             &[
-                (&step, "muse~host.example", terms.as_ref(), &[]),
-                (&settings, "muse~host.example", None, &[quote()]),
+                (&step, "muse~host.example", None, terms.as_ref(), &[]),
+                (&settings, "muse~host.example", None, None, &[quote()]),
             ],
             None,
         );
         for line in on_settings.said.iter().chain(&on_step.said) {
             assert!(prompt.words().contains(line.as_str()), "{line}");
         }
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    /// Bug caught: a person's name after the agent's handle signed at the address the agent has now,
+    /// or with nothing said of it, an owner's agent set up under a temporary name, or a name added
+    /// that isn't the one asked for, or to a name that has an owner part already.
+    #[test]
+    fn a_name_after_the_handle_is_signed_only_as_its_prompt_names_it() {
+        let dir = scratch("owner-part");
+        let (owner, muse_key, muse) = with_muse_set_up(&dir);
+        let refused_alone = |given: One| {
+            let answered = approve(
+                &dir,
+                &Schemas::default(),
+                Given {
+                    asks: vec![given],
+                    list: None,
+                },
+            )
+            .unwrap();
+            answered.approved.is_empty()
+                && answered.refused.first().map(|refused| refused.reason)
+                    == Some("not an ask this computer can sign")
+        };
+        let rename = asked(
+            &muse_key,
+            &muse,
+            &owner.identity,
+            vec![Change::OwnerPart {
+                to: "jeff".to_owned(),
+            }],
+        );
+        let shown = describe(
+            &dir,
+            Given {
+                asks: vec![one(rename.clone(), &muse, None)],
+                list: None,
+            },
+        )
+        .unwrap();
+        let names = |said: &[String], named: &str| {
+            said.iter()
+                .any(|line| line.contains(named) && line.contains("jeff as your name"))
+        };
+        assert!(
+            names(&shown.asks[0].said, "muse.jeff~host.example"),
+            "{:?}",
+            shown.asks[0].said
+        );
+        // Signing it takes the agent's ID as its handover left it, which sim/agent_asks.py runs.
+        assert!(refused_alone(One {
+            address: "muse.jeff~host.example".to_owned(),
+            ..one(rename.clone(), &muse, None)
+        }));
+        assert!(refused_alone(One {
+            owner_part: Some("mal".to_owned()),
+            ..one(rename, &muse, None)
+        }));
+
+        // Controls under a temporary name: the binding names the agent's word with the owner's name
+        // Splint here chose, and so do the words shown.
+        let (lia_key, lia) = agent();
+        let controls = sign_ask(
+            &lia_key,
+            lia.id(),
+            agent().1.id(),
+            vec![Change::Controls {
+                delegate: SigningKey::generate().unwrap().public_key().encoded(),
+                owner_part: None,
+            }],
+            unix_now(),
+            3600,
+        )
+        .unwrap();
+        let lia_at = |owner_part: Option<&str>| One {
+            address: "lia-7k3p2a~host.example".to_owned(),
+            owner_part: owner_part.map(str::to_owned),
+            ..one(controls.clone(), &lia, Some(first_rules()))
+        };
+        let shown = describe(
+            &dir,
+            Given {
+                asks: vec![lia_at(Some("jeff"))],
+                list: None,
+            },
+        )
+        .unwrap();
+        assert!(
+            names(&shown.asks[0].said, "lia.jeff~host.example"),
+            "{:?}",
+            shown.asks[0].said
+        );
+        assert!(refused_alone(lia_at(None)));
+        let answered = approved(&dir, vec![lia_at(Some("jeff"))]);
+        let reply = JoinReply::decode(answered.approved[0].answer.as_deref().unwrap()).unwrap();
+        assert_eq!(
+            VerifiedBinding::check_ahead(&reply.binding, &owner.identity, &lia, &reply.commitment)
+                .unwrap(),
+            "lia.jeff~host.example"
+        );
         std::fs::remove_dir_all(&dir).unwrap();
     }
 

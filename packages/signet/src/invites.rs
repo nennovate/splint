@@ -33,7 +33,7 @@ use splint_core::{
 
 use crate::Signet;
 use crate::activity::{Arrival, Kind};
-use crate::agent_api::{ApiError, typed_address};
+use crate::agent_api::{ApiError, invited_address_named, typed_address, typed_address_named};
 use crate::budget::NotTaken;
 use crate::contacts::{Controls, SameOwner, controls_of, verified_owner_of};
 use crate::ending::{self, Done, Held, IntroductionRows, Proof, Readable};
@@ -294,6 +294,8 @@ const CARD_HOST_UNREACHABLE: &str = "couldn't reach the host at that card's addr
 /// owner hears. A card naming another ID than the one signed or pinned there is refused too.
 async fn whom(signet: &Signet, aim: Aim) -> Result<(String, SplintId, &'static str), ApiError> {
     let Aim { card, address } = aim;
+    // An owner's ID in place of their name becomes the name it stands for, before anything is matched.
+    let address = invited_address_named(signet, &address).await?;
     let (handle, domain) =
         parse_address(&address).map_err(|_| ApiError::BadRequest("an address is name~domain"))?;
     let not_who_is_there = ApiError::BadRequest(
@@ -946,7 +948,7 @@ async fn list(State(signet): State<Arc<Signet>>) -> Result<Json<InvitesBox>, Api
 /// and every other in the box from the agent that signed it.
 async fn named(signet: &Signet, given: &str) -> Result<(Offered, Vec<Offered>), ApiError> {
     let offers = read_box(signet).await?;
-    let by_address = typed_address(given).ok();
+    let by_address = typed_address_named(signet, given).await.ok();
     let fits = |offer: &&Offered| match &by_address {
         Some(address) => offer.invite.from_address() == address,
         None => given.len() >= FEWEST_ID_CHARS && offer.invite.id().starts_with(given),

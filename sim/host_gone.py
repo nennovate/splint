@@ -38,7 +38,7 @@ import e2e
 from e2e import check, wait_until
 from install import Walkthrough
 from request_driver import hours_from_now
-from switch_host import FOLLOW_SECONDS, SLOW_SECONDS, Hosts, address_of_contact, approve_once, arrived, controls_set_up, finished, in_background, joins, met_by_invite, running_from, send, who
+from switch_host import FOLLOW_SECONDS, SLOW_SECONDS, Hosts, address_now, address_of_contact, approve_once, arrived, at, controls_set_up, finished, handle_of, in_background, joins, met_by_invite, running_from, send, who
 
 SIGNET = "splint-signet"
 # Long past what a Signet takes to answer, and far short of the 30 seconds it used to spend on its host.
@@ -58,6 +58,8 @@ OUTAGE_SECONDS = 150
 PAST_A_REFUSALS_WAIT = 70
 # Hosts behind a doorway here, which is how what reaches each is counted.
 DOORWAYS = "adef"
+# The name Joe's person goes by at host a, which their agent there is named under.
+JOE_OWNER = "jordan"
 # Stands in for launchd and systemd, so what keeps Signet running here is this run and nothing else.
 NO_SERVICE_MANAGER = "#!/bin/sh\nexit 1\n"
 
@@ -239,7 +241,7 @@ def status_says_what_signet_itself_is_doing(walk: Walkthrough, hosts: Hosts, joe
 
 
 def a_refusal_is_said_and_heals(walk: Walkthrough, hosts: Hosts, uma) -> None:
-    joins(walk, "uma", uma.address_)
+    uma.address_ = joins(walk, "uma", uma.address_)
     walk.run_as("uma", "splint stop")
     hosts.doorways["e"].answers_due[SIGNING_ON] = 403
     started = walk.run_as("uma", "splint --json start")
@@ -249,8 +251,8 @@ def a_refusal_is_said_and_heals(walk: Walkthrough, hosts: Hosts, uma) -> None:
     check("it signs on by itself once the host takes it", wait_until(lambda: who(uma).get("registered") is True, HEALS_WITHIN), who(uma))
 
 
-def an_owner_revokes_while_a_try_waits(walk: Walkthrough, hosts: Hosts, vic, to: str) -> None:
-    joins(walk, "vic", vic.address_)
+def an_owner_revokes_while_a_try_waits(walk: Walkthrough, hosts: Hosts, vic) -> None:
+    vic.address_ = joins(walk, "vic", vic.address_)
     walk.run_as("vic", "splint stop")
     hosts.doorways["f"].answers_due[SIGNING_ON] = 403
     walk.run_as("vic", "splint start")
@@ -263,7 +265,7 @@ def an_owner_revokes_while_a_try_waits(walk: Walkthrough, hosts: Hosts, vic, to:
     # Bug caught: a try that carried the binding it read before the owner took it back.
     check("the try that waited never goes", signs_on_heard(hosts, "f", mark) == [], signs_on_heard(hosts, "f", mark))
     check("and vic is said to hold no binding", who(vic).get("registration") == "not_bound", who(vic))
-    refused = walk.run_as("vic", f"splint switch-host {to} --leave-mail --json")
+    refused = walk.run_as("vic", f"splint switch-host {at(vic.address_, hosts.domain['c'])} --leave-mail --json")
     check("so it has nothing to move", refused.returncode != 0 and who(vic).get("address") == vic.address_, refused.stdout + refused.stderr)
 
 
@@ -271,12 +273,12 @@ def moves_away(walk: Walkthrough, hosts: Hosts, name: str, person, to: str) -> N
     agent = who(person).get("agent_id")
     moved = walk.run_as(name, f"splint switch-host {to} --leave-mail --json")
     # Bug caught: what the host it leaves answered deciding whether an agent may leave it.
-    check(f"{name} moves away all the same", moved.returncode == 0 and json.loads(moved.stdout or "{}").get("status") == "moved" and hosts.found("c", name).get("agent_id") == agent, moved.stdout + moved.stderr)
+    check(f"{name} moves away all the same", moved.returncode == 0 and json.loads(moved.stdout or "{}").get("status") == "moved" and hosts.found("c", handle_of(to)).get("agent_id") == agent, moved.stdout + moved.stderr)
     check(f"and {name} is registered there", who(person).get("address") == to and who(person).get("registered") is True, who(person))
 
 
 def a_host_that_gives_its_handle_away_holds_nobody(walk: Walkthrough, hosts: Hosts, xan) -> None:
-    joins(walk, "xan", xan.address_)
+    xan.address_ = joins(walk, "xan", xan.address_)
     walk.run_as("xan", "splint stop")
     hosts.doorways["e"].answers_due[SIGNING_ON] = 409
     walk.run_as("xan", "splint start")
@@ -284,12 +286,13 @@ def a_host_that_gives_its_handle_away_holds_nobody(walk: Walkthrough, hosts: Hos
     words = walk.run_as("xan", "splint status").stdout
     # Bug caught: a stand-in told its owner has to sign, when there's nothing to sign and a way out.
     check("its status gives the way out", "--leave-mail" in words and "has to sign" not in words, words)
-    moves_away(walk, hosts, "xan", xan, f"xan~{hosts.domain['c']}")
+    moves_away(walk, hosts, "xan", xan, at(xan.address_, hosts.domain["c"]))
 
 
 def a_new_host_that_turns_down_its_code_holds_nobody(walk: Walkthrough, hosts: Hosts, wes) -> None:
     joined = walk.run_as("wes", f"splint join {wes.address_} --with-code", hosts.codes["d"][0] + "\n")
     check("control: wes joins a host that takes codes", joined.returncode == 0, joined.stdout + joined.stderr)
+    wes.address_ = address_now(walk, "wes")
     os.kill(int((wes.dot / "run" / f"{SIGNET}.lock").read_text().strip()), signal.SIGKILL)
     wait_until(lambda: not answers(wes), 30)
     hosts.replaced_by_a_new_one("d")
@@ -299,13 +302,14 @@ def a_new_host_that_turns_down_its_code_holds_nobody(walk: Walkthrough, hosts: H
     time.sleep(PAST_A_REFUSALS_WAIT)
     # Bug caught: a final answer tried again and again, when only a person with a new code changes it.
     check("and it isn't tried again", len(signs_on_heard(hosts, "d", mark)) == 1 and who(wes).get("registration") == "signup_code_refused", (signs_on_heard(hosts, "d", mark), who(wes)))
-    moves_away(walk, hosts, "wes", wes, f"wes~{hosts.domain['c']}")
+    moves_away(walk, hosts, "wes", wes, at(wes.address_, hosts.domain["c"]))
     keeper.wait(timeout=30)
 
 
 def what_is_left_of_a_move_goes_to_the_host_it_left(hosts: Hosts, name: str, to: str, person) -> None:
+    left = handle_of(person.address_)
     # Bug caught: the host it left never told, and so still offering this agent's old address.
-    check(f"host a says where {name} went", wait_until(lambda: hosts.found("a", name).get("moved_to") == to, FOLLOW_SECONDS), hosts.found("a", name))
+    check(f"host a says where {name} went", wait_until(lambda: hosts.found("a", left).get("moved_to") == to, FOLLOW_SECONDS), hosts.found("a", left))
     check(f"and {name} is still registered at its new host", who(person).get("address") == to and who(person).get("registered") is True, who(person))
 
 
@@ -324,7 +328,8 @@ def a_host_gone_for_good_is_left_behind(walk: Walkthrough, hosts: Hosts, joe, sa
     check("and sam's", wait_until(lambda: answers(sam), ANSWERS_WITHIN))
     check("neither is registered", wait_until(lambda: who(joe).get("registration") == "host_unreachable" and who(sam).get("registration") == "host_unreachable", ANSWERS_WITHIN), (who(joe), who(sam)))
 
-    to_joe, to_sam = f"joe~{hosts.domain['c']}", f"sam~{hosts.domain['c']}"
+    # Each keeps its name: joe's under his person's, sam's the temporary one a stand-in has.
+    to_joe, to_sam = at(joe.address_, hosts.domain["c"]), at(sam.address_, hosts.domain["c"])
     stopped = walk.run_as("joe", f"splint switch-host {to_joe} --json")
     words = stopped.stdout + stopped.stderr
     check("a move that would lose what waits is refused, and says how to go on", stopped.returncode != 0 and "--leave-mail" in words and who(joe).get("address") == joe.address_, words)
@@ -335,15 +340,15 @@ def a_host_gone_for_good_is_left_behind(walk: Walkthrough, hosts: Hosts, joe, sa
     answer = finished(moving)
     # Bug caught: the stranding itself, where only `splint reset` was left.
     check("joe moves with --leave-mail", answer.get("status") == "moved" and who(joe).get("address") == to_joe and who(joe).get("registered") is True, (answer, who(joe)))
-    check("under the same ID, which its new host names", who(joe).get("agent_id") == joe_id and hosts.found("c", "joe").get("agent_id") == joe_id, hosts.found("c", "joe"))
+    check("under the same ID, which its new host names", who(joe).get("agent_id") == joe_id and hosts.found("c", handle_of(to_joe)).get("agent_id") == joe_id, hosts.found("c", handle_of(to_joe)))
 
-    refused = walk.run_as("sam", f"splint switch-host sam~{hosts.domain['d']} --leave-mail --with-code --json", "not-a-code-this-host-ever-gave-out\n")
+    refused = walk.run_as("sam", f"splint switch-host {at(sam.address_, hosts.domain['d'])} --leave-mail --with-code --json", "not-a-code-this-host-ever-gave-out\n")
     said = refused.stdout + refused.stderr
     # Bug caught: going back to a dead host failing the command, and hiding what the new host said.
     check("a new host's refusal is said, though the host it would go back to is gone", refused.returncode != 0 and "didn't take this agent" in said, said)
     check("and sam is still answering, where it was", wait_until(lambda: answers(sam) and who(sam).get("address") == sam.address_, ANSWERS_WITHIN), who(sam))
     moved = walk.run_as("sam", f"splint switch-host {to_sam} --leave-mail --json")
-    check("sam, a stand-in, moves with nobody asked", moved.returncode == 0 and json.loads(moved.stdout or "{}").get("status") == "moved" and hosts.found("c", "sam").get("agent_id") == sam_id, moved.stdout + moved.stderr)
+    check("sam, a stand-in, moves with nobody asked", moved.returncode == 0 and json.loads(moved.stdout or "{}").get("status") == "moved" and hosts.found("c", handle_of(to_sam)).get("agent_id") == sam_id, moved.stdout + moved.stderr)
     after_both_moved = len(hosts.doorways["a"].heard)
 
     check("nia's agent sees where joe went", wait_until(lambda: address_of_contact(nia, joe_id) == to_joe, FOLLOW_SECONDS), nia.api("GET", "/v0/contacts")[1])
@@ -374,12 +379,14 @@ def main() -> None:
         sam, nia, uma, vic, wes, xan = (walk.new_person(name) for name in ("sam", "nia", "uma", "vic", "wes", "xan"))
         postgres.start()
         hosts.start_all()
+        # The names each asks for. Joining at once gives a temporary one, which replaces it once joined.
         joe.address_, sam.address_ = f"joe~{hosts.domain['a']}", f"sam~{hosts.domain['a']}"
         nia.address_, uma.address_ = f"nia~{hosts.domain['b']}", f"uma~{hosts.domain['e']}"
         vic.address_, wes.address_, xan.address_ = f"vic~{hosts.domain['f']}", f"wes~{hosts.domain['d']}", f"xan~{hosts.domain['e']}"
         joins(walk, "joe", joe.address_)
-        controls_set_up(walk, "joe", "splint", "--plain-key-file")
-        joins(walk, "nia", nia.address_)
+        joe.address_ = controls_set_up(walk, "joe", "splint", "--plain-key-file", JOE_OWNER)
+        check("control: joe is named under his person's name", joe.address_ == f"joe.{JOE_OWNER}~{hosts.domain['a']}", joe.address_)
+        nia.address_ = joins(walk, "nia", nia.address_)
         nia.agent_id_ = who(nia).get("agent_id")
         met_by_invite(walk, "joe", "nia", joe.address_, nia.address_)
         check("control: joe reaches nia", wait_until(lambda: address_of_contact(joe, nia.agent_id_) != "", FOLLOW_SECONDS))
@@ -391,9 +398,9 @@ def main() -> None:
         an_outage_heals_by_itself(walk, hosts, joe, nia)
         status_says_what_signet_itself_is_doing(walk, hosts, joe)
         # After the outage above, where joe alone is what its host's door should hear.
-        joins(walk, "sam", sam.address_)
+        sam.address_ = joins(walk, "sam", sam.address_)
         a_refusal_is_said_and_heals(walk, hosts, uma)
-        an_owner_revokes_while_a_try_waits(walk, hosts, vic, f"vic~{hosts.domain['c']}")
+        an_owner_revokes_while_a_try_waits(walk, hosts, vic)
         a_host_that_gives_its_handle_away_holds_nobody(walk, hosts, xan)
         a_new_host_that_turns_down_its_code_holds_nobody(walk, hosts, wes)
         a_host_gone_for_good_is_left_behind(walk, hosts, joe, sam, nia)

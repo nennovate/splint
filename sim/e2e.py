@@ -869,6 +869,9 @@ class Network:
         self.agent_backups: dict[str, dict[str, str]] = {}
         self.tokens = dict(TOKENS)
         self.signup_codes = (signup_code(number) for number in range(SIGNUP_CODES))
+        # An agent's name at its host where it isn't the agent's own word alone, as an agent nobody has
+        # set up controls for has a temporary one and a new owner names it under their own name.
+        self.names: dict[str, str] = {}
 
     def start(self) -> None:
         self.host_port = {"a": free_port(), "b": free_port()}
@@ -893,6 +896,8 @@ class Network:
         self.peers_file = {name: self.work / f"host-{name}.peers" for name in self.domain}
         for name in self.domain:
             self.write_peers(name, self.first_peers_file(name))
+        kept_names = self.work / "reserved-names"
+        kept_names.write_text("# the operator's own list, as a brand\nacme\n")
         self.hosts = {
             name: self.spawn("host", f"host-{name}", {
                 "SPLINT_DOMAIN": self.domain[name],
@@ -903,6 +908,7 @@ class Network:
                 **PLAIN_HTTP_FOR_TESTS,
                 "SPLINT_CLEANUP_SECS": "1",
                 "SPLINT_SIGNUP_CODES": ",".join(signup_code(number) for number in range(SIGNUP_CODES)),
+                "SPLINT_RESERVED_NAMES": str(kept_names),
                 **self.host_settings,
             })
             for name in ("a", "b")
@@ -1120,7 +1126,15 @@ class Network:
         return self.work / agent / "agent.key"
 
     def address(self, agent: str) -> str:
-        return f"{agent}~{self.domain[self.home[agent]]}"
+        return f"{self.names.get(agent, agent)}~{self.domain[self.home[agent]]}"
+
+    def under(self, agent: str, owner_name: str) -> str:
+        """Where an agent goes when a new owner takes it: its word under that owner's own name, at the
+        same host. A name its old owner gave it is theirs, so a new owner can't keep it."""
+        return f"{agent}.{owner_name}~{self.domain[self.home[agent]]}"
+
+    def goes_by(self, agent: str, address: str) -> None:
+        self.names[agent] = address.split("~")[0]
 
     def agent(self, agent: str, method: str, path: str, body: object = None, timeout: float = 10) -> tuple[int, dict]:
         """A call to an agent's Signet. Before an agent's first open of an example type with someone, the
@@ -1277,7 +1291,7 @@ class Network:
 
     def agent_identity(self, agent: str) -> str:
         database = f"host_{self.home[agent]}"
-        return self.postgres.sql(database, f"SELECT identity FROM agents WHERE handle = '{agent}'")
+        return self.postgres.sql(database, f"SELECT identity FROM agents WHERE handle = '{self.names.get(agent, agent)}'")
 
     def envelope_signed_by(
         self, signer: str, sender: str, recipient: str, body: str, dated_ahead: int = 0
@@ -2507,11 +2521,43 @@ def registration_cant_take_over_a_handle(net: Network) -> None:
     check("a taken handle can't be registered by someone else", status == 409, status)
     check("and it still resolves to its owner", http("GET", f"{resolve}/ana")[1].get("agent_id") == net.ids["ana"])
 
+    # Bug caught: an agent named under someone else's name, so it passes for one of theirs.
     other_key = net.work / "same-handle.key"
     other, other_id = new_identity(other_key)
+    status = net.register_on_a(other_key, newcomer, "mal.ana", other, other_id)
+    check("nor can someone else take a name under its owner's name", status == 403, status)
+    check("so nobody holds that name", http("GET", f"{resolve}/mal.ana")[0] == 404)
     status = net.register_on_a(other_key, newcomer, "ana.mal", other, other_id)
-    check("nor can someone else take it with an owner part of their own", status == 409, status)
-    check("so the handle names one agent here", http("GET", f"{resolve}/ana.mal")[0] == 404)
+    check("or under a second name of their own, as an owner has one here", status == 403, status)
+    status = net.register_on_a(other_key, newcomer, "ana.newcomer", other, other_id)
+    check("control: the same handle under the newcomer's own name is theirs", status == 200, status)
+    check("and the handle alone still names ana's agent", http("GET", f"{resolve}/ana.newcomer")[1].get("agent_id") == other_id and http("GET", f"{resolve}/ana")[1].get("agent_id") == net.ids["ana"])
+
+    # Bug caught: a name the operator keeps back, such as a brand, taken as someone's own, even with a code.
+    kept_key = net.work / "kept-name.key"
+    kept, kept_id = new_identity(kept_key)
+    brand = new_owner(net.work / "brand-owner")
+    check("a name the host keeps back isn't anyone's own", net.register_on_a(kept_key, brand, "acme", kept, kept_id) == 403)
+    check("nor theirs after a handle", net.register_on_a(kept_key, brand, "muse.acme", kept, kept_id) == 403)
+    check("and the host says so when asked", http("GET", f"http://{net.domain['a']}/.well-known/splint/names/acme")[0] == 403)
+    check("control: it can still be a handle under an owner's own name", net.register_on_a(kept_key, newcomer, "acme.newcomer", kept, kept_id) == 200)
+
+    # An agent set up before names were owners', as `claude~splint.bot` was: a plain name, and no name of
+    # its owner's on file. Its owner adds theirs, once.
+    veteran = new_owner(net.work / "veteran-owner")
+    old_key = net.work / "oldie.key"
+    old, old_id = new_identity(old_key)
+    check("control: an agent under a plain name", net.register_on_a(old_key, veteran, "oldie", old, old_id) == 200)
+    net.postgres.sql("host_a", f"DELETE FROM owner_names WHERE owner_id = '{veteran.id}'")
+    check("its owner adds their name to it", net.register_on_a(old_key, veteran, "oldie.olga", old, old_id) == 200)
+    status, found = http("GET", f"{resolve}/oldie")
+    check("and the old name answers with where it went", status == 200 and found.get("moved_to") == f"oldie.olga~{net.domain['a']}" and found.get("agent_id") == old_id, (status, found))
+    check("and the name is theirs now", http("GET", f"http://{net.domain['a']}/.well-known/splint/names/olga")[1].get("owner") == veteran.id)
+    # Bug caught: an owner renaming their agent at will, so a name a contact pinned stops meaning it.
+    check("but a name once added doesn't change", net.register_on_a(old_key, veteran, "oldie.oleg", old, old_id) == 403)
+    taker_key = net.work / "oldie-taker.key"
+    taker, taker_id = new_identity(taker_key)
+    check("nor does anyone else get the old name", net.register_on_a(taker_key, newcomer, "oldie", taker, taker_id) == 409)
 
     # An agent that joined on its own, calling its host itself rather than through `splint join`.
     stand_in = new_owner(net.work / "stand-in-owner", unconfirmed=True)

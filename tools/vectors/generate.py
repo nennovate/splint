@@ -3055,9 +3055,12 @@ def change_vectors():
     bens_renamed = jws("ben-owner", "splint-binding", {"v": 2, "owner": owner_id("ben"), "agent": agent_id("ana"), "address": renamed_to, "seq": 8, "issued_at": NOW})
     renamed = change_event({"kind": "owner", "binding": whole_binding(bens_renamed, "ana-agent", release=release, vouch_signer="ana-agent-next"), "previous_owner_recoveries": 0}, 2, head, owner=owner_id("ben"))
     good("a_new_owner_renames_the_owner_part", "The owner part of a name follows the owner, so the address changes with them.", [bound, renamed], ["bound", "owner"], ["signed", "signed"], owner="ben", owners=(ana, ben), address=renamed_to)
+    named_to = "muse.ben~host.example"
+    bens_named = jws("ben-owner", "splint-binding", {"v": 2, "owner": owner_id("ben"), "agent": agent_id("ana"), "address": named_to, "seq": 8, "issued_at": NOW})
+    named = change_event({"kind": "owner", "binding": whole_binding(bens_named, "ana-agent", release=release, vouch_signer="ana-agent-next"), "previous_owner_recoveries": 0}, 2, head, owner=owner_id("ben"))
+    good("a_new_owner_names_it_under_their_own", "A new owner names the agent under their own name at the same host, as their own agent may have its handle there already. Its host holds them to names that are theirs.", [bound, named], ["bound", "owner"], ["signed", "signed"], owner="ben", owners=(ana, ben), address=named_to)
     for name, address, why in [
-        ("a_new_owner_takes_another_handle", "mallory~host.example", "A new owner can't give the agent another handle."),
-        ("a_new_owner_takes_it_to_another_host", "ana.ben~other.example", "Or take it to another host: that's a change of its own."),
+        ("a_new_owner_takes_it_to_another_host", "ana.ben~other.example", "A new owner can't take it to another host: that's a change of its own."),
     ]:
         elsewhere = jws("ben-owner", "splint-binding", {"v": 2, "owner": owner_id("ben"), "agent": agent_id("ana"), "address": address, "seq": 8, "issued_at": NOW})
         event = change_event({"kind": "owner", "binding": whole_binding(elsewhere, "ana-agent", release=release, vouch_signer="ana-agent-next"), "previous_owner_recoveries": 0}, 2, head, owner=owner_id("ben"))
@@ -4292,6 +4295,14 @@ def ask_vectors():
     check("move_in_another_spelling", "hostile", "The address moved to has one spelling, as everywhere.", ask(changes=[{"change": "host", "to": "ANA~New.Example"}]), REFUSED("malformed"))
     check("move_to_no_address", "hostile", "A move names a whole address.", ask(changes=[{"change": "host", "to": "ana"}]), REFUSED("malformed"))
     check("move_with_a_vouch", "hostile", "A move carries nothing but where to: the owner's side signs with what it already holds.", ask(changes=[host | {"vouch": "a.b.c"}]), REFUSED("malformed"))
+    named = controls | {"owner_part": "jeff"}
+    check("ask_for_controls_with_an_owner_part", "valid", "An agent asks its person to set up controls with their name after its handle, as they gave it: the owner's side signs its binding at that name.", ask(changes=[named]), taken(1))
+    check("controls_with_an_owner_part_that_isnt_a_handle", "hostile", "An owner part is one handle: no dot, tilde or capitals.", ask(changes=[controls | {"owner_part": "Jeff.Smith"}]), REFUSED("malformed"))
+    check("controls_with_no_owner_part_written_out", "hostile", "An owner part left out is left out, so an ask has one spelling.", ask(changes=[controls | {"owner_part": None}]), REFUSED("malformed"))
+    owner_part = {"change": "owner_part", "to": "jeff"}
+    check("ask_to_add_an_owner_part", "valid", "An agent its person set up with no owner part asks them to add theirs, once: the owner's side signs a binding at its name with that part after its handle.", ask(changes=[owner_part]), taken(1))
+    check("owner_part_with_a_setting", "hostile", "An owner part changes no rule, so it's alone in its ask.", ask(changes=[owner_part, {"change": "paused", "to": True}]), REFUSED("malformed"))
+    check("owner_part_that_isnt_a_handle", "hostile", "An owner part is one handle, never a whole address.", ask(changes=[{"change": "owner_part", "to": "jeff~host.example"}]), REFUSED("malformed"))
     check("ask_ended", "hostile", "An ask nobody approved is over at its end.", ask(), REFUSED("expired"), now=NOW + HOUR)
     check("ask_from_the_future", "hostile", "A clock far ahead can't make an ask that lasts longer.", ask(), REFUSED("from_the_future"), now=NOW - TOLERANCE - 1)
     check("ask_signed_by_another_key", "hostile", "Only the asking agent's key signs its ask.", ask("mallory-agent"), REFUSED("bad_signature"))

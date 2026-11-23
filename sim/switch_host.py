@@ -6,17 +6,18 @@ Four real hosts on this machine, each naming the other three as peers, as hosts 
 open to each other: a, b and c take agents with no code, d only with one. Everyone runs the real
 `splint`, Signet and owner-key in scratch homes.
 
-Max joins a on its own, and its person sets up controls on the same computer. Max meets Nia on a and
-Ola on b by invite, which is how most contacts are made. A name taken at the new host is refused
-before anyone is asked. Max asks to move to d, a host that needs a code: one approval on its person's
-computer, and the wrong code leaves it where it was, still sending and receiving. The same command
-with the right code and no second approval moves it. Its ID is the same at d; Nia and Ola, whose
-people did nothing, see the new address and reach it there, and it reaches them; host a, once told,
-says where it went, and refuses its mail, its proofs and new contacts. Mail host a plants, dated out of
-reach, is never kept and never said to be done there, and what Max carried leaves its Signet once it
-expires. Sam, a stand-in, moves by itself
-with nothing asked, and back again. Pia, another agent of Max's person, is moved after host a has
-stopped for good, and Ola reaches it at its new host.
+Max joins a on its own, under a temporary name, and its person sets up controls on the same computer,
+naming it under their own name, `max.maxine`. Max meets Nia on a and Ola on b by invite, which is how
+most contacts are made. A name taken at the new host is refused before anyone is asked. Max asks to
+move to d under the same name, a host that needs a code: one approval on its person's computer, and the
+wrong code leaves it where it was, still sending and receiving. The same command with the right code
+and no second approval moves it. Its ID is the same at d; Nia and Ola, whose people did nothing, see
+the new address and reach it there, and it reaches them; host a, once told, says where it went, and
+refuses its mail, its proofs and new contacts. Mail host a plants, dated out of reach, is never kept and
+never said to be done there, and what Max carried leaves its Signet once it expires. Sam, a stand-in,
+moves by itself under its temporary name with nothing asked, and back again. Pia, another agent of
+Max's person, is named under their name with no name asked, and moved after host a has stopped for
+good, and Ola reaches it at its new host.
 
 Uma moves through two more hosts behind doorways that add faults at the network's edge: a new host
 slow enough that the move outlasts the call that makes it, which refuses her rules once, and a host
@@ -68,6 +69,8 @@ QUIET_SECONDS = 10
 SETTLE_SECONDS = 15
 BRIEF = "good when it was carried, and over soon after"
 ENVELOPE_SECONDS = 3600
+# The name Max's person goes by at each host, which their agents there are named under.
+MAX_OWNER = "maxine"
 
 
 class Doorway:
@@ -273,16 +276,36 @@ def arrived(person, body: str) -> bool:
     return wait_until(lambda: any(message["untrusted"]["body"] == body for message in person.inbox()), FOLLOW_SECONDS)
 
 
-def joins(walk: Walkthrough, name: str, address: str, prefix: str = "splint") -> None:
+def address_now(walk: Walkthrough, name: str, prefix: str = "splint") -> str:
+    """The address its status gives, as an agent reads it back once it has joined or been named."""
+    return json.loads(walk.run_as(name, f"{prefix} status --json").stdout or "{}").get("address", "")
+
+
+def handle_of(address: str) -> str:
+    return address.split("~")[0]
+
+
+def at(address: str, domain: str) -> str:
+    """The same name at another host, as an agent moving keeps it."""
+    return f"{handle_of(address)}~{domain}"
+
+
+def joins(walk: Walkthrough, name: str, address: str, prefix: str = "splint") -> str:
+    """Joining at once takes a temporary name, the word asked for and a code, so this gives the address
+    it joined under."""
     done = walk.run_as(name, f"{prefix} join {address}")
     check(f"control: {address} joins on its own", done.returncode == 0, done.stdout + done.stderr)
+    return address_now(walk, name, prefix)
 
 
-def controls_set_up(walk: Walkthrough, name: str, prefix: str, flag: str) -> None:
+def controls_set_up(walk: Walkthrough, name: str, prefix: str, flag: str, owner_name: str = "") -> str:
+    """Gives the address its person's controls name it at: its word under their name there."""
+    named = f" --name {owner_name}" if owner_name else ""
     # --wait, as splint controls waits only where a prompt here asks by itself, which a key file doesn't.
-    asking = in_background(walk, name, f"{prefix} ask --controls --wait --json")
+    asking = in_background(walk, name, f"{prefix} ask --controls{named} --wait --json")
     approve_once(walk, name, flag)
     check(f"control: {prefix}'s person sets up controls on this computer", finished(asking).get("status") == "done", asking.get("result"))
+    return address_now(walk, name, prefix)
 
 
 def met_by_invite(walk: Walkthrough, inviter: str, invited: str, inviter_address: str, invited_address: str, prefix: str = "splint") -> None:
@@ -332,8 +355,7 @@ def the_host_it_left_has_done_with_it(walk: Walkthrough, hosts: Hosts, max_, nia
     # Bug caught: the host left taking mail for an agent that will never read it there.
     check("the host it left refuses its mail", wait_until(lambda: nia.api("GET", f"/v0/sent/{sent}")[1].get("last_failure") == "recipient_not_found", FOLLOW_SECONDS), nia.api("GET", f"/v0/sent/{sent}")[1])
     check("and its proofs", reads_its_mail_at(hosts, "a", max_) != 200)
-    old = f"max~{hosts.domain['a']}"
-    tried = walk.run_as("tia", f"splint invite {old} --json")
+    tried = walk.run_as("tia", f"splint invite {max_.address_} --json")
     # Bug caught: a new contact pinned to an address nobody will ever answer at.
     check("a new contact can't be made at the old address", tried.returncode != 0, tried.stdout + tried.stderr)
     named = walk.run_as("tia", f"splint invite {to} --json")
@@ -440,8 +462,8 @@ def what_the_host_left_planted_is_gone_after_the_move(hosts: Hosts, max_, plante
 
 
 def a_name_taken_there_is_refused_before_anyone_is_asked(walk: Walkthrough, hosts: Hosts, max_) -> None:
-    joins(walk, "tia", f"tia~{hosts.domain['c']}")
-    tried = walk.run_as("max", f"splint switch-host tia~{hosts.domain['c']} --json")
+    tia = joins(walk, "tia", f"tia~{hosts.domain['c']}")
+    tried = walk.run_as("max", f"splint switch-host {tia} --json")
     answer = json.loads(tried.stdout or "{}")
     check("a name taken at the new host is refused", tried.returncode != 0 and answer.get("error", {}).get("kind") == "handle_taken", tried.stdout + tried.stderr)
     asks = [ask for ask in max_.api("GET", "/v0/asks")[1].get("asks", []) if any(change.get("change") == "host" for change in ask.get("changes", []))]
@@ -451,15 +473,15 @@ def a_name_taken_there_is_refused_before_anyone_is_asked(walk: Walkthrough, host
 
 
 def a_refused_code_leaves_it_where_it_was_and_the_right_one_needs_no_second_approval(walk: Walkthrough, hosts: Hosts, max_, nia, ola, max_id: str) -> str:
-    to = f"max~{hosts.domain['d']}"
-    check("control: nia writes, and max leaves it unread", send(nia, f"max~{hosts.domain['a']}", UNREAD) == 200 and arrived(max_, UNREAD), max_.inbox())
+    to = at(max_.address_, hosts.domain["d"])
+    check("control: nia writes, and max leaves it unread", send(nia, max_.address_, UNREAD) == 200 and arrived(max_, UNREAD), max_.inbox())
     moving = in_background(walk, "max", f"splint switch-host {to} --json", "not-a-code-this-host-ever-gave-out\n")
     said = approve_once(walk, "max")
-    check("the person's computer names the move and the host it goes to", f"move max~{hosts.domain['a']} to {to}" in said, said)
+    check("the person's computer names the move and the host it goes to", f"move {max_.address_} to {to}" in said, said)
     refused = finished(moving)
     check("a code the new host refuses is said", refused.get("error", {}).get("kind") in ("refused", "try_later"), refused)
     # Bug caught: a refused registration leaving the agent nowhere.
-    check("and the agent is where it was, registered there", who(max_).get("address") == f"max~{hosts.domain['a']}" and wait_until(lambda: who(max_).get("registered") is True), who(max_))
+    check("and the agent is where it was, registered there", who(max_).get("address") == max_.address_ and wait_until(lambda: who(max_).get("registered") is True), who(max_))
     check("still sending", send(max_, address_of_contact(max_, nia.agent_id_), "still at a") == 200 and arrived(nia, "still at a"))
     status = json.loads(walk.run_as("max", "splint status --json").stdout or "{}")
     check("with the move still under way", status.get("moving_to") == to, status.get("moving_to"))
@@ -471,7 +493,7 @@ def a_refused_code_leaves_it_where_it_was_and_the_right_one_needs_no_second_appr
     # Bug caught: a second try costing a second approval, which a person may not be there for.
     check("the same command with the right code moves it, with no second approval", again.returncode == 0 and answer.get("status") == "moved" and answer.get("address") == to, again.stdout + again.stderr)
     check("the ID is the same, at the new host", who(max_).get("agent_id") == max_id and who(max_).get("address") == to and who(max_).get("registered") is True, who(max_))
-    check("which names that ID there", hosts.found("d", "max").get("agent_id") == max_id, hosts.found("d", "max"))
+    check("which names that ID there", hosts.found("d", handle_of(to)).get("agent_id") == max_id, hosts.found("d", handle_of(to)))
     unread_mail_is_still_there_after_the_move(max_, UNREAD)
     carrying = it_came_along_all_the_same(hosts, max_, put_off)
     what_the_host_left_planted_is_gone_after_the_move(hosts, max_, planted, brief)
@@ -489,37 +511,37 @@ def contacts_follow_with_nobody_acting(hosts: Hosts, max_, nia, ola, to: str) ->
         back = f"max answers {name} from the new host"
         check(f"and its own reaches {name}", send(max_, address_of_contact(max_, contact.agent_id_), back) == 200 and arrived(contact, back))
     # Bug caught: mail piling up unread at the host it left.
-    check("the host it left, once told, says where it went", wait_until(lambda: hosts.found("a", "max").get("moved_to") == to, FOLLOW_SECONDS), hosts.found("a", "max"))
+    left = handle_of(max_.address_)
+    check("the host it left, once told, says where it went", wait_until(lambda: hosts.found("a", left).get("moved_to") == to, FOLLOW_SECONDS), hosts.found("a", left))
 
 
 def a_stand_in_moves_with_nobody_asked(walk: Walkthrough, hosts: Hosts, sam) -> None:
-    joins(walk, "sam", f"sam~{hosts.domain['a']}")
+    home = joins(walk, "sam", f"sam~{hosts.domain['a']}")
     sam_id = who(sam).get("agent_id")
-    to = f"sam~{hosts.domain['c']}"
+    # Under its temporary name, as it has no other till its person sets up controls.
+    to = at(home, hosts.domain["c"])
     moved = walk.run_as("sam", f"splint switch-host {to} --json")
     answer = json.loads(moved.stdout or "{}")
     # Bug caught: a stand-in stuck on a host that's closing, waiting for a person it doesn't have.
     check("a stand-in moves by itself", moved.returncode == 0 and answer.get("status") == "moved", moved.stdout + moved.stderr)
     check("with nothing asked of anyone", sam.api("GET", "/v0/asks")[1].get("asks") == [], sam.api("GET", "/v0/asks")[1])
-    check("and the same ID at its new host", hosts.found("c", "sam").get("agent_id") == sam_id, hosts.found("c", "sam"))
-    check("control: host a says where it went", wait_until(lambda: hosts.found("a", "sam").get("moved_to") == to, FOLLOW_SECONDS), hosts.found("a", "sam"))
-    home = f"sam~{hosts.domain['a']}"
+    check("and the same ID at its new host", hosts.found("c", handle_of(to)).get("agent_id") == sam_id, hosts.found("c", handle_of(to)))
+    check("control: host a says where it went", wait_until(lambda: hosts.found("a", handle_of(home)).get("moved_to") == to, FOLLOW_SECONDS), hosts.found("a", handle_of(home)))
     back = walk.run_as("sam", f"splint switch-host {home} --json")
     answer = json.loads(back.stdout or "{}")
     # Bug caught: its own name at the host it left refused as someone else's, so a move can't be undone.
     check("it can move back to the host it left, under its own name", back.returncode == 0 and answer.get("status") == "moved", back.stdout + back.stderr)
-    check("where it's found again", who(sam).get("address") == home and who(sam).get("registered") is True and "moved_to" not in hosts.found("a", "sam"), (who(sam), hosts.found("a", "sam")))
-    check("and the host it came back from says so", wait_until(lambda: hosts.found("c", "sam").get("moved_to") == home, FOLLOW_SECONDS), hosts.found("c", "sam"))
+    check("where it's found again", who(sam).get("address") == home and who(sam).get("registered") is True and "moved_to" not in hosts.found("a", handle_of(home)), (who(sam), hosts.found("a", handle_of(home))))
+    check("and the host it came back from says so", wait_until(lambda: hosts.found("c", handle_of(to)).get("moved_to") == home, FOLLOW_SECONDS), hosts.found("c", handle_of(to)))
 
 
 def a_move_outlasting_its_call_still_finishes(walk: Walkthrough, hosts: Hosts, uma, nia, ola) -> None:
-    uma.address_ = f"uma~{hosts.domain['e']}"
-    joins(walk, "uma", uma.address_)
+    uma.address_ = joins(walk, "uma", f"uma~{hosts.domain['e']}")
     uma.agent_id_ = who(uma).get("agent_id")
     for person in (nia, ola):
         met_by_invite(walk, "uma", person.name, uma.address_, person.address_)
         check(f"control: uma reaches {person.name} through the doorway", wait_until(lambda person=person: address_of_contact(uma, person.agent_id_) != "", FOLLOW_SECONDS) and send(uma, person.address_, f"uma to {person.name}") == 200 and arrived(person, f"uma to {person.name}"))
-    to = f"uma~{hosts.domain['f']}"
+    to = at(uma.address_, hosts.domain["f"])
     hosts.doorways["e"].answers_due[("PUT", "/v0/changes")] = 429
     hosts.doorways["f"].answers_due[("PUT", "/v0/rules")] = 503
     hosts.doorways["f"].slow_by = SLOW_SECONDS
@@ -531,7 +553,8 @@ def a_move_outlasting_its_call_still_finishes(walk: Walkthrough, hosts: Hosts, u
     check("a slow new host still takes the move", moved.returncode == 0 and answer.get("status") == "moved", moved.stdout + moved.stderr)
     check("and the agent is registered there", who(uma).get("address") == to and who(uma).get("registered") is True, who(uma))
     # Bug caught: a "too many" from the host left counting as having told it.
-    check("the host it left hears, though it was busy at first", wait_until(lambda: hosts.found("e", "uma").get("moved_to") == to, FOLLOW_SECONDS), hosts.found("e", "uma"))
+    left = handle_of(uma.address_)
+    check("the host it left hears, though it was busy at first", wait_until(lambda: hosts.found("e", left).get("moved_to") == to, FOLLOW_SECONDS), hosts.found("e", left))
     for person in (nia, ola):
         check(f"{person.name}'s agent follows", wait_until(lambda person=person: address_of_contact(person, uma.agent_id_) == to, FOLLOW_SECONDS), person.api("GET", "/v0/contacts")[1])
     # Bug caught: contacts agreed by invite given back before the new host held the rules that judge
@@ -573,24 +596,22 @@ def takes_up(walk: Walkthrough, person, to: str, binding: str) -> subprocess.Com
 
 
 def an_old_approval_moves_nothing(walk: Walkthrough, hosts: Hosts, kai) -> None:
-    home = f"kai~{hosts.domain['a']}"
-    joins(walk, "kai", home)
-    to = f"kai~{hosts.domain['c']}"
+    home = joins(walk, "kai", f"kai~{hosts.domain['a']}")
+    to = at(home, hosts.domain["c"])
     now = int(time.time())
     late = takes_up(walk, kai, to, an_approval_signed_at(walk, kai, to, now - 2 * DAY_SECONDS))
     said = late.stdout + late.stderr
     # Bug caught: a fooled agent finishing, long after, a move its owner has since changed their mind on.
-    check("an approval older than an ask lasts moves nothing", late.returncode != 0 and hosts.found("c", "kai") == {}, said)
+    check("an approval older than an ask lasts moves nothing", late.returncode != 0 and hosts.found("c", handle_of(to)) == {}, said)
     check("and the agent is where it was", who(kai).get("address") == home and wait_until(lambda: who(kai).get("registered") is True), who(kai))
     # Bug caught: dating it by when it reached the command, and promising that trying again would work.
     check("and it's told to ask afresh, with nothing kept to try again", "more than a day old" in said and not (kai.dot / "move.json").exists(), said)
     fresh = takes_up(walk, kai, to, an_approval_signed_at(walk, kai, to, now - 60 * 60))
-    check("control: one signed an hour ago moves it", fresh.returncode == 0 and hosts.found("c", "kai").get("agent_id") == who(kai).get("agent_id"), fresh.stdout + fresh.stderr)
+    check("control: one signed an hour ago moves it", fresh.returncode == 0 and hosts.found("c", handle_of(to)).get("agent_id") == who(kai).get("agent_id"), fresh.stdout + fresh.stderr)
 
 
 def a_history_with_no_room_moves_nothing(walk: Walkthrough, hosts: Hosts, lux) -> None:
-    home = f"lux~{hosts.domain['a']}"
-    joins(walk, "lux", home)
+    home = joins(walk, "lux", f"lux~{hosts.domain['a']}")
     agent_id = who(lux).get("agent_id")
     written = 0
     for number in range(40):
@@ -599,17 +620,19 @@ def a_history_with_no_room_moves_nothing(walk: Walkthrough, hosts: Hosts, lux) -
             break
         written += 1
     check("control: its owner's choices fill its history", 0 < written < 40, written)
-    tried = walk.run_as("lux", f"splint switch-host lux~{hosts.domain['c']} --json")
+    to = at(home, hosts.domain["c"])
+    tried = walk.run_as("lux", f"splint switch-host {to} --json")
     # Bug caught: registering at the new host with no room to say so, so contacts drop what it sends.
     check("a history with no room to say it moved is refused", tried.returncode != 0 and "owner's choices" in tried.stdout + tried.stderr, tried.stdout + tried.stderr)
-    check("and it stays where it was, unknown to the new host", who(lux).get("address") == home and wait_until(lambda: who(lux).get("registered") is True) and hosts.found("c", "lux") == {}, who(lux))
+    check("and it stays where it was, unknown to the new host", who(lux).get("address") == home and wait_until(lambda: who(lux).get("registered") is True) and hosts.found("c", handle_of(to)) == {}, who(lux))
 
 
 def a_closing_host_is_refused_before_anyone_is_asked(walk: Walkthrough, hosts: Hosts, max_) -> None:
     closing = hosts.close("b", "2099-01-31")
     check("control: host b sets a closing date", closing.returncode == 0 and wait_until(lambda: "closing_at" in hosts.page("b")), closing.stdout + closing.stderr)
-    tried = walk.run_as("max", f"splint switch-host max~{hosts.domain['b']} --json")
-    asks = [ask for ask in max_.api("GET", "/v0/asks")[1].get("asks", []) if {"change": "host", "to": f"max~{hosts.domain['b']}"} in ask.get("changes", [])]
+    to = at(who(max_).get("address", ""), hosts.domain["b"])
+    tried = walk.run_as("max", f"splint switch-host {to} --json")
+    asks = [ask for ask in max_.api("GET", "/v0/asks")[1].get("asks", []) if {"change": "host", "to": to} in ask.get("changes", [])]
     # Bug caught: a person's approval spent on a move the new host was always going to refuse.
     check("a move to a closing host is refused, with nobody asked", tried.returncode != 0 and "closing" in tried.stdout + tried.stderr and asks == [], (tried.stdout + tried.stderr, asks))
     hosts.close("b", "cancel")
@@ -619,19 +642,20 @@ def a_move_needs_nothing_from_a_host_thats_gone(walk: Walkthrough, hosts: Hosts,
     joins(walk, "max", f"pia~{hosts.domain['a']}", "splint --as pia")
     pia = as_profile(walk, max_, "pia")
     pia.agent_id_ = who(pia).get("agent_id")
-    controls_set_up(walk, "max", "splint --as pia", "")
-    met_by_invite(walk, "max", "ola", f"pia~{hosts.domain['a']}", ola.address_, "splint --as pia")
+    home = controls_set_up(walk, "max", "splint --as pia", "")
+    check("control: pia is named under the name max's person has at host a, with none asked", home == f"pia.{MAX_OWNER}~{hosts.domain['a']}", home)
+    met_by_invite(walk, "max", "ola", home, ola.address_, "splint --as pia")
     check("control: pia and ola talk", wait_until(lambda: address_of_contact(pia, ola.agent_id_) != "", FOLLOW_SECONDS) and send(pia, ola.address_, "pia says hello") == 200 and arrived(ola, "pia says hello"))
     hosts.stop("a")
-    to = f"pia~{hosts.domain['c']}"
+    to = at(home, hosts.domain["c"])
     stopped = walk.run_as("max", f"splint --as pia switch-host {to} --json")
     words = stopped.stdout + stopped.stderr
     # Bug caught: a move that goes ahead while what waits at the host left can't be read, and loses it.
-    check("with host a gone, what waits there can't be read, so nothing moves and it says why", stopped.returncode != 0 and "can't be read" in words and "--leave-mail" in words and who(pia).get("address") == f"pia~{hosts.domain['a']}", words)
+    check("with host a gone, what waits there can't be read, so nothing moves and it says why", stopped.returncode != 0 and "can't be read" in words and "--leave-mail" in words and who(pia).get("address") == home, words)
     moving = in_background(walk, "max", f"splint --as pia switch-host {to} --leave-mail --json")
     said = approve_once(walk, "max")
     # Bug caught: a move that needs the host it leaves for the agent's ID or its address.
-    check("with host a gone, its person's computer still names the move", f"move pia~{hosts.domain['a']} to {to}" in said, said)
+    check("with host a gone, its person's computer still names the move", f"move {home} to {to}" in said, said)
     answer = finished(moving)
     check("and it moves", answer.get("status") == "moved" and who(pia).get("address") == to and who(pia).get("registered") is True, (answer, who(pia)))
     check("ola's agent sees where it went", wait_until(lambda: address_of_contact(ola, pia.agent_id_) == to, FOLLOW_SECONDS), ola.api("GET", "/v0/contacts")[1])
@@ -653,13 +677,14 @@ def main() -> None:
         postgres.start()
         hosts.start_all()
         joins(walk, "max", f"max~{hosts.domain['a']}")
-        controls_set_up(walk, "max", "splint", "--plain-key-file")
+        # Max's address at host a, where it starts, under its person's name.
+        max_.address_ = controls_set_up(walk, "max", "splint", "--plain-key-file", MAX_OWNER)
+        check("control: max is named under its person's name", max_.address_ == f"max.{MAX_OWNER}~{hosts.domain['a']}", max_.address_)
         max_.agent_id_ = who(max_).get("agent_id")
         for person, host in ((nia, "a"), (ola, "b")):
-            person.address_ = f"{person.name}~{hosts.domain[host]}"
-            joins(walk, person.name, person.address_)
+            person.address_ = joins(walk, person.name, f"{person.name}~{hosts.domain[host]}")
             person.agent_id_ = who(person).get("agent_id")
-            met_by_invite(walk, "max", person.name, f"max~{hosts.domain['a']}", person.address_)
+            met_by_invite(walk, "max", person.name, max_.address_, person.address_)
             check(f"control: max reaches {person.name}", wait_until(lambda person=person: address_of_contact(max_, person.agent_id_) != "", FOLLOW_SECONDS) and send(max_, person.address_, f"hello {person.name}") == 200 and arrived(person, f"hello {person.name}"))
         a_name_taken_there_is_refused_before_anyone_is_asked(walk, hosts, max_)
         the_host_it_left_has_it_still_until_then(hosts, max_, nia)

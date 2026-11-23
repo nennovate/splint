@@ -8,9 +8,7 @@ use std::error::Error;
 use std::path::Path;
 use std::sync::{Arc, PoisonError};
 
-use splint_core::{
-    Identity, RecoveryRule, SealingKey, SigningKey, VerifiedBinding, same_handle_and_host,
-};
+use splint_core::{Identity, RecoveryRule, SealingKey, SigningKey, VerifiedBinding, same_host};
 
 use crate::Signet;
 use crate::host_client::HostError;
@@ -97,13 +95,13 @@ impl Who {
     }
 }
 
-/// The address a binding names, when it's the one this Signet was started at with only the owner
-/// part changed, as a new owner's binding does. Otherwise the one it was started at.
+/// The address a binding names, when it's at the host this Signet was started at, as a new owner's
+/// binding is, naming the agent under their own name. Otherwise the one it was started at.
 pub fn address_now(who: &Who, started_at: &str) -> String {
     VerifiedBinding::verify(&who.binding, &who.owner, &who.identity)
         .ok()
         .map(|binding| binding.address().to_owned())
-        .filter(|bound| same_handle_and_host(bound, started_at))
+        .filter(|bound| same_host(bound, started_at))
         .unwrap_or_else(|| started_at.to_owned())
 }
 

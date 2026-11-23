@@ -222,13 +222,16 @@ async fn changes_from(
     let mut owners = Vec::new();
     let mut past = false;
     let mut paid_at = Vec::new();
+    let mut owner_part = None;
     let mut words = flags.iter();
     while let Some(flag) = words.next() {
         match *flag {
             // Signet names its own delegate key here, whatever this says.
             "--controls" => changes.push(Change::Controls {
                 delegate: String::new(),
+                owner_part: None,
             }),
+            "--name" => owner_part = Some(value(words.next())?.to_owned()),
             "--step" => {
                 // The ID as the tools show it, or whole, as `move` takes it.
                 let request =
@@ -311,6 +314,7 @@ async fn changes_from(
                 let address = value(words.next())?;
                 let address =
                     splint_core::canonical_address(address).map_err(Failure::not_an_address)?;
+                let address = HostCalls::name_form(&address).await?;
                 let (_, domain) =
                     splint_core::parse_address(&address).map_err(Failure::not_an_address)?;
                 let agent = HostCalls::new(domain)?.resolve(&address).await?.agent_id;
@@ -368,6 +372,17 @@ async fn changes_from(
     if !paid_at.is_empty() {
         changes.push(Change::WherePaid { places: paid_at });
     }
+    // A person's name goes with the ask for controls, for them to approve with those, or alone, to add
+    // to the name of an agent they've set up already.
+    if let Some(name) = owner_part {
+        match changes.iter_mut().find_map(|change| match change {
+            Change::Controls { owner_part, .. } => Some(owner_part),
+            _ => None,
+        }) {
+            Some(with_controls) => *with_controls = Some(name),
+            None => changes.push(Change::OwnerPart { to: name }),
+        }
+    }
     if changes.is_empty() {
         return Err(Failure::Usage);
     }
@@ -395,6 +410,22 @@ pub(crate) struct Signed {
 /// running. Whether it took it: one Splint here refused, as when the agent's host can't vouch for its
 /// address, goes by link.
 pub(crate) async fn hand_here(home: &Home, client: &Client, asked: &Asked) -> bool {
+    matches!(taken_here(home, client, asked).await, Handed::Taken(_))
+}
+
+/// What Splint on this computer did with an ask handed to it.
+enum Handed {
+    /// Took it, and what it made of it: one nobody can approve, such as for a name nobody can have at
+    /// the agent's host, comes back not approved, with why.
+    Taken(Outcome),
+    /// Didn't, with why, so it goes by its link, as for a name another owner holds, who may approve it
+    /// on their own computer.
+    Refused(String),
+    /// Isn't there to ask.
+    NotHere,
+}
+
+async fn taken_here(home: &Home, client: &Client, asked: &Asked) -> Handed {
     if !client.is_up().await && computer::start(home).is_ok() {
         for _ in 0..20 {
             if client.is_up().await {
@@ -403,11 +434,20 @@ pub(crate) async fn hand_here(home: &Home, client: &Client, asked: &Asked) -> bo
             tokio::time::sleep(Duration::from_millis(250)).await;
         }
     }
-    client.is_up().await
-        && client
-            .hand(asked)
-            .await
-            .is_ok_and(|taken| taken.get("status").and_then(Value::as_str) != Some("refused"))
+    if !client.is_up().await {
+        return Handed::NotHere;
+    }
+    let Ok(taken) = client.hand(asked).await else {
+        return Handed::NotHere;
+    };
+    if taken.get("status").and_then(Value::as_str) == Some("refused") {
+        let why = taken
+            .get("reason")
+            .and_then(Value::as_str)
+            .unwrap_or_default();
+        return Handed::Refused(why.to_owned());
+    }
+    serde_json::from_value(taken).map_or(Handed::NotHere, Handed::Taken)
 }
 
 /// The answer already left for an ask for controls still waiting, taken up, as a new ask would end
@@ -443,7 +483,19 @@ pub async fn ask(home: &Home, flags: &[&str]) -> Result<Asking, Failure> {
     let installed =
         Installed::load(home)?.ok_or_else(|| Failure::refused("join first, with splint join"))?;
     let signet = SignetApi::new(home, &installed)?;
-    let (changes, hours, wait) = changes_from(&signet, flags).await?;
+    let (mut changes, hours, wait) = changes_from(&signet, flags).await?;
+    // The name its person gave when it joined goes with its ask for controls, unless it names one.
+    if let Some(given) = &installed.owner_part {
+        for change in &mut changes {
+            if let Change::Controls {
+                owner_part: named @ None,
+                ..
+            } = change
+            {
+                *named = Some(given.clone());
+            }
+        }
+    }
     let controls = splint_core::asks::controls_delegate(&changes).is_some();
     if controls && let Some(answered) = answered_already(home).await? {
         return Ok(answered);
@@ -463,9 +515,26 @@ pub async fn ask(home: &Home, flags: &[&str]) -> Result<Asking, Failure> {
         kinds: Vec::new(),
         agreed: Vec::new(),
         in_words: Default::default(),
+        owner_part: None,
     };
     let client = Client::new(home)?;
-    let here = hand_here(home, &client, &asked).await;
+    let taken = taken_here(home, &client, &asked).await;
+    if let Handed::Taken(Outcome::NotApproved { reason }) = taken {
+        return Ok(Asking {
+            id: signed.id,
+            status: "not_approved".to_owned(),
+            approve_at: Waits::Here.approve_at(),
+            said: format!("Not asked: {reason}."),
+            computer_link: None,
+        });
+    }
+    let refused_here = match &taken {
+        Handed::Refused(why) if !why.is_empty() => {
+            format!("Splint on this computer didn't take it: {why}. ")
+        }
+        _ => String::new(),
+    };
+    let here = matches!(taken, Handed::Taken(_));
     let waits = if !here {
         Waits::ByLinkOnly
     } else if client.here().await.is_ok_and(|here| here.prompts_by_itself) {
@@ -474,8 +543,10 @@ pub async fn ask(home: &Home, flags: &[&str]) -> Result<Asking, Failure> {
         Waits::Here
     };
     let approve_at = waits.approve_at();
+    // Controls and an owner part are taken up by the agent itself, so it waits for the touch on them.
+    let takes_up = controls || splint_core::asks::adds_owner_part(&changes).is_some();
     let waited = match waits {
-        Waits::AtAPrompt if wait || controls => Some(WAIT_FOR_TOUCH),
+        Waits::AtAPrompt if wait || takes_up => Some(WAIT_FOR_TOUCH),
         Waits::Here if wait => Some(WAIT_FOR_TOUCH),
         _ => None,
     };
@@ -490,6 +561,9 @@ pub async fn ask(home: &Home, flags: &[&str]) -> Result<Asking, Failure> {
             }
             Some(Outcome::Done { answer }) => {
                 let said = match answer {
+                    Some(binding) if splint_core::asks::adds_owner_part(&changes).is_some() => {
+                        taking_up::take_up_owner_part(home, &binding).await?
+                    }
                     Some(answer) => taking_up::take_up(home, &answer).await?,
                     None => "Done: your person approved it, and it's in force once your host passes it on."
                         .to_owned(),
@@ -515,8 +589,19 @@ pub async fn ask(home: &Home, flags: &[&str]) -> Result<Asking, Failure> {
         }
     }
     let controls = hours.filter(|_| controls);
+    let mut said = format!(
+        "{refused_here}{}",
+        waiting_words(home, &signed.id, controls, waits, waited, &asked.address)
+    );
+    if splint_core::asks::adds_owner_part(&changes).is_some() {
+        said.push_str(&format!(
+            " Your new name counts only once you take it up: run {} ask {} after they approve.",
+            home.command(),
+            signed.id
+        ));
+    }
     Ok(Asking {
-        said: waiting_words(home, &signed.id, controls, waits, waited, &asked.address),
+        said,
         id: signed.id,
         // What Signet said of one only it holds, and waiting for one Splint here just took.
         status: if here {
@@ -552,6 +637,9 @@ pub async fn status(home: &Home, id: &str) -> Result<Asking, Failure> {
             })) => Some(taking_up::take_up(home, &answer).await?),
             _ => taking_up::take_up_kept_if_asked(home).await?,
         }
+    } else if status == "waiting" && splint_core::asks::adds_owner_part(&shown.changes).is_some() {
+        // Only this agent takes up the binding that renames it, as its Signet has to register it.
+        taking_up::take_up_owner_part_if_answered(home, id).await?
     } else {
         None
     };

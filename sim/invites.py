@@ -697,10 +697,12 @@ def a_flood_of_invites_is_capped(net: e2e.Network) -> None:
     stand_in = e2e.new_owner(net.work / "stan-owner", unconfirmed=True)
     stan_key = net.work / "stan.key"
     stan_identity, stan_id = e2e.new_identity(stan_key)
-    check("control: stan joins ana's host, for an owner with no controls set up", net.register_on_a(stan_key, stand_in, "stan", stan_identity, stan_id) == 200)
+    # Under a temporary name, the only kind a host gives an agent with no controls.
+    stan_name = "stan-k7m2pa"
+    check("control: stan joins ana's host, for an owner with no controls set up", net.register_on_a(stan_key, stand_in, stan_name, stan_identity, stan_id) == 200)
     rules = stand_in.sign("rules", "--agent", stan_id, stdin=json.dumps(e2e.rules_draft([])))
     check("control: with rules", http("PUT", f"http://{net.domain['a']}/v0/rules", {"rules": rules})[0] == 200)
-    stan_address = f"stan~{net.domain['a']}"
+    stan_address = f"{stan_name}~{net.domain['a']}"
 
     def stan_invites(name: str) -> int:
         _, envelope = signed_invite(stan_key, stan_id, stan_address, net.address(name), net.ids[name])
@@ -1074,6 +1076,8 @@ def a_stand_ins_agreed_contacts_carry_over_to_its_first_owner(net: e2e.Network) 
     Sid's owner's first rules came, so the two agents could no longer talk."""
     make_owners = net.make_owners
     net.make_owners = lambda agents: net.owners.update({agent: e2e.new_owner(net.work / f"{agent}-stand-in", unconfirmed=True) for agent in agents})
+    # A temporary name, as `splint join` gives one, until an owner names it under theirs.
+    net.names["sid"] = "sid-q4t6xb"
     try:
         net.add_owned_agents({"sid": "a"})
     finally:
@@ -1087,8 +1091,9 @@ def a_stand_ins_agreed_contacts_carry_over_to_its_first_owner(net: e2e.Network) 
     check("control: each is the other's contact", wait_until(lambda: listed(net, "sid", "tom") is not None and listed(net, "tom", "sid") is not None), (listed(net, "sid", "tom"), listed(net, "tom", "sid")))
 
     owner = e2e.new_owner(net.work / "sid-owner")
-    status, taken, backup = change_notices.try_transfer(net, "sid", owner, net.address("sid"))
+    status, taken, backup = change_notices.try_transfer(net, "sid", owner, f"sid.sids~{net.domain['a']}")
     check("control: an owner sets up controls for sid", status == 200, taken)
+    net.names["sid"] = "sid.sids"
     net.owners["sid"] = e2e.Owner(owner.dir, owner.key, owner.identity, owner.id, net.owners["sid"].token)
     net.agent_backups["sid"] = backup
     sign_with_agreed(net, "sid")
@@ -1104,7 +1109,7 @@ def a_stand_ins_agreed_contacts_carry_over_to_its_first_owner(net: e2e.Network) 
 
 def a_crowd(net: e2e.Network, count: int) -> list[dict]:
     """Agents on both hosts, acting for owners who set up controls, whose rules take contacts their
-    agents agree with: what anyone can make, a few to an owner."""
+    agents agree with: what anyone can make, a few to an owner, each named under its owner's name."""
     crowd, owner = [], None
     for number in range(count):
         if number % 6 == 0:
@@ -1112,7 +1117,7 @@ def a_crowd(net: e2e.Network, count: int) -> list[dict]:
         host = "ab"[number % 2]
         key = net.work / f"crowd-{number}.key"
         identity, agent_id = e2e.new_identity(key)
-        handle = f"crowd{number}"
+        handle = f"crowd{number}.crowds{number // 6}"
         if net.register_on(host, key, owner, handle, identity, agent_id) != 200:
             raise RuntimeError(f"crowd {number} couldn't register")
         rules = owner.sign("rules", "--agent", agent_id, stdin=json.dumps(with_agreed()))

@@ -102,6 +102,7 @@ async fn hand(State(computer): State<Arc<Computer>>, Json(linked): Json<Linked>)
         kinds: Vec::new(),
         agreed: Vec::new(),
         in_words: Default::default(),
+        owner_part: None,
     };
     let Ok(asked) = computer.as_its_host_says(asked).await else {
         return refused("that agent's host couldn't be reached, so try again");
