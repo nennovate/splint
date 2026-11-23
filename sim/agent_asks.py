@@ -264,8 +264,10 @@ def an_agent_asks_for_its_controls_and_one_approval_sets_them_up(signup: Signup,
     # Bug caught: an agent on its person's computer told only the paste-a-code way.
     check("status names the one-touch way for an agent on its person's computer, with their name", status.get("controls", {}).get("ask", "").endswith("splint controls --name NAME"), status.get("controls"))
     nameless = asked_without_waiting(signup, "ivy", "splint controls --json")
-    # Bug caught: a person asked to approve an agent under no name, as a temporary one would stay.
-    check("an ask naming nobody, for a person with no name at that host, isn't put to them, and says why", nameless.get("status") == "not_approved" and "--name" in nameless.get("said", "") and waiting_ids(ivy) == [], nameless)
+    # Bug caught: a person asked to approve an agent under no name, as a temporary one would stay; or
+    # an agent left with no link, when its person may have a name there and approve on their own computer.
+    check("an ask naming nobody, for a person with no name here, isn't put to them here, and says why, with its link",
+          "didn't take it" in nameless.get("said", "") and "--name" in nameless.get("said", "") and bool(nameless.get("computer_link")) and waiting_ids(ivy) == [], nameless)
 
     asked = asked_without_waiting(signup, "ivy", "splint controls --name ivo --json")
     # Bugs caught: an agent whose ask Splint on its own computer took, with a key file for a sign-in,
@@ -897,8 +899,10 @@ def names_are_owners_and_an_owners_id_reaches_them(signup: Signup, port: int, le
 
     held = asked_without_waiting(signup, "kai", "splint controls --name ana --json")
     # Bug caught: one owner taking another's name, or a person asked to approve a name their host
-    # would refuse, after they'd touched.
-    check("an ask with a name another owner holds there isn't put to his person, and says so", held.get("status") == "not_approved" and "someone else's" in held.get("said", "") and waiting_ids(kai) == [], held)
+    # would refuse, after they'd touched; or an agent left with no link, when it may be its person's
+    # name, for them to approve on their own computer.
+    check("an ask with a name another owner holds there isn't put to his person here, and says so, with its link",
+          "another owner's name" in held.get("said", "") and bool(held.get("computer_link")) and waiting_ids(kai) == [], held)
     asked = asked_without_waiting(signup, "kai", "splint controls --name kayla --json")
     approved = signup.walk.run_as("kai", "splint computer approve --plain-key-file", "yes\n")
     check("control: his person approves their own name", "Approved 1" in approved.stdout, approved.stdout + approved.stderr)

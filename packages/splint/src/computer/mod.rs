@@ -346,12 +346,10 @@ impl Computer {
             ));
         }
         // Settled before anyone is asked, so a touch never signs a name its host won't give.
-        asked.owner_part = match self.name_for(&asked, &ask).await {
-            Ok(owner_part) => owner_part,
-            Err(Failure::Refused(why)) => {
-                return Ok(Outcome::NotApproved { reason: why });
-            }
-            Err(failure) => return Err(failure),
+        asked.owner_part = match self.name_for(&asked, &ask).await? {
+            Naming::Under(owner_part) => owner_part,
+            Naming::NotHere(why) => return Err(Failure::refused(why)),
+            Naming::Nobody(why) => return Ok(Outcome::NotApproved { reason: why }),
         };
         let known = self
             .waiting
@@ -385,15 +383,16 @@ impl Computer {
         Ok(Outcome::Waiting)
     }
 
-    /// The owner's name an ask's binding names its agent under at its host: theirs there already, which
-    /// every agent of theirs after the first gets with nothing asked, or the one the ask names, once the
-    /// host says nobody else has it. An ask for controls with neither, from an agent under a temporary
-    /// name, isn't asked, as an owner's agent is always named under theirs. One adding an owner part
-    /// adds the one it names, so it has to be theirs or free. A refusal says why, for the agent.
-    async fn name_for(&self, asked: &Asked, ask: &VerifiedAsk) -> Result<Option<String>, Failure> {
+    /// The owner's name an ask's binding names its agent under at its host, as this computer can tell
+    /// for its own owner: theirs there already, which every agent of theirs after the first gets with
+    /// nothing asked, or the one the ask names, once the host says nobody else has it. One this computer
+    /// can't sign for isn't taken here and goes by its link, with why: a name another owner holds, who
+    /// may approve it on their own computer, or an ask naming nobody for an owner with no name here.
+    /// One nobody can approve, as for a name nobody can have there, isn't asked of anyone.
+    async fn name_for(&self, asked: &Asked, ask: &VerifiedAsk) -> Result<Naming, Failure> {
         let adds = ask.adds_owner_part();
         if !ask.asks_for_controls() && adds.is_none() {
-            return Ok(None);
+            return Ok(Naming::Under(None));
         }
         let (name, domain) = parse_address(&asked.address)?;
         let host = HostCalls::new(domain)?;
@@ -402,34 +401,50 @@ impl Computer {
             .kept_identity()
             .and_then(|identity| Identity::from_encoded(&identity).ok())
             .map(|identity| identity.id().clone());
+        // Adding a name is for the agent's own owner, so only they hear why it can't be.
+        let its_owner_here = owner.as_ref() == Some(ask.owner());
         let theirs = match &owner {
             Some(owner) => host.owners_name(owner).await?,
             None => None,
         };
-        match (theirs, ask.owner_part()) {
+        let not_theirs = |why: String| {
+            if adds.is_some() && its_owner_here {
+                Naming::Nobody(why)
+            } else {
+                Naming::NotHere(why)
+            }
+        };
+        Ok(match (theirs, ask.owner_part()) {
             (Some(theirs), Some(asked_for)) if adds.is_some() && theirs != asked_for => {
-                Err(Failure::refused(format!(
+                not_theirs(format!(
                     "your person's name at {domain} is {theirs}, the one they have there, so ask \
                      again with --name {theirs}"
-                )))
+                ))
             }
-            (Some(theirs), _) => Ok(Some(theirs)),
+            (Some(theirs), _) => Naming::Under(Some(theirs)),
             (None, Some(asked_for)) => match host.name_holder(asked_for).await? {
-                NameHere::Nobody => Ok(Some(asked_for.to_owned())),
+                NameHere::Nobody => Naming::Under(Some(asked_for.to_owned())),
                 NameHere::Owner(holder) if owner.is_some_and(|owner| owner.as_str() == holder) => {
-                    Ok(Some(asked_for.to_owned()))
+                    Naming::Under(Some(asked_for.to_owned()))
                 }
-                NameHere::Owner(_) | NameHere::Barred => Err(Failure::refused(format!(
-                    "{asked_for} is someone else's at {domain}, or nobody can have it there, so ask \
-                     your person for another name and ask again with --name and it"
-                ))),
+                NameHere::Owner(_) => not_theirs(format!(
+                    "{asked_for} is another owner's name at {domain}, so it isn't asked for here: if \
+                     it's your person's, they approve it by its link on their own computer, and if \
+                     not, ask them the name they go by and ask again with --name and it"
+                )),
+                NameHere::Barred => Naming::Nobody(format!(
+                    "{asked_for} can't be anyone's name at {domain}, so ask your person for another \
+                     and ask again with --name and it"
+                )),
             },
-            (None, None) if splint_core::is_temporary_name(name) => Err(Failure::refused(
-                "your person's name goes after your handle, and nothing names it yet: ask them the \
-                 name they go by, and ask again with --name and it",
-            )),
-            (None, None) => Ok(None),
-        }
+            (None, None) if splint_core::is_temporary_name(name) => Naming::NotHere(
+                "your person's name goes after your handle, and nothing names it here: they approve \
+                 it by its link on their own computer if they have a name at your host already, and \
+                 otherwise ask them the name they go by and ask again with --name and it"
+                    .to_owned(),
+            ),
+            (None, None) => Naming::Under(None),
+        })
     }
 
     /// An ask in the words its prompt will name it by, from `owner-key`, which writes the prompt. One it
@@ -640,14 +655,15 @@ impl Computer {
             })
             .filter_map(|asked| {
                 let agent = VerifiedAsk::claimed_agent(&asked.ask).ok()?;
+                let address = named_at(asked);
                 Some(agents_list::ToList {
                     beside_owner: agents_list::runs_here(&self.home, agent.as_str()),
-                    label: parse_address(&asked.address)
+                    label: parse_address(&address)
                         .map(|(handle, _)| handle.to_owned())
                         .ok()?,
                     identity: Some(asked.identity.clone()),
                     agent: agent.as_str().to_owned(),
-                    address: asked.address.clone(),
+                    address,
                 })
             })
             .collect();
@@ -718,14 +734,8 @@ impl Computer {
                 && matches!(outcome, Outcome::Done { answer: Some(_) })
                 && let Ok(agent) = VerifiedAsk::claimed_agent(&asked.ask)
             {
-                self.remember_agent(agent.as_str(), &asked.address, &asked.identity);
-                // Kept at the name it has now, which follows once its host names it with the
-                // owner's part, as only then has the agent taken it up.
-                if let Some(named) = asked.owner_part.as_deref().and_then(|owner_part| {
-                    splint_core::with_owner_part(&asked.address, owner_part).ok()
-                }) {
-                    self.note_moving(agent.as_str(), &named);
-                }
+                // Under the name what was signed gives it, which its list and any recovery go by.
+                self.remember_agent(agent.as_str(), &named_at(asked), &asked.identity);
             }
             self.outcomes.lock().await.insert(done.id.clone(), outcome);
         }
@@ -1231,6 +1241,26 @@ impl Computer {
             kept,
         )
     }
+}
+
+/// The address an ask for controls names its agent at once signed: under the owner's name this
+/// computer chose, or the one it has.
+fn named_at(asked: &Asked) -> String {
+    asked
+        .owner_part
+        .as_deref()
+        .and_then(|owner_part| splint_core::with_owner_part(&asked.address, owner_part).ok())
+        .unwrap_or_else(|| asked.address.clone())
+}
+
+/// What this computer makes of the name an ask's binding would give its agent.
+enum Naming {
+    /// Under this owner's name, or none, as for an agent named before names were owners'.
+    Under(Option<String>),
+    /// Not one this computer signs, so it goes by its link, where the person's own computer decides.
+    NotHere(String),
+    /// Not one anyone can sign, so nobody is asked.
+    Nobody(String),
 }
 
 /// Where an ask's answer binds its agent other than where it is: another host for a move, or its own

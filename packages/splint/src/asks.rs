@@ -410,13 +410,22 @@ pub(crate) struct Signed {
 /// running. Whether it took it: one Splint here refused, as when the agent's host can't vouch for its
 /// address, goes by link.
 pub(crate) async fn hand_here(home: &Home, client: &Client, asked: &Asked) -> bool {
-    taken_here(home, client, asked).await.is_some()
+    matches!(taken_here(home, client, asked).await, Handed::Taken(_))
 }
 
-/// What Splint on this computer made of an ask it took, as `hand_here` hands it, or `None` where it
-/// didn't take it. One it won't put to its person, such as for a name its host won't give, comes back
-/// not approved, with why.
-async fn taken_here(home: &Home, client: &Client, asked: &Asked) -> Option<Outcome> {
+/// What Splint on this computer did with an ask handed to it.
+enum Handed {
+    /// Took it, and what it made of it: one nobody can approve, such as for a name nobody can have at
+    /// the agent's host, comes back not approved, with why.
+    Taken(Outcome),
+    /// Didn't, with why, so it goes by its link, as for a name another owner holds, who may approve it
+    /// on their own computer.
+    Refused(String),
+    /// Isn't there to ask.
+    NotHere,
+}
+
+async fn taken_here(home: &Home, client: &Client, asked: &Asked) -> Handed {
     if !client.is_up().await && computer::start(home).is_ok() {
         for _ in 0..20 {
             if client.is_up().await {
@@ -426,13 +435,19 @@ async fn taken_here(home: &Home, client: &Client, asked: &Asked) -> Option<Outco
         }
     }
     if !client.is_up().await {
-        return None;
+        return Handed::NotHere;
     }
-    let taken = client.hand(asked).await.ok()?;
+    let Ok(taken) = client.hand(asked).await else {
+        return Handed::NotHere;
+    };
     if taken.get("status").and_then(Value::as_str) == Some("refused") {
-        return None;
+        let why = taken
+            .get("reason")
+            .and_then(Value::as_str)
+            .unwrap_or_default();
+        return Handed::Refused(why.to_owned());
     }
-    serde_json::from_value(taken).ok()
+    serde_json::from_value(taken).map_or(Handed::NotHere, Handed::Taken)
 }
 
 /// The answer already left for an ask for controls still waiting, taken up, as a new ask would end
@@ -504,7 +519,7 @@ pub async fn ask(home: &Home, flags: &[&str]) -> Result<Asking, Failure> {
     };
     let client = Client::new(home)?;
     let taken = taken_here(home, &client, &asked).await;
-    if let Some(Outcome::NotApproved { reason }) = taken {
+    if let Handed::Taken(Outcome::NotApproved { reason }) = taken {
         return Ok(Asking {
             id: signed.id,
             status: "not_approved".to_owned(),
@@ -513,7 +528,13 @@ pub async fn ask(home: &Home, flags: &[&str]) -> Result<Asking, Failure> {
             computer_link: None,
         });
     }
-    let here = taken.is_some();
+    let refused_here = match &taken {
+        Handed::Refused(why) if !why.is_empty() => {
+            format!("Splint on this computer didn't take it: {why}. ")
+        }
+        _ => String::new(),
+    };
+    let here = matches!(taken, Handed::Taken(_));
     let waits = if !here {
         Waits::ByLinkOnly
     } else if client.here().await.is_ok_and(|here| here.prompts_by_itself) {
@@ -568,7 +589,10 @@ pub async fn ask(home: &Home, flags: &[&str]) -> Result<Asking, Failure> {
         }
     }
     let controls = hours.filter(|_| controls);
-    let mut said = waiting_words(home, &signed.id, controls, waits, waited, &asked.address);
+    let mut said = format!(
+        "{refused_here}{}",
+        waiting_words(home, &signed.id, controls, waits, waited, &asked.address)
+    );
     if splint_core::asks::adds_owner_part(&changes).is_some() {
         said.push_str(&format!(
             " Your new name counts only once you take it up: run {} ask {} after they approve.",
