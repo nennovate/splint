@@ -180,6 +180,7 @@ pub fn approve(dir: &Path, schemas: &Schemas, given: Given) -> Result<Answered, 
         let checked = Identity::from_encoded(&one.identity).and_then(|identity| {
             let ask = VerifiedAsk::verify(&one.ask, &identity, now)?;
             parse_address(&one.address)?;
+            bound_at(&one, &ask)?;
             mine(dir, &owner, &ask)?;
             kinds_given(&one, &ask)?;
             let terms = step_terms(dir, &one, &ask)?;
@@ -296,6 +297,7 @@ pub fn describe(dir: &Path, given: Given) -> Result<Described, Error> {
         let identity = Identity::from_encoded(&one.identity)?;
         let ask = VerifiedAsk::verify(&one.ask, &identity, now)?;
         parse_address(&one.address)?;
+        bound_at(one, &ask)?;
         if ask.changes().len() > prompt::MOST_NAMED {
             return Err(Error::Malformed);
         }
@@ -308,6 +310,15 @@ pub fn describe(dir: &Path, given: Given) -> Result<Described, Error> {
         });
     }
     Ok(Described { asks })
+}
+
+/// The address a binding this touch signs for an ask names: the agent's own, or that with the owner
+/// part the ask names after its handle, which has to fit there, or the ask isn't shown or signed.
+fn bound_at(one: &One, ask: &VerifiedAsk) -> Result<String, Error> {
+    match ask.owner_part() {
+        Some(owner_part) => splint_core::with_owner_part(&one.address, owner_part),
+        None => Ok(one.address.clone()),
+    }
 }
 
 /// Whether this device signs for the agent behind an ask at all, checked before any prompt names it:
@@ -447,7 +458,7 @@ fn sign_one(
         let answer = signing::controls(
             device,
             identity,
-            &one.address,
+            &bound_at(one, ask)?,
             &backup,
             draft,
             Some(&delegate),
@@ -495,6 +506,21 @@ fn sign_one(
             return Err(Error::Malformed);
         }
         let binding = signing::binding_from_memory(device, identity, to)?;
+        return Ok(Approved {
+            id: ask.id().to_owned(),
+            answer: Some(binding),
+            rules: None,
+            approval: None,
+            where_paid: None,
+            body: None,
+            proof: None,
+        });
+    }
+    // An owner part is the owner's binding at the agent's name with their part after its handle,
+    // signed with the vouch kept here as a move is. Its host refuses it unless that part is this
+    // owner's there, or free, and the name had none.
+    if ask.adds_owner_part().is_some() {
+        let binding = signing::binding_from_memory(device, identity, &bound_at(one, ask)?)?;
         return Ok(Approved {
             id: ask.id().to_owned(),
             answer: Some(binding),
@@ -635,6 +661,7 @@ mod tests {
             owner.identity.id(),
             vec![Change::Controls {
                 delegate: SigningKey::generate().unwrap().public_key().encoded(),
+                owner_part: None,
             }],
             unix_now(),
             3600,
@@ -1143,6 +1170,7 @@ mod tests {
             stand_in.id(),
             vec![Change::Controls {
                 delegate: SigningKey::generate().unwrap().public_key().encoded(),
+                owner_part: None,
             }],
             now,
             3600,

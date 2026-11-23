@@ -267,7 +267,21 @@ fn change_described(
                 .map(|terms| format!(": {}", terms.fixed.join(", ")))
                 .unwrap_or_default()
         ),
-        Change::Controls { .. } => format!("let {agent} act for you"),
+        Change::Controls {
+            owner_part: None, ..
+        } => format!("let {agent} act for you"),
+        // The name the binding names is whole, with what it makes the person's at that host for good.
+        Change::Controls {
+            owner_part: Some(owner_part),
+            ..
+        } => {
+            let (named, for_good) = owner_part_words(agent, owner_part);
+            format!("let {agent} act for you as {named}, {for_good}")
+        }
+        Change::OwnerPart { to } => {
+            let (named, for_good) = owner_part_words(agent, to);
+            format!("rename {agent} to {named}, {for_good}")
+        }
         // The new host is the one thing approved, and a lookalike domain is the risk, so it's named
         // whole with what that host then holds.
         Change::Host { to } => format!(
@@ -360,6 +374,19 @@ fn change_described(
     }
 }
 
+/// The address an agent gets with an owner part after its handle, as its owner's binding names it, and
+/// what that makes the person's: an owner part is theirs at that host for good, and the only one they
+/// have there. Checked before any prompt, so the fallback is only words for an agent with no address.
+fn owner_part_words(agent: &str, owner_part: &str) -> (String, String) {
+    let named = splint_core::with_owner_part(agent, owner_part)
+        .unwrap_or_else(|_| format!("{owner_part} after its handle"));
+    let host = parse_address(agent).map_or("its host", |(_, host)| host);
+    (
+        named,
+        format!("with {owner_part} as your name at {host} for good"),
+    )
+}
+
 /// One ask's changes, each in the fixed words every place a person approves it shows: the prompt, the
 /// page and the terminal, which take them from here, so none can say less than another. A held step
 /// comes with its terms; an agent's address that isn't one is "your agent".
@@ -431,9 +458,14 @@ pub fn for_asks(
     // the test, and its chat showing it joining at that address is.
     let opening = match asks {
         [(ask, agent, ..)] if matches!(ask.changes(), [Change::Controls { .. }]) => {
+            let named = ask.owner_part().map(|owner_part| {
+                let (named, for_good) = owner_part_words(agent, owner_part);
+                format!(" {named}, {for_good}")
+            });
             spoken_name(agent).map(|name| {
                 format!(
-                    "set up {name} ({agent}) as your agent, if its chat shows it joining Splint"
+                    "set up {name} ({agent}) as your agent{}, if its chat shows it joining Splint",
+                    named.unwrap_or_default()
                 )
             })
         }
@@ -684,6 +716,7 @@ mod tests {
         }]);
         let controls = signed(vec![Change::Controls {
             delegate: SigningKey::generate().unwrap().public_key().encoded(),
+            owner_part: None,
         }]);
         let terms = StepTerms {
             fixed: vec!["you pay 1,250.00 USD".to_owned()],

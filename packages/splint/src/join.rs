@@ -267,9 +267,12 @@ pub async fn join(
         back_to_owner_first_if_code_took_nothing(home).await?;
     }
     let coming_back = Installed::load(home)?.is_some_and(|found| found.agent.is_none());
-    if !coming_back && host.handle_taken(handle).await? {
+    // A host keeps one agent to each handle, whatever owner part follows it, so the handle alone is
+    // looked up as well as the whole name.
+    let (bare, _) = name_parts(handle);
+    if !coming_back && (host.handle_taken(handle).await? || host.handle_taken(bare).await?) {
         return Err(Failure::HandleTaken {
-            handle: handle.to_owned(),
+            handle: bare.to_owned(),
             domain: domain.to_owned(),
         });
     }
@@ -431,34 +434,43 @@ listen going or check on a schedule. Where a command can wake what runs you, {sp
 }
 
 /// Joins at once, with no controls yet, on a host that takes agents with no code. Running it again
-/// finishes what failed.
+/// finishes what failed. A name given with its person's part after the dot, as `ana.jeff`, joins as
+/// `ana`, as nobody has said yet who it acts for, and keeps `jeff` for its ask for controls, which
+/// names it for its person to approve with them.
 async fn join_now(
     home: &Home,
-    address: &str,
+    given: &str,
     signup_code: Option<&str>,
 ) -> Result<String, Failure> {
-    let (name, domain) = parse_address(address).map_err(Failure::not_an_address)?;
-    if name_parts(name).1.is_some() {
+    let (name, domain) = parse_address(given).map_err(Failure::not_an_address)?;
+    let (handle, owner_part) = name_parts(name);
+    if owner_part.is_some_and(|owner_part| !may_take_without_code(owner_part)) {
         return Err(Failure::refused(
-            "leave out the part after the dot: your person's name goes there once they set up \
-             their controls",
+            "a person's name after the dot has at least 3 letters, digits or hyphens, and isn't one \
+             a host keeps back, such as admin or support",
         ));
     }
-    if signup_code.is_none() && !may_take_without_code(name) {
+    if signup_code.is_none() && !may_take_without_code(handle) {
         return Err(Failure::HandleNotAllowed {
-            handle: name.to_owned(),
+            handle: handle.to_owned(),
             domain: domain.to_owned(),
         });
     }
+    let address = address_of(handle, domain);
+    let address = address.as_str();
     home.prepare_for_stand_in()?;
     let stand_in = OwnerKey::new(home);
     stand_in.stand_in_identity()?;
     let installed = match Installed::load(home)? {
         Some(found) => Installed {
             address: address.to_owned(),
+            owner_part: owner_part.map(str::to_owned),
             ..found
         },
-        None => Installed::create(address, stand_in.new_agent_backup()?)?,
+        None => Installed {
+            owner_part: owner_part.map(str::to_owned),
+            ..Installed::create(address, stand_in.new_agent_backup()?)?
+        },
     }
     .joined_here();
     installed.save(home)?;
@@ -494,9 +506,21 @@ async fn join_now(
     let Started::Running = auto::start(home)? else {
         return Err(Failure::Stopped);
     };
+    // Said where the agent reads first, as the name it was given isn't its address yet.
+    let named = owner_part
+        .and_then(|owner_part| {
+            let named = splint_core::with_owner_part(address, owner_part).ok()?;
+            Some(format!(
+                "\n\nYour person's name goes after the dot once they set up their controls: {} \
+                 controls asks them to approve you as {named}, which makes {owner_part} their name \
+                 at {domain} for good. Until then you're {address}.",
+                home.command()
+            ))
+        })
+        .unwrap_or_default();
     let said = format!(
         "\
-You're {address}. You can start now.
+You're {address}. You can start now.{named}
 
 Until your person sets up their controls, you work without their oversight, and Splint treats you
 accordingly. You can deal with agents open to anyone, a few at a time, and invite an agent by its
@@ -1031,6 +1055,8 @@ async fn finish_confirming(
     drop(api);
     let confirmed = Installed {
         address: address.clone(),
+        // Its person's binding names it now, with their part or without.
+        owner_part: None,
         owner_elsewhere: Some(reply.owner_identity.clone()),
         backup: AgentBackup {
             commitment: reply.commitment.clone(),

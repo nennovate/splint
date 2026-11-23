@@ -140,3 +140,98 @@ pub async fn finish_pending(home: &Home) -> Result<String, Failure> {
         "nothing is waiting: run splint controls, and give your person its computer_link",
     ))
 }
+
+/// The binding its person signed giving this agent's name their owner part, taken up: its Signet
+/// registers under the new name, its host keeps the old one pointing there, and this folder notes the
+/// new address, so everything here starts there next time. Taking one up twice says so.
+pub async fn take_up_owner_part(home: &Home, binding: &str) -> Result<String, Failure> {
+    let _held = take_up_lock(home)?;
+    let (installed, _) = Installed::require(home)?;
+    let api = SignetApi::new(home, &installed)?;
+    let before = api.who().await?.address;
+    let named = |address: &str| {
+        splint_core::parse_address(address)
+            .is_ok_and(|(name, _)| splint_core::name_parts(name).1.is_some())
+    };
+    if !named(&before) {
+        api.put_binding(binding).await.map_err(|failure| match failure {
+            Failure::Refused(why) => Failure::refused(format!(
+                "your host didn't take the name your person signed, so nothing changed: {why}"
+            )),
+            typed => typed,
+        })?;
+    }
+    let address = api.who().await?.address;
+    if !named(&address) {
+        return Err(Failure::refused(
+            "your Signet still runs under your old name, so nothing changed: ask your person again",
+        ));
+    }
+    Installed {
+        address: address.clone(),
+        owner_part: None,
+        ..installed
+    }
+    .save(home)?;
+    Ok(if address == before {
+        format!("You're {address} already.")
+    } else {
+        format!(
+            "Your person added their name to yours: you're {address} now. Anyone who has {before} \
+             still reaches you, as your host says where it went. Give your new address from here on."
+        )
+    })
+}
+
+/// For `splint ask ID` on an ask to add its person's name: their answer, once they've approved it, from
+/// Splint on this computer, or kept at its host for an agent on another one, taken up. Only a binding
+/// their own key signed for this agent at its name with an owner part added is taken.
+pub async fn take_up_owner_part_if_answered(
+    home: &Home,
+    ask: &str,
+) -> Result<Option<String>, Failure> {
+    let here = match crate::computer::Client::new(home)?.outcome(ask).await {
+        Ok(Some(crate::computer::Outcome::Done {
+            answer: Some(binding),
+        })) => Some(binding),
+        _ => None,
+    };
+    let binding = match here {
+        Some(binding) => Some(binding),
+        None => kept_owner_part(home).await?,
+    };
+    match binding {
+        Some(binding) => take_up_owner_part(home, &binding).await.map(Some),
+        None => Ok(None),
+    }
+}
+
+/// A binding adding the owner's part to this agent's name, which Splint on their computer left at its
+/// host, as it does for a move, for an agent it can't hand it to.
+async fn kept_owner_part(home: &Home) -> Result<Option<String>, Failure> {
+    let (installed, _) = Installed::require(home)?;
+    let Some(owner) = installed.owner_elsewhere.as_deref() else {
+        return Ok(None);
+    };
+    let owner = splint_core::Identity::from_encoded(owner)?.id().clone();
+    let who = SignetApi::new(home, &installed)?.who().await?;
+    let (_, domain) = splint_core::parse_address(&installed.address)?;
+    let Some(kept) = crate::host_calls::HostCalls::new(domain)?
+        .answer_from(&who.key, owner.as_str())
+        .await?
+    else {
+        return Ok(None);
+    };
+    let Ok(reply) = splint_core::MoveReply::decode(&kept) else {
+        return Ok(None);
+    };
+    let agent = splint_core::Identity::from_encoded(&who.identity)?;
+    let adds_owner_part = reply.check(&agent, &owner).is_ok_and(|at| {
+        splint_core::parse_address(&at)
+            .ok()
+            .and_then(|(name, _)| splint_core::name_parts(name).1)
+            .and_then(|part| splint_core::with_owner_part(&installed.address, part).ok())
+            .is_some_and(|named| named == at)
+    });
+    Ok(adds_owner_part.then_some(reply.binding))
+}

@@ -34,8 +34,9 @@ use crate::{Host, admission, changes, database, delivery, inbox, join, owner_key
 // `handle` holds the whole name before the `~`, with any owner part, and the agent's handle before the
 // owner part names one agent here, whatever owner part follows it. An owner part belongs to the first
 // owner ID whose binding used it here, for good, and each owner has one, so `.jeff` here always means
-// the same owner. A name an agent left when its owner changed stays its own, and answers with where it
-// went, so nobody else can take it and be reached by mistake.
+// the same owner. A name an agent left when its owner changed, or when its owner added their part to
+// a name that had none, stays its own, and answers with where it went, so nobody else can take it and
+// be reached by mistake.
 // A retired agent keeps its row, so its ID and handle can't be registered again. A revoked one keeps
 // its row too, and its owner can sign it back in. The columns after `open_source` are what a recovery
 // of the owner's ID can still undo, and for how long.
@@ -282,14 +283,19 @@ async fn take_newer_statement(
     if revoked_seq.is_some_and(|revoked| seq <= revoked) {
         return Err(ApiError::OutOfDate("this agent was revoked since that"));
     }
+    // A new owner gives the name a new owner part. The same owner can only add theirs, once, to a name
+    // that has none, as when they set up controls with one touch and nothing asked their name. Either
+    // way the owner part has to be theirs here, which `take_owner_name` holds them to.
     let held_name: String = row.try_get("handle")?;
     let renamed = held_name != registration.name();
-    if renamed
-        && (owner.id() == held_owner.id()
-            || name_parts(&held_name).0 != name_parts(registration.name()).0)
-    {
+    let (held_handle, held_part) = name_parts(&held_name);
+    let (handle, part) = name_parts(registration.name());
+    let may_rename = held_handle == handle
+        && (owner.id() != held_owner.id() || (held_part.is_none() && part.is_some()));
+    if renamed && !may_rename {
         return Err(ApiError::Forbidden(
-            "only the owner part of a name changes, and only with a new owner",
+            "only the owner part of a name changes: with a new owner, or added once by its owner \
+             where it has none",
         ));
     }
     let now = host.clock.now_for_sql().await;

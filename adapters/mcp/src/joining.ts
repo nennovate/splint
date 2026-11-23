@@ -12,6 +12,8 @@ const SPLINT_TIMEOUT_MS = 120_000;
 const MAX_ANSWER_BYTES = 1 << 20;
 // What "Addresses" in docs/protocol.md allows, in its one spelling. `splint` checks it all again.
 const HANDLE = /^[a-z0-9-]{1,63}$/;
+// What `join` takes: a handle, or a handle with the agent's person's name after the dot.
+const NAME = /^[a-z0-9-]{1,63}(?:\.[a-z0-9-]{1,63})?$/;
 const HOST = /^(?:[a-z0-9-]{1,63}(?:\.[a-z0-9-]{1,63})*|\[[0-9a-f:.]{2,45}\])(?::[1-9][0-9]{0,4})?$/;
 const MAX_HOST_CHARS = 255;
 const MAX_PORT = 65_535;
@@ -73,6 +75,12 @@ function askWords(given: Record<string, unknown>): string[] {
   for (const name of ["contact", "remove", "block"]) {
     if (given[name] !== undefined) words.push(`--${name}`, addressFrom(given[name]));
   }
+  if (given.name !== undefined) {
+    if (typeof given.name !== "string" || !HANDLE.test(given.name) || given.name.startsWith("-")) {
+      throw new Refusal("name is your person's name as it goes after the dot, such as jeff, in lower case");
+    }
+    words.push("--name", given.name);
+  }
   for (const name of ["controls", "text", "wait"]) {
     if (given[name] === true) words.push(`--${name}`);
     else if (given[name] !== undefined && given[name] !== false) throw new Refusal(`${name} is true or false`);
@@ -109,8 +117,8 @@ function askWords(given: Record<string, unknown>): string[] {
 
 /** A word that starts with `-` would read as an option, whatever the protocol allows. */
 function handleFrom(value: unknown): string {
-  if (typeof value !== "string" || !HANDLE.test(value) || value.startsWith("-")) {
-    throw new Refusal("a handle is up to 63 lower-case letters, digits and -, such as ana");
+  if (typeof value !== "string" || !NAME.test(value) || value.length > 63 || value.startsWith("-")) {
+    throw new Refusal("a handle is up to 63 lower-case letters, digits and -, such as ana, or ana.jeff with your person's name after the dot");
   }
   return value;
 }
@@ -165,7 +173,7 @@ export const joiningTools: Tool[] = [
   {
     name: "join",
     description:
-      "Get your address: handle is yours, host exactly as given. signup_code: one your person got from whoever runs a host that needs one, as signup_code_needed says.",
+      "Get your address: handle is yours, host exactly as given. Where your person goes by a name, give handle.name, such as ana.jeff: you join as the handle, and `ask` with controls then asks them to approve you with their name after the dot. signup_code: one your person got from whoever runs a host that needs one, as signup_code_needed says.",
     inputSchema: {
       type: "object",
       properties: { handle: { type: "string" }, host: { type: "string" }, signup_code: { type: "string" } },
@@ -201,12 +209,13 @@ export const joiningTools: Tool[] = [
   {
     name: "ask",
     description:
-      "Ask your person for exactly these changes to how you deal with other agents, signed by your key, or with id, where one stands. controls asks them to set up their controls for you, and lasts an hour: ask again for a fresh link. While it waits, the answer has `computer_link` to hand them, which opens on Splint on their own computer; if Splint isn't there yet, guide them through installing it with `controls.install` from `status`, or `controls.install_on_windows`. Whoever approves first by it becomes your owner, and asking again ends the one before. step asks them to approve one step held for them, alone: the request's id as tools show it, or a hold's, and the step, as `ask_with` gives them. paid_at asks them to sign where they get paid, alone. Their one approval signs it, or nothing; you get nothing to use again. Explain why in your own words; nothing you write reaches the approval.",
+      "Ask your person for exactly these changes to how you deal with other agents, signed by your key, or with id, where one stands. controls asks them to set up their controls for you, and lasts an hour: ask again for a fresh link. While it waits, the answer has `computer_link` to hand them, which opens on Splint on their own computer; if Splint isn't there yet, guide them through installing it with `controls.install` from `status`, or `controls.install_on_windows`. Whoever approves first by it becomes your owner, and asking again ends the one before. name, with controls, is your person's name after your handle, as handle.name, which they approve with them; it's the one you joined with unless you give another. name alone asks them to add theirs to your name, once, if it has none yet; then `ask` with its id takes it up. step asks them to approve one step held for them, alone: the request's id as tools show it, or a hold's, and the step, as `ask_with` gives them. paid_at asks them to sign where they get paid, alone. Their one approval signs it, or nothing; you get nothing to use again. Explain why in your own words; nothing you write reaches the approval.",
     inputSchema: {
       type: "object",
       properties: {
         id: { type: "string" },
         controls: { type: "boolean" },
+        name: { type: "string" },
         level: { type: "string", enum: ASK_CHOICES.level },
         quoted_prices: { type: "string", enum: ASK_CHOICES.quoted_prices },
         reach: { type: "string", enum: ASK_CHOICES.reach },

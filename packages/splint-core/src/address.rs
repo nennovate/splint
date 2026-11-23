@@ -112,6 +112,19 @@ pub fn same_handle_and_host(one: &str, other: &str) -> bool {
     }
 }
 
+/// `ana~splint.example` with `jeff` after its handle, as `ana.jeff~splint.example`: the address an
+/// owner's binding names when they give an agent that has no owner part yet theirs. One that has an
+/// owner part already keeps it, so this refuses it, as it does a name that wouldn't fit.
+pub fn with_owner_part(address: &str, owner_part: &str) -> Result<String, Error> {
+    let (name, domain) = parse_address(address)?;
+    if name_parts(name).1.is_some() || !is_valid_handle(owner_part) {
+        return Err(Error::Malformed);
+    }
+    let named = format!("{name}{OWNER_SEPARATOR}{owner_part}{ADDRESS_SEPARATOR}{domain}");
+    parse_address(&named)?;
+    Ok(named)
+}
+
 /// Splits `name~domain`, in its one spelling. It's strict because the domain becomes part of a
 /// URL, so a fooled agent can't use an address to point Signet at some other path.
 pub fn parse_address(address: &str) -> Result<(&str, &str), Error> {

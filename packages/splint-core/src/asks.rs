@@ -18,7 +18,7 @@ use crate::rules::{
 };
 use crate::{
     CLOCK_TOLERANCE_SECS, Error, Identity, MessageId, PublicKey, SigningKey, SplintId,
-    canonical_address, jws,
+    canonical_address, is_valid_handle, jws,
 };
 
 const ASK_TYPE: &str = "splint-ask";
@@ -49,8 +49,18 @@ pub const MOST_IN_ONE_APPROVAL: usize = 8;
 pub enum Change {
     /// Set up the owner's controls for this agent: that it acts for them, under the default rules,
     /// with a delegation to this key, its Signet's delegate key, which the owner's side signs with them.
+    /// With `owner_part`, the name its person goes by, the binding they sign names the agent with that
+    /// after its handle, as `ana.jeff~host` for `ana~host`, which is theirs at that host from then on.
     Controls {
         delegate: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        owner_part: Option<String>,
+    },
+    /// Give this agent's name its owner's part, once, where it has none yet: the owner's side signs a
+    /// binding at `handle.to~host`, which the agent takes up there, and its old name answers with where
+    /// it went. It changes no rule, so it's alone in its ask.
+    OwnerPart {
+        to: String,
     },
     Level {
         to: Level,
@@ -124,6 +134,7 @@ impl Change {
             Self::Step { .. } => "step".to_owned(),
             Self::WherePaid { .. } => "where_paid".to_owned(),
             Self::Host { .. } => "host".to_owned(),
+            Self::OwnerPart { .. } => "owner_part".to_owned(),
             Self::Level { .. } => "level".to_owned(),
             Self::QuotedPrices { .. } => "quoted_prices".to_owned(),
             Self::Reach { .. } => "reach".to_owned(),
@@ -167,10 +178,18 @@ impl Change {
                 Self::Remove { agent } => is_id(agent),
                 // In its one spelling, and on the curve, as Go and the page check it: a delegation
                 // to a point that isn't one could never be used, and the three would disagree.
-                Self::Controls { delegate } => PublicKey::from_encoded(delegate).is_ok_and(|key| {
-                    key.encoded() == *delegate
-                        && crate::SealPublicKey::from_bytes(key.as_bytes()).is_ok()
-                }),
+                // An owner part is one handle, which the owner's side puts after the agent's.
+                Self::Controls {
+                    delegate,
+                    owner_part,
+                } => {
+                    owner_part.as_deref().is_none_or(is_valid_handle)
+                        && PublicKey::from_encoded(delegate).is_ok_and(|key| {
+                            key.encoded() == *delegate
+                                && crate::SealPublicKey::from_bytes(key.as_bytes()).is_ok()
+                        })
+                }
+                Self::OwnerPart { to } => is_valid_handle(to),
                 Self::Step { request, .. } => request.is_well_formed(),
                 Self::Host { to } => is_one_spelling(to),
                 // Its places are checked as the statement the owner's side would sign, below.
@@ -197,14 +216,15 @@ impl Change {
     }
 
     /// Makes this change to rules an owner is about to sign, and nothing else. Setting up controls
-    /// changes no rule: the owner's side signs that with the first rules. Nor does a step, or where
-    /// the owner gets paid.
+    /// changes no rule: the owner's side signs that with the first rules. Nor does a step, where
+    /// the owner gets paid, a move or an owner part.
     pub fn apply(&self, draft: &mut RulesDraft) {
         match self {
             Self::Controls { .. }
             | Self::Step { .. }
             | Self::WherePaid { .. }
-            | Self::Host { .. } => {}
+            | Self::Host { .. }
+            | Self::OwnerPart { .. } => {}
             Self::Level { to } => draft.permissions.level = *to,
             Self::QuotedPrices { to } => draft.permissions.quoted_prices = *to,
             Self::Reach {
@@ -242,7 +262,24 @@ impl Change {
 /// The delegate key an ask for controls names, if it's one.
 pub fn controls_delegate(changes: &[Change]) -> Option<&str> {
     changes.iter().find_map(|change| match change {
-        Change::Controls { delegate } => Some(delegate.as_str()),
+        Change::Controls { delegate, .. } => Some(delegate.as_str()),
+        _ => None,
+    })
+}
+
+/// The owner part an ask names for its agent's name, with its controls or alone.
+pub fn owner_part_of(changes: &[Change]) -> Option<&str> {
+    changes.iter().find_map(|change| match change {
+        Change::Controls { owner_part, .. } => owner_part.as_deref(),
+        Change::OwnerPart { to } => Some(to.as_str()),
+        _ => None,
+    })
+}
+
+/// The owner part an ask asks to add to its agent's name, if it's for that alone.
+pub fn adds_owner_part(changes: &[Change]) -> Option<&str> {
+    changes.iter().find_map(|change| match change {
+        Change::OwnerPart { to } => Some(to.as_str()),
         _ => None,
     })
 }
@@ -284,12 +321,16 @@ pub fn where_paid_of(changes: &[Change]) -> Option<&[Place]> {
 }
 
 /// Whether an ask holding `changes` goes in one approval with asks holding `with`: never past
-/// [`MOST_IN_ONE_APPROVAL`] changes, and a held step, where the owner gets paid or a move to another
-/// host only alone, so the money, terms or host it moves are never read beside anything else. The owner's prompt and every list of
-/// what one approval signs group asks by this alone, so the list shown is the one signed.
+/// [`MOST_IN_ONE_APPROVAL`] changes, and a held step, where the owner gets paid, a move to another
+/// host or an owner part only alone, so the money, terms, host or name are never read beside anything
+/// else. The owner's prompt and every list of what one approval signs group asks by this alone, so the
+/// list shown is the one signed.
 pub fn fits_one_approval(with: &[&[Change]], changes: &[Change]) -> bool {
     let alone = |changes: &[Change]| {
-        step_of(changes).is_some() || where_paid_of(changes).is_some() || host_of(changes).is_some()
+        step_of(changes).is_some()
+            || where_paid_of(changes).is_some()
+            || host_of(changes).is_some()
+            || adds_owner_part(changes).is_some()
     };
     let named: usize = with.iter().map(|one| one.len()).sum();
     named.saturating_add(changes.len()) <= MOST_IN_ONE_APPROVAL
@@ -375,7 +416,7 @@ impl AskPayload {
                 .iter()
                 .all(|change| subjects.insert(change.subject()))
             || (self.changes.len() > 1
-                && ["step", "where_paid", "host"]
+                && ["step", "where_paid", "host", "owner_part"]
                     .iter()
                     .any(|alone| subjects.contains(*alone)))
         {
@@ -528,6 +569,16 @@ impl VerifiedAsk {
         host_of(&self.payload.changes)
     }
 
+    /// The owner part it names for its agent's name, with its controls or alone.
+    pub fn owner_part(&self) -> Option<&str> {
+        owner_part_of(&self.payload.changes)
+    }
+
+    /// The owner part it asks to add to its agent's name, if it's for that alone.
+    pub fn adds_owner_part(&self) -> Option<&str> {
+        adds_owner_part(&self.payload.changes)
+    }
+
     pub fn issued_at(&self) -> u64 {
         self.payload.issued_at
     }
@@ -572,6 +623,7 @@ mod tests {
     fn controls() -> Change {
         Change::Controls {
             delegate: SigningKey::generate().unwrap().public_key().encoded(),
+            owner_part: None,
         }
     }
 

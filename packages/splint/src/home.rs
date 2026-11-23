@@ -526,6 +526,11 @@ pub struct Installed {
     /// good keys until it was cut off still asks if they're lost afterwards.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub replacing_keys: bool,
+    /// The name its person goes by, given after the dot when it joined, as `ana.jeff`, before they
+    /// set up their controls. An agent that joins on its own has no owner part yet, so this waits for
+    /// its ask for controls, which names it for the person to approve with them.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub owner_part: Option<String>,
 }
 
 /// Owner network access, as its operator turned it on.
@@ -551,6 +556,7 @@ impl Installed {
             owner_network: None,
             recovering: None,
             replacing_keys: false,
+            owner_part: None,
         })
     }
 

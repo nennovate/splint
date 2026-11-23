@@ -236,6 +236,11 @@ async fn ask(
     if let Some(to) = splint_core::asks::host_of(&body.changes) {
         may_ask_to_move(&signet, to).await?;
     }
+    // An owner part goes after this agent's handle here, so it's one that fits, for a name that has
+    // none yet, and one a host gives out with no code, so it can't pass for the host or for Splint.
+    if let Some(owner_part) = splint_core::asks::owner_part_of(&body.changes) {
+        may_name_owner_part(&signet, &body.changes, owner_part)?;
+    }
     // A step is asked for only while it's held for the owner, and the ask names that exact draft.
     let draft = match splint_core::asks::step_of(&body.changes) {
         Some((request, operation)) => {
@@ -261,7 +266,10 @@ async fn ask(
     let delegate = signet.delegation.held().await.key.public_key().encoded();
     let mut changes = body.changes;
     for change in &mut changes {
-        if let Change::Controls { delegate: named } = change {
+        if let Change::Controls {
+            delegate: named, ..
+        } = change
+        {
             named.clone_from(&delegate);
         }
     }
@@ -470,6 +478,44 @@ async fn may_ask_to_move(signet: &Signet, to: &str) -> Result<(), ApiError> {
     Ok(())
 }
 
+/// Whether this agent may ask for `owner_part` after its handle: with its controls, or alone once its
+/// person has set those up, while it's registered, so the binding they sign has a place to go.
+fn may_name_owner_part(
+    signet: &Signet,
+    changes: &[Change],
+    owner_part: &str,
+) -> Result<(), ApiError> {
+    if splint_core::with_owner_part(&signet.address(), owner_part).is_err() {
+        return Err(ApiError::BadRequest(
+            "that name won't go after this agent's handle: it has an owner part already, or the two \
+             wouldn't fit in an address",
+        ));
+    }
+    if !splint_core::may_take_without_code(owner_part) {
+        return Err(ApiError::BadRequest(
+            "a person's name after the dot has at least 3 letters, digits or hyphens, and isn't one a \
+             host keeps back, such as admin or support",
+        ));
+    }
+    if splint_core::asks::adds_owner_part(changes).is_none() {
+        return Ok(());
+    }
+    if signet.retired.is() {
+        return Err(ApiError::Retired);
+    }
+    if signet.who().owner.is_unconfirmed_owner() {
+        return Err(ApiError::BadRequest(
+            "no person has set up controls for this agent yet, so ask for those with the name instead",
+        ));
+    }
+    if signet.recovering() || signet.who().binding.is_empty() || !signet.registered.is_done() {
+        return Err(ApiError::BadRequest(
+            "this agent isn't registered at its host now, so there's no name to add to",
+        ));
+    }
+    Ok(())
+}
+
 /// The owner's draft for this step of this request, while it's held for them.
 async fn held_draft(
     signet: &Signet,
@@ -573,6 +619,13 @@ async fn holds_now(signet: &Signet, changes: &[Change]) -> bool {
     // A move is done once this agent runs at that address and its host there has taken it.
     if let Some(to) = splint_core::asks::host_of(changes) {
         return signet.address() == to && signet.registered.is_done();
+    }
+    // An owner part is done once this agent runs under that name and its host has taken it.
+    if let Some(owner_part) = splint_core::asks::adds_owner_part(changes) {
+        let address = signet.address();
+        return splint_core::parse_address(&address)
+            .is_ok_and(|(name, _)| splint_core::name_parts(name).1 == Some(owner_part))
+            && signet.registered.is_done();
     }
     if let Some(places) = splint_core::asks::where_paid_of(changes) {
         let owner = &signet.who().owner;

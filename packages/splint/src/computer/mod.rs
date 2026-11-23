@@ -654,6 +654,18 @@ impl Computer {
                 && let Ok(agent) = VerifiedAsk::claimed_agent(&asked.ask)
             {
                 self.remember_agent(agent.as_str(), &asked.address, &asked.identity);
+                // Kept at the name it has now, which follows once its host names it with the
+                // owner's part, as only then has the agent taken it up.
+                if let Some(named) = splint_core::asks::payload_changes(&asked.ask)
+                    .ok()
+                    .as_deref()
+                    .and_then(splint_core::asks::owner_part_of)
+                    .and_then(|owner_part| {
+                        splint_core::with_owner_part(&asked.address, owner_part).ok()
+                    })
+                {
+                    self.note_moving(agent.as_str(), &named);
+                }
             }
             self.outcomes.lock().await.insert(done.id.clone(), outcome);
         }
@@ -914,8 +926,8 @@ pub struct InForce {
 }
 
 /// The agent an ask is for, where it asks this owner for new rules: not its controls, a held step,
-/// where its owner gets paid or a move to another host, which build on no rules, nor another owner's agent's, which `owner-key`
-/// refuses as not theirs.
+/// where its owner gets paid, a move to another host or an owner part, which build on no rules, nor
+/// another owner's agent's, which `owner-key` refuses as not theirs.
 fn asks_for_rules(
     asked: &Asked,
     owner: Option<&splint_core::SplintId>,
@@ -926,7 +938,8 @@ fn asks_for_rules(
     let other = ask.asks_for_controls()
         || ask.step().is_some()
         || ask.where_paid().is_some()
-        || ask.host().is_some();
+        || ask.host().is_some()
+        || ask.adds_owner_part().is_some();
     (!other && Some(ask.owner()) == owner).then(|| ask.agent().clone())
 }
 
@@ -1117,16 +1130,13 @@ impl Computer {
             return (Outcome::Done { answer: None }, true);
         };
         // A move's answer is the owner's binding at the new address, which the agent takes up from
-        // here: its new host doesn't know it yet, and the one it leaves may be gone.
-        if let Some(to) = splint_core::asks::payload_changes(&asked.ask)
-            .ok()
-            .as_deref()
-            .and_then(splint_core::asks::host_of)
-        {
+        // here: its new host doesn't know it yet, and the one it leaves may be gone. An owner part's is
+        // the same at the agent's own host, under its name with the owner's part after its handle.
+        if let Some(to) = moved_to(asked) {
             if let Ok(agent) = VerifiedAsk::claimed_agent(&asked.ask) {
-                self.note_moving(agent.as_str(), to);
+                self.note_moving(agent.as_str(), &to);
             }
-            self.keep_move_at(asked, to, answer).await;
+            self.keep_move_at(asked, &to, answer).await;
             return (
                 Outcome::Done {
                     answer: Some(answer.clone()),
@@ -1158,6 +1168,17 @@ impl Computer {
             kept,
         )
     }
+}
+
+/// Where an ask's answer binds its agent other than where it is: another host for a move, or its own
+/// name with the owner part it asks to add.
+fn moved_to(asked: &Asked) -> Option<String> {
+    let changes = splint_core::asks::payload_changes(&asked.ask).ok()?;
+    if let Some(to) = splint_core::asks::host_of(&changes) {
+        return Some(to.to_owned());
+    }
+    let owner_part = splint_core::asks::adds_owner_part(&changes)?;
+    splint_core::with_owner_part(&asked.address, owner_part).ok()
 }
 
 fn expires_at(ask: &str) -> Option<u64> {

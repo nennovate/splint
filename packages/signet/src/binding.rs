@@ -301,7 +301,14 @@ pub(crate) async fn take_binding(
     let binding =
         VerifiedBinding::accept(&signet.key, &body.binding, None, &who.owner, &who.identity)
             .map_err(ApiError::NotBound)?;
-    if binding.address() != signet.address() {
+    // This address, or the same with the owner's part after a handle that has none, once, as they
+    // sign when they give its name theirs. Its host decides whether that name is theirs to give.
+    let adds_owner_part = parse_address(binding.address())
+        .ok()
+        .and_then(|(name, _)| splint_core::name_parts(name).1)
+        .and_then(|owner_part| splint_core::with_owner_part(&signet.address(), owner_part).ok())
+        .is_some_and(|named| named == binding.address());
+    if binding.address() != signet.address() && !adds_owner_part {
         return Err(ApiError::NotBound(Error::ProofMismatch));
     }
     binding
