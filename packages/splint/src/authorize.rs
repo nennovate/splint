@@ -682,9 +682,8 @@ async fn owner_part(
         }
         return Ok(address.to_owned());
     };
-    splint_core::with_owner_part(address, word).map_err(|_| {
-        Failure::refused("that name won't go in an address, so nothing was signed")
-    })
+    splint_core::with_owner_part(address, word)
+        .map_err(|_| Failure::refused("that name won't go in an address, so nothing was signed"))
 }
 
 /// Sets up controls for an agent that joined on its own: says what that means, asks the same choices

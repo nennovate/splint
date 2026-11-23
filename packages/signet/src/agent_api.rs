@@ -231,9 +231,9 @@ pub async fn typed_address_named(signet: &Signet, text: &str) -> Result<String, 
         .name_form(name, domain)
         .await
         .map_err(|error| match error {
-            HostError::Unreachable => {
-                ApiError::CouldntReach("that address's host can't be reached now, so try again later")
-            }
+            HostError::Unreachable => ApiError::CouldntReach(
+                "that address's host can't be reached now, so try again later",
+            ),
             HostError::TooMany => ApiError::Host(HostError::TooMany),
             _ => ApiError::BadRequest("nobody answers at that address"),
         })

@@ -135,8 +135,8 @@ const TEMPORARY_CODE_CHARS: usize = 6;
 const DIGITS_IN_BASE32: &[u8] = b"234567";
 
 /// The name an agent nobody has set up controls for joins under: the word it chose, a hyphen and a
-/// random code, as `claude-7k3p2a`. Its person's controls give it a name under theirs, as
-/// `claude.nenye`, and this one is let go a while later. Provisional.
+/// random code, as `muse-7k3p2a`. Its person's controls give it a name under theirs, as
+/// `muse.jeff`, and this one is let go a while later. Provisional.
 pub fn temporary_name(word: &str) -> Result<String, Error> {
     use aws_lc_rs::rand::{SecureRandom, SystemRandom};
     let mut random = [0_u8; TEMPORARY_CODE_CHARS];
@@ -197,8 +197,8 @@ pub fn agent_word(name: &str) -> &str {
 pub const OWNER_ID_FORM_CHARS: usize = 26;
 
 /// An owner's ID as it goes after an agent's handle in place of their name: its first 128 bits in
-/// lowercase base32, as a pairing code writes them. `claude.<that>~host` reaches the agent its host
-/// names `claude.<their name>~host`, which is what's kept and shown from then on.
+/// lowercase base32, as a pairing code writes them. `muse.<that>~host` reaches the agent its host
+/// names `muse.<their name>~host`, which is what's kept and shown from then on.
 pub fn owner_id_form(owner: &crate::SplintId) -> Result<String, Error> {
     let start = owner
         .as_str()
@@ -223,7 +223,7 @@ pub fn owner_id_start(owner_part: &str) -> Option<String> {
 }
 
 /// The address an answer about `typed` is for. Where `typed` names an owner by their ID in place of
-/// their name, as `claude.<ID form>~host`, that's the address its host said it stands for, `moved_to`:
+/// their name, as `muse.<ID form>~host`, that's the address its host said it stands for, `moved_to`:
 /// at the same host, with the same handle, for an owner whose ID starts as the form says, which a
 /// caller checks against the binding before taking it. That's what's kept and shown from then on, as
 /// an address has one spelling. Anything else is `typed` itself.
@@ -675,16 +675,16 @@ mod tests {
     /// alone read as a temporary name, or an ID form that doesn't name the ID it came from.
     #[test]
     fn an_owners_name_is_never_a_temporary_name_or_an_id() {
-        let made = temporary_name("claude").unwrap();
+        let made = temporary_name("muse").unwrap();
         assert!(
-            is_temporary_name(&made) && agent_word(&made) == "claude",
+            is_temporary_name(&made) && agent_word(&made) == "muse",
             "{made}"
         );
         assert!(!may_be_owner_name(&made), "{made}");
         assert!(!is_temporary_name("anna-london") && may_be_owner_name("anna-london"));
         assert_eq!(
             with_owner_part(&format!("{made}~host.example"), "jeff").as_deref(),
-            Ok("claude.jeff~host.example")
+            Ok("muse.jeff~host.example")
         );
         let owner = crate::test_identity(&crate::SigningKey::generate().unwrap());
         let form = owner_id_form(owner.id()).unwrap();
@@ -696,19 +696,19 @@ mod tests {
                 .starts_with(&owner_id_start(&form).unwrap())
         );
         assert!(!may_be_owner_name(&form));
-        assert!(with_owner_part("claude~host.example", &form).is_err());
+        assert!(with_owner_part("muse~host.example", &form).is_err());
         assert!(owner_id_start("anna").is_none());
         // An ID form stands for the name its host gives, only for that owner, handle and host.
-        let typed = format!("claude.{form}~host.example");
+        let typed = format!("muse.{form}~host.example");
         assert_eq!(
-            address_named(&typed, "claude.jeff~host.example", owner.id()).as_deref(),
-            Ok("claude.jeff~host.example")
+            address_named(&typed, "muse.jeff~host.example", owner.id()).as_deref(),
+            Ok("muse.jeff~host.example")
         );
         let stranger = crate::test_identity(&crate::SigningKey::generate().unwrap());
         for (moved_to, bound_for) in [
-            ("claude.jeff~host.example", stranger.id()),
+            ("muse.jeff~host.example", stranger.id()),
             ("muse.jeff~host.example", owner.id()),
-            ("claude.jeff~elsewhere.example", owner.id()),
+            ("muse.jeff~elsewhere.example", owner.id()),
         ] {
             assert!(
                 address_named(&typed, moved_to, bound_for).is_err(),

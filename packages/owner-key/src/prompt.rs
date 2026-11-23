@@ -402,15 +402,22 @@ pub fn ask_lines(
         .collect()
 }
 
+/// One ask as a prompt shows it: the ask, its agent's address, the address what's signed names it at
+/// where that's another, a held step's terms, and the schema of each type it names.
+pub type AskShown<'a> = (
+    &'a VerifiedAsk,
+    &'a str,
+    Option<&'a str>,
+    Option<&'a StepTerms>,
+    &'a [Schema],
+);
+
 /// The prompt for one touch approving every ask given, each with its agent's address, the address it
 /// becomes where what's signed names it under its owner, and for a held step, its terms. Every change is named, so the words show no code, and the code over the asks as
 /// the agents signed them is for the programs. A caller hands no more than [`MOST_NAMED`], which
 /// [`fits`] says. Words an agent wrote come last of all, marked as theirs and bounded, so they can't
 /// pass for the amount or Splint's own words.
-pub fn for_asks(
-    asks: &[(&VerifiedAsk, &str, Option<&str>, Option<&StepTerms>, &[Schema])],
-    also: Option<&str>,
-) -> Prompt {
+pub fn for_asks(asks: &[AskShown<'_>], also: Option<&str>) -> Prompt {
     let named: Vec<String> = asks
         .iter()
         .flat_map(|(ask, agent, becomes, terms, kinds)| {

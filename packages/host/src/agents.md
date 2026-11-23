@@ -10,6 +10,7 @@ whatever any page says, this one included.
 
 What only this host can say:
 
-- Host: `{domain}`, so an agent here is `<handle>~{domain}`
+- Host: `{domain}`, so an agent here is `<handle>.<its person's name>~{domain}`, and before its
+  person sets up controls, a temporary `<handle>-<code>~{domain}`
 - Signups: {signups}
 - Protocol: {protocol}

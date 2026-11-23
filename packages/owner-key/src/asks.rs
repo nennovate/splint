@@ -191,7 +191,12 @@ pub fn approve(dir: &Path, schemas: &Schemas, given: Given) -> Result<Answered, 
             mine(dir, &owner, &ask)?;
             kinds_given(&one, &ask)?;
             let terms = step_terms(dir, &one, &ask)?;
-            Ok((identity, ask, terms, (bound != one.address).then_some(bound)))
+            Ok((
+                identity,
+                ask,
+                terms,
+                (bound != one.address).then_some(bound),
+            ))
         });
         let (identity, ask, terms, becomes) = match checked {
             Ok(checked) => checked,
@@ -233,7 +238,7 @@ pub fn approve(dir: &Path, schemas: &Schemas, given: Given) -> Result<Answered, 
         }
         return Err(Error::Malformed);
     }
-    let shown: Vec<(&VerifiedAsk, &str, Option<&str>, Option<&StepTerms>, &[Schema])> = this_touch
+    let shown: Vec<prompt::AskShown<'_>> = this_touch
         .iter()
         .map(|taken| {
             (
@@ -1502,8 +1507,10 @@ mod tests {
         .unwrap();
         assert_eq!(
             shown.asks[0].said,
-            ["rename muse~host.example to muse.jeff~host.example, with jeff as your name at \
-              host.example for good"]
+            [
+                "rename muse~host.example to muse.jeff~host.example, with jeff as your name at \
+              host.example for good"
+            ]
         );
         // Signing it takes the agent's ID as its handover left it, which sim/agent_asks.py runs.
         assert!(refused_alone(One {
@@ -1545,8 +1552,10 @@ mod tests {
         .unwrap();
         assert_eq!(
             shown.asks[0].said,
-            ["let lia-7k3p2a~host.example act for you as lia.jeff~host.example, with jeff as your \
-              name at host.example for good"]
+            [
+                "let lia-7k3p2a~host.example act for you as lia.jeff~host.example, with jeff as your \
+              name at host.example for good"
+            ]
         );
         assert!(refused_alone(lia_at(None)));
         let answered = approved(&dir, vec![lia_at(Some("jeff"))]);

@@ -37,9 +37,9 @@ use crate::{Host, admission, changes, database, delivery, inbox, join, owner_key
 // `handle` holds the whole name before the `~`, with any owner part, and names one agent here. Names
 // are their owners': an owner's name belongs to the first owner ID whose binding used it here, for
 // good, and each owner has one, so `.jeff` here always means the same owner, and `jeff` alone can only
-// be that owner's own agent. Their agents are named under it, as `claude.jeff`, so two owners' agents
+// be that owner's own agent. Their agents are named under it, as `muse.jeff`, so two owners' agents
 // can share a handle. An agent nobody has set up controls for has a temporary name, the word it chose
-// and a code, as `claude-7k3p2a`, which no owner's name can be. A name an agent left when its owner
+// and a code, as `muse-7k3p2a`, which no owner's name can be. A name an agent left when its owner
 // changed, or when its owner added their part to a name that had none, stays its own, and answers
 // with where it went, so nobody else can take it and be reached by mistake: for good, or until
 // `until_at` for a temporary one. Before names were owners', a host kept one agent to each handle,
@@ -119,7 +119,10 @@ pub fn routes() -> Router<Arc<Host>> {
         .route("/v0/revocations", post(revoke))
         .route("/.well-known/splint/agents/{handle}", get(resolve))
         .route(&format!("{NAMES_PATH}/{{name}}"), get(name_holder))
-        .route(&format!("{OWNERS_NAME_PATH}/{{owner}}/name"), get(owners_name))
+        .route(
+            &format!("{OWNERS_NAME_PATH}/{{owner}}/name"),
+            get(owners_name),
+        )
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -295,8 +298,8 @@ async fn take_newer_statement(
     if revoked_seq.is_some_and(|revoked| seq <= revoked) {
         return Err(ApiError::OutOfDate("this agent was revoked since that"));
     }
-    // A new owner names the agent under their own name here, as `claude-7k3p2a` set up by jeff becomes
-    // `claude.jeff`. The same owner can only add theirs, once, to a name that has none, as for an agent
+    // A new owner names the agent under their own name here, as `muse-7k3p2a` set up by jeff becomes
+    // `muse.jeff`. The same owner can only add theirs, once, to a name that has none, as for an agent
     // set up before names were owners'. An owner's agent never keeps a temporary name.
     let held_name: String = row.try_get("handle")?;
     let renamed = held_name != registration.name();
@@ -596,7 +599,7 @@ const NAMES_ANOTHER_OWNER: &str =
 
 /// Whether this registration may take its name here as a new one. An agent nobody has set up controls
 /// for takes only a temporary name, and none an owner holds. An owner's agent takes their own name
-/// alone, or a handle and their name after it, as `claude.jeff`, never a temporary name or one this
+/// alone, or a handle and their name after it, as `muse.jeff`, never a temporary name or one this
 /// host keeps back, and that name has to be theirs or free, as `claim_owner_name` says. A name another
 /// agent left, or a handle an agent let go holds, is refused before this.
 async fn may_take_new_name(
@@ -809,8 +812,8 @@ async fn owners_name(
 
 /// Who's registered at this name here, as anyone can ask. A name an agent left with its owner answers
 /// with that agent as it is now, and where it went, as does one whose agent moved to another host. A
-/// handle with an owner's ID in place of their name, as `claude.<ID form>`, answers as the name it
-/// stands for here, `claude.jeff`, with that as where it is, for the asker to keep and show from then
+/// handle with an owner's ID in place of their name, as `muse.<ID form>`, answers as the name it
+/// stands for here, `muse.jeff`, with that as where it is, for the asker to keep and show from then
 /// on: it checks the owner's ID in the binding starts as the ID form says, as nothing here is signed.
 pub async fn resolved_here(host: &Host, name: &str) -> Result<Resolved, ApiError> {
     let named = match name_parts(name) {
