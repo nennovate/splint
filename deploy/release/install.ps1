@@ -244,8 +244,9 @@ function Install-Splint([string[]]$Words) {
     }
 
     # What was running keeps running the build this replaced until it's started again, still signing.
-    # So each agent here that's running now is started again, which runs this build in its place, as
-    # install.sh does: splint decides that by the lock a running copy holds.
+    # So each agent here that's running now is started again, which runs this build in its place, and
+    # so is Splint on this computer with the default folder, as install.sh does: splint decides that by
+    # the lock a running copy holds.
     $splint = Join-Path $bin 'splint.exe'
     $folders = @($splintDir) + @(Get-ChildItem -LiteralPath (Join-Path $splintDir 'profiles') -Directory -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName })
     foreach ($folder in $folders) {

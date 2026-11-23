@@ -274,6 +274,13 @@ pub async fn status(home: &Home) -> Result<String, Failure> {
              {splint} start"
         )
     });
+    // Kept with the default folder, so any agent's status says it, as the page is the person's.
+    if crate::computer::runs_older(home)? {
+        line(format!(
+            "Computer  {}",
+            crate::computer::runs_older_said(home)
+        ));
+    }
     line(match &installed.owner_network {
         Some(network) => format!(
             "Network   owner network access is on at {}: anyone who can reach it gets only refusals \

@@ -273,6 +273,10 @@ pub async fn verify(home: &Home) -> Result<String, Failure> {
     if !differ && let Some(running) = running_signet(home, signet_build.as_deref()).await {
         lines.push(running);
     }
+    // It runs `splint` itself, so it's what was replaced, not something a checksum shows.
+    if !differ && matches!(crate::computer::runs_older(home), Ok(true)) {
+        lines.push(format!("{}.", crate::computer::runs_older_said(home)));
+    }
     let check_without = if cfg!(windows) {
         format!(
             "& ([scriptblock]::Create((irm https://github.com/{REPO}/releases/download/{version}/install.ps1))) --verify"
