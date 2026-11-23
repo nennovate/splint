@@ -830,12 +830,12 @@ def install_splint_anew(bin_dir: Path) -> None:
 
 def an_upgrade_runs_the_new_build_of_splint_on_the_computer(work: Path, kai: Agent, bin_dir: Path, stub_dir: Path, host: str) -> Agent:
     """Splint on the computer serves a person's controls from their default folder, with an agent there
-    (kai) or none (pat), on a port and with a key file they chose. Installing writes splint anew, then
-    starts again what runs, as install.sh does, from a shell that names neither."""
+    (kai) or none (pat), on a port, with a key file and a proxy setting they chose. Installing writes
+    splint anew, then starts again what runs, as install.sh does, from a shell that names none of them."""
     pat = Agent(work, bin_dir, stub_dir, "pat", host)
     ports = {person.name: e2e.free_port() for person in (kai, pat)}
     for person in (kai, pat):
-        chosen = {**person.env, "SPLINT_COMPUTER_PORT": str(ports[person.name]), "SPLINT_COMPUTER_SIGN_IN": "file"}
+        chosen = {**person.env, "SPLINT_COMPUTER_PORT": str(ports[person.name]), "SPLINT_COMPUTER_SIGN_IN": "file", "NO_PROXY": "splint.example"}
         started = subprocess.run([person.splint, "computer", "start"], env=chosen, cwd=person.project, capture_output=True, text=True, timeout=COMMAND_SECONDS, check=False)
         check(f"control: Splint on {person.name}'s computer starts on a port of its own", started.returncode == 0 and wait_until(lambda port=ports[person.name]: page_answers(port), 20), started.stdout + started.stderr)
     before = {person.name: held_by(person, "splint-computer") for person in (kai, pat)}
@@ -850,15 +850,22 @@ def an_upgrade_runs_the_new_build_of_splint_on_the_computer(work: Path, kai: Age
         now = held_by(person, "splint-computer")
         # Bug caught: an upgrade started Signet again but left Splint on the computer running the old
         # build, so the person's controls page stayed the old one until they restarted it by hand.
-        check(f"an upgrade starts Splint on {person.name}'s computer again on the new build, with the port and key file it had", again.returncode == 0 and "Splint on this computer" in again.stdout and now not in ("", before[person.name]) and wait_until(lambda port=ports[person.name]: page_answers(port), 20) and settings.get("SPLINT_COMPUTER_PORT") == str(ports[person.name]) and settings.get("SPLINT_COMPUTER_SIGN_IN") == "file", (again.stdout, again.stderr, before[person.name], now, settings))
+        check(f"an upgrade starts Splint on {person.name}'s computer again on the new build, with the port, key file and proxy setting it had", again.returncode == 0 and "Splint on this computer" in again.stdout and now not in ("", before[person.name]) and wait_until(lambda port=ports[person.name]: page_answers(port), 20) and settings.get("SPLINT_COMPUTER_PORT") == str(ports[person.name]) and settings.get("SPLINT_COMPUTER_SIGN_IN") == "file" and settings.get("NO_PROXY") == "splint.example", (again.stdout, again.stderr, before[person.name], now, settings))
     said = kai.run("status").stdout
     check("and status stops saying it's older", "older build" not in said, said)
+
+    # What status names, run after an install from before this change left the old build serving.
+    before = held_by(kai, "splint-computer")
+    install_splint_anew(bin_dir)
+    named = kai.run("computer", "start")
+    # Bug caught: splint computer start found it running and said so, leaving the old build serving.
+    check("splint computer start runs the new build in place of an older one, on the same port", named.returncode == 0 and "this build" in named.stdout and held_by(kai, "splint-computer") not in ("", before) and wait_until(lambda: page_answers(ports["kai"]), 20), (named.stdout, named.stderr))
 
     stopped = pat.run("stop")
     install_splint_anew(bin_dir)
     again = pat.run("start", "--if-running")
-    # Bug caught: an upgrade that took the lock file a stopped copy left as one running, and started
-    # Splint on the computer though its person had stopped it.
+    # Bug caught: a restart that went by the lock file alone, which a stopped copy leaves behind, would
+    # start Splint on the computer again though its person stopped it.
     check("an upgrade leaves Splint on the computer stopped once its person stopped it", stopped.returncode == 0 and again.returncode == 0 and again.stdout.strip() == "" and not held_by_a_running_copy(pat, "splint-computer") and not page_answers(ports["pat"]), (stopped.stdout, again.stdout, again.stderr))
     return pat
 

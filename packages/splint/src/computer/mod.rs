@@ -1612,9 +1612,9 @@ pub fn start(home: &Home) -> Result<Started, Failure> {
 
 /// Where Splint on this computer runs a build this install has replaced, as it does after an upgrade
 /// until it's started again, stops it and starts this one, so the page its person opens is this
-/// build's. It keeps the port and sign-in choice it ran with, which the shell starting it again, such
-/// as the installer's, may not have. What isn't running, as after its person's `splint stop`, is left
-/// as it is. Says whether this build runs in its place now.
+/// build's. It keeps the port, sign-in choice and proxy it ran with, which the shell starting it again,
+/// such as the installer's, may not have. What isn't running, as after its person's `splint stop`, is
+/// left as it is. Says whether this build runs in its place now.
 pub async fn start_again_if_older(home: &Home) -> Result<bool, Failure> {
     let home = home.the_default();
     if !runs_older(&home)? {
@@ -1640,8 +1640,25 @@ pub fn runs_older_said(home: &Home) -> String {
     )
 }
 
-/// Starts it with the port and sign-in choice this shell names, or else the ones in `kept`.
+/// Starts it with the port, sign-in choice and proxy this shell names, or else the ones in `kept`. The
+/// proxy and certificate settings go as one, from the shell where it names any, so two setups never mix.
 fn start_with(home: &Home, kept: &[(String, String)]) -> Result<Started, Failure> {
+    let reaching_out = &services::HOW_THIS_COMPUTER_REACHES_OUT;
+    let kept_reach: Vec<(&str, &str)> = if reaching_out
+        .iter()
+        .any(|name| std::env::var_os(name).is_some())
+    {
+        Vec::new()
+    } else {
+        kept.iter()
+            .filter_map(|(setting, value)| {
+                reaching_out
+                    .iter()
+                    .find(|name| **name == setting.as_str())
+                    .map(|name| (*name, value.as_str()))
+            })
+            .collect()
+    };
     let chosen = |name: &str| {
         std::env::var(name).ok().or_else(|| {
             kept.iter()
@@ -1668,6 +1685,7 @@ fn start_with(home: &Home, kept: &[(String, String)]) -> Result<Started, Failure
             ]
             .into_iter()
             .chain(file_chosen.as_deref().map(|file| (SIGN_IN_SETTING, file)))
+            .chain(kept_reach)
             .collect(),
             keep: Keep::AcrossRestarts,
         },

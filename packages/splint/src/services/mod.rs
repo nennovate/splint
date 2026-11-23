@@ -257,7 +257,7 @@ impl Unit {
 /// that starts a service. Without them, an agent whose only way out is a proxy joins, and then its
 /// Signet can't reach its host. A proxy's address can hold its password, which is why these go only
 /// into the launch file, never into a service's definition.
-const HOW_THIS_COMPUTER_REACHES_OUT: [&str; 10] = [
+pub(crate) const HOW_THIS_COMPUTER_REACHES_OUT: [&str; 10] = [
     "HTTPS_PROXY",
     "https_proxy",
     "HTTP_PROXY",
