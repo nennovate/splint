@@ -11,11 +11,11 @@ tools/checks/check_ci_shards.py fails `make rules` if the shards ever stop addin
 
 Which sims a change needs: every one, for a change to product code, to what builds or installs it, or
 to this. For a change to files in sim/ alone, only the sims that could run that file: the sim itself,
-and every sim that imports it or names it. Nothing else can reach it, so nothing else is run. The same
-goes for what a runtime reads to connect, in adapters/ outside the two adapters that ship: no program
-here runs those files, so only a sim that names one is run for it. The two docs sims follow or ship
-run only the sims that name them themselves, and not those importing them, which take their helpers
-and not the doc.
+and every sim that imports it or names it. Nothing else can reach it, so nothing else is run. A guide,
+which is what a runtime reads to connect, in adapters/ outside the two adapters that ship, or one of
+the two docs the sims follow, runs only the sims that read it: a sim that names it, and every sim
+using a helper in sim/ that names it. A sim importing another sim that names it isn't run, as sims
+import each other for their helpers and never follow the other's guide.
 
 A shard runs several sims at once, one for each core up to three. Two thirds of a sim's time is spent waiting on
 real timers, a retry or a poll, so run one at a time a machine sits idle. Each sim makes its own ports,
@@ -60,14 +60,15 @@ EVERY_SIM = re.compile(
     r"^(packages|adapters/(mcp|http)|deploy|make|spec|tools/ci|sim/[^/]+)/"
     r"|^Makefile$|^\.github/workflows/check\.yml$"
 )
-# What only a sim that names it could run or read: a file in sim/, and the rest of adapters/, which is
-# what a runtime reads to connect and no program here runs.
-NAMED_BY_A_SIM = re.compile(r"^(sim/[^/]+|adapters/.+)$")
-# The two docs the sims follow or ship, which only a sim that names one reads: install.py follows
-# getting-started.md as written, and agent_signup.py checks that a release ships agents.md unchanged.
-# A sim importing one of those isn't run for it, as sims import install.py for its helpers and never
-# follow the doc. Other docs run no sims.
-READ_BY_A_SIM = re.compile(r"^docs/(agents|getting-started)\.md$")
+# A file in sim/, which only a sim that imports it or names it could run or read, directly or through
+# other files in sim/.
+NAMED_BY_A_SIM = re.compile(r"^sim/[^/]+$")
+# A guide no program here runs, which only the sims that read it test: the rest of adapters/, which is
+# what a runtime reads to connect, and the two docs the sims follow. install.py runs the commands in
+# getting-started.md as written, agent_signup.py runs those in agents.md, and agent_join.py runs each
+# connector guide's install block. A sim importing one of those isn't run for the guide, as 18 sims
+# import install.py for its helpers and none of them follows the doc. Other docs run no sims.
+READ_BY_A_SIM = re.compile(r"^(adapters/.+|docs/(agents|getting-started)\.md)$")
 # What Windows builds: its four crates, the workspace's own files, the schemas built into them and how
 # git writes their files out. The host runs on Linux and nothing depends on it, so it isn't one.
 WINDOWS = re.compile(
@@ -252,9 +253,12 @@ def sims_for(changed: list[str], sims: tuple[str, ...], folder: Path = SIMS) -> 
         return ()
     direct = names(touched | guides, folder)
     reached = reaches(direct)
+    # A sim that names a guide reads it. A helper that names one reads it for every sim that uses it.
+    readers = {file for file, named in direct.items() if named & guides}
+    helpers = readers - {f"{name_of(sim)}.py" for sim in sims}
     return tuple(sim for sim in sims
                  if (file := f"{name_of(sim)}.py") in touched or reached.get(file, set()) & touched
-                 or direct.get(file, set()) & guides)
+                 or file in readers or reached.get(file, set()) & helpers)
 
 
 def at_once() -> int:

@@ -13,8 +13,8 @@ import shards  # noqa: E402
 
 # A sim folder in small: `shared` is imported by two sims, one of them through `helper`, `script.sh` is
 # read by one, `runner` starts another as a program, `guided` reads a connector's guide from adapters/,
-# `walker` follows a doc that `borrower` never reads though it imports `walker`, and `alone` touches
-# nothing.
+# `walker` follows a doc, `borrower` imports both of those for their helpers and reads neither guide,
+# `connectors` isn't a sim and reads a guide for `connects`, and `alone` touches nothing.
 FILES = {
     "shared.py": "",
     "helper.py": "import shared\n",
@@ -24,11 +24,13 @@ FILES = {
     "runner.py": 'subprocess.run([sys.executable, str(HERE / "alone.py")])\n',
     "guided.py": 'GUIDES = ("skill/SKILL.md",)\n',
     "walker.py": 'DOC = ROOT / "docs" / "getting-started.md"\n',
-    "borrower.py": "from walker import Person\n",
+    "borrower.py": "from walker import Person\nfrom guided import GUIDES\n",
+    "connectors.py": 'SERVERS = ADAPTERS / "cursor" / "mcp.json"\n',
+    "connects.py": "import connectors\n",
     "alone.py": '"""Says shared.py and script.sh in its docstring, and runs neither."""\n',
     "script.sh": "",
 }
-EVERY = ["first", "second", "reader", "runner", "guided", "walker", "borrower", "alone"]
+EVERY = ["first", "second", "reader", "runner", "guided", "walker", "borrower", "connects", "alone"]
 SIMS = tuple(f"python3 sim/{name}.py" for name in EVERY)
 
 
@@ -58,11 +60,12 @@ class WhichSimsAChangeNeeds(unittest.TestCase):
         self.assertEqual(self.needed("sim/alone.py"), ["runner", "alone"])
         self.assertEqual(self.needed("sim/first.py", "README.md"), ["first"])
 
-    def test_what_a_runtime_reads_to_connect_runs_the_sims_that_name_it(self) -> None:
+    def test_what_a_runtime_reads_to_connect_runs_the_sims_that_read_it(self) -> None:
         # Bug caught: a change to a connector's guide, which no program here runs, running every sim, or
-        # running none though a sim reads it.
+        # every sim importing the one that reads it for its helpers, or none though a helper reads it.
         self.assertEqual(self.needed("adapters/skill/SKILL.md"), ["guided"])
         self.assertEqual(self.needed("adapters/claude-code/skills/splint/SKILL.md"), ["guided"])
+        self.assertEqual(self.needed("adapters/cursor/mcp.json"), ["connects"])
         self.assertEqual(self.needed("adapters/claude-code/.claude-plugin/plugin.json"), [])
 
     def test_a_doc_runs_only_the_sims_that_read_it(self) -> None:
@@ -71,6 +74,7 @@ class WhichSimsAChangeNeeds(unittest.TestCase):
         self.assertEqual(self.needed("docs/getting-started.md"), ["walker"])
         self.assertEqual(self.needed("docs/getting-started.md", "adapters/skill/SKILL.md"), ["guided", "walker"])
         self.assertEqual(self.needed("sim/walker.py"), ["walker", "borrower"])
+        self.assertEqual(self.needed("sim/guided.py"), ["guided", "borrower"])
 
     def test_product_code_beside_a_sim_still_runs_every_sim(self) -> None:
         # Bug caught: one sim file in a change narrowing what the product code in it needs.
