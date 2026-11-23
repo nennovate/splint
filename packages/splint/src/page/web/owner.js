@@ -211,7 +211,11 @@ function now() {
 
 function addressParts(address) {
   const [handle, domain] = String(address).split("~");
-  return { handle, domain, name: handle.split(".")[0] };
+  const word = handle.split(".")[0];
+  // A temporary name, before the person names it under theirs, is the word it chose and a code.
+  const temporary = /^(.+)-([a-z2-7]{6})$/.exec(word);
+  const name = temporary && /[2-7]/.test(temporary[2]) ? temporary[1] : word;
+  return { handle, domain, name };
 }
 
 // ---------- Signing on this computer ----------
@@ -1936,7 +1940,7 @@ function askLines(ask) {
 function linesBeyondJoining(ask) {
   const said = Array.isArray(ask.said) ? ask.said.map(String) : [];
   const changes = Array.isArray(ask.changes) ? ask.changes : [];
-  const joining = (change) => change && change.change === "controls" && !change.owner_part;
+  const joining = (change) => change && change.change === "controls" && !change.owner_part && !ask.owner_part;
   const kept = said.length === changes.length ? said.filter((_, index) => !joining(changes[index])) : said;
   return [...kept, ...(ask.kinds || []).flatMap((kind) => (kind.lines || [])).map(String)];
 }

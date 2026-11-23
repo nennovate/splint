@@ -490,11 +490,12 @@ pub fn for_asks(asks: &[AskShown<'_>], also: Option<&str>) -> Prompt {
     )
 }
 
-/// An agent's name as a person says it: "rae" for `rae.ana~host.example`, with a capital. It only
+/// An agent's name as a person says it: "rae" for `rae.ana~host.example`, or `rae-7k3p2a~host.example`
+/// before it has one under theirs, with a capital. It only
 /// opens the prompt. Each line still gives the whole address, as a name says nothing of whose it is.
 fn spoken_name(address: &str) -> Option<String> {
     let (name, _) = parse_address(address).ok()?;
-    let mut letters = name.split('.').next()?.chars();
+    let mut letters = splint_core::agent_word(name).chars();
     let first = letters.next()?;
     Some(first.to_uppercase().chain(letters).collect())
 }

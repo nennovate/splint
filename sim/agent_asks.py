@@ -34,9 +34,12 @@ program running as them that pipes a yes, approves on the socket or runs `owner-
 signed. The owner key `owner-key init` makes for a device kept apart from agents, which `splint
 authorize` uses with no passphrase, is never warned of as a sign-in, or locked. `splint stop` stops
 Splint on the computer too, so the run leaves none running. A remote agent taking up its person's
-answer to its link, approved with a sign-in locked by default, is sim/asked_by_link.py. Lea's person
-gives her `lea.ana`, which she joins as `lea` and her one approval signs with her controls, and Kai, set
-up with no name, adds his person's once, keeping his old address pointing to the new one.
+answer to its link, approved with a sign-in locked by default, is sim/asked_by_link.py. Every agent
+joins under a temporary name, the word it chose and a code, and its person's name goes after its handle
+when they set up controls: Ivy's asks without one first, which isn't put to her person. Lea's person
+gives her `lea.ana`, which her one approval signs with her controls. Kai's ask for a name another owner
+holds isn't put to his person; his own makes him `kai.kayla`, a second agent of his person's gets
+their name with nothing asked, and his owner's ID reaches him in place of their name.
 
     python3 sim/agent_asks.py
 
@@ -48,6 +51,7 @@ is plain until they lock it, and Ola's and Una's are locked with a passphrase. N
 limits.
 """
 
+import base64
 import json
 import re
 import shutil
@@ -252,12 +256,18 @@ def an_agent_asks_for_its_controls_and_one_approval_sets_them_up(signup: Signup,
     on_the_computer(ivy, port)
     joined = signup.walk.run_as("ivy", f"splint join ivy~{host}")
     check("control: ivy joins on her own", joined.returncode == 0, joined.stderr)
-    ivy.address = f"ivy~{host}"
+    ivy.address = address_of(ivy)
+    # Bug caught: an agent nobody has signed for taking a name of its own, which would hold a handle
+    # or a person's name against them.
+    check("she joins under a temporary name, the word she chose and a code", is_temporary(ivy.address, "ivy", host), ivy.address)
     status = json.loads(signup.walk.run_as("ivy", "splint status --json").stdout or "{}")
     # Bug caught: an agent on its person's computer told only the paste-a-code way.
-    check("status names the one-touch way for an agent on its person's computer", status.get("controls", {}).get("ask", "").endswith("splint controls"), status.get("controls"))
+    check("status names the one-touch way for an agent on its person's computer, with their name", status.get("controls", {}).get("ask", "").endswith("splint controls --name NAME"), status.get("controls"))
+    nameless = asked_without_waiting(signup, "ivy", "splint controls --json")
+    # Bug caught: a person asked to approve an agent under no name, as a temporary one would stay.
+    check("an ask naming nobody, for a person with no name at that host, isn't put to them, and says why", nameless.get("status") == "not_approved" and "--name" in nameless.get("said", "") and waiting_ids(ivy) == [], nameless)
 
-    asked = asked_without_waiting(signup, "ivy", "splint controls --json")
+    asked = asked_without_waiting(signup, "ivy", "splint controls --name ivo --json")
     # Bugs caught: an agent whose ask Splint on its own computer took, with a key file for a sign-in,
     # waiting two minutes for a touch no prompt asked anyone for, and then given no link, so a person
     # who isn't at that computer was never asked at all.
@@ -278,7 +288,7 @@ def an_agent_asks_for_its_controls_and_one_approval_sets_them_up(signup: Signup,
         listed = said_no.stdout + said_no.stderr
         if "act for you" in listed:
             break
-    check("Splint on the computer starts by itself and lists the ask in its own words", f"let {ivy.address} act for you" in listed, listed)
+    check("Splint on the computer starts by itself and lists the ask in its own words, with her person's name", f"let {ivy.address} act for you as ivy.ivo~{host}, with ivo as your name at {host} for good" in listed, listed)
     check("with the check that it's their agent, in its chat", "if it's your agent and its chat shows it joining Splint" in listed, listed)
     check("a no signs nothing", "Nothing was signed" in listed, listed)
     no_key_file_is_made_without_a_passphrase(signup, ivy, port)
@@ -292,6 +302,8 @@ def an_agent_asks_for_its_controls_and_one_approval_sets_them_up(signup: Signup,
     where = lambda: json.loads(signup.walk.run_as("ivy", f"splint ask {asked.get('id', '')} --json").stdout or "{}")  # noqa: E731
     check("the agent takes up what was signed by itself, with nothing pasted", wait_until(lambda: where().get("status") == "done", SIGNET_HEARS_SECONDS), where())
     check("and its owner has confirmed it now", wait_until(lambda: ivy.api("GET", "/v0/identity")[1].get("owner_confirmed") is True, SIGNET_HEARS_SECONDS), ivy.api("GET", "/v0/identity")[1])
+    check("under her person's name", address_of(ivy) == f"ivy.ivo~{host}", address_of(ivy))
+    ivy.address = address_of(ivy)
     controls = json.loads(signup.walk.run_as("ivy", "splint status --json").stdout or "{}").get("controls", {})
     # Bug caught: status dropping how the person opens their controls once they're set, so an agent
     # asked "where are my controls?" had nothing to give.
@@ -396,7 +408,7 @@ def a_strangers_ask_is_named_and_another_owners_agent_is_refused(signup: Signup,
     mal = signup.device("mal")
     on_the_computer(mal, port + 1)
     check("control: mal joins on her own", signup.walk.run_as("mal", f"splint join mal~{host}").returncode == 0)
-    mal.address = f"mal~{host}"
+    mal.address = address_of(mal)
     asked = json.loads(signup.walk.run_as("mal", "splint ask --level full-auto --json").stdout or "{}")
     status, kept = mal.api("GET", f"/v0/asks/{asked.get('id', '')}")
     mal_identity = mal.api("GET", "/v0/identity")[1].get("identity", "")
@@ -423,8 +435,12 @@ def the_owner_page_here_signs_only_with_someone_there(signup: Signup, ivy, port:
     host = signup.open_host
     # Bug caught: a page served here that makes a passkey, or keeps no list, as it knows no home host.
     check("the owner page here says it signs through this computer, with ivy's host as home", status == 200 and described.get("computer") is True and described.get("domain") == host, described)
-    status, here = http("GET", port, "/local/here", headers=same)
-    check("it names the owner ID here and the agent it set up", status == 200 and bool(here.get("identity")) and any(one.get("address") == ivy.address for one in here.get("agents", [])), here)
+    # Kept at the temporary name she had when it was signed, until her host names her under her
+    # person's, which this computer looks at once a minute.
+    named_here = lambda: http("GET", port, "/local/here", headers=same)  # noqa: E731
+    wait_until(lambda: any(one.get("address") == ivy.address for one in named_here()[1].get("agents", [])), 75)
+    status, here = named_here()
+    check("it names the owner ID here and the agent it set up, under its name", status == 200 and bool(here.get("identity")) and any(one.get("address") == ivy.address for one in here.get("agents", [])), here)
     check("and that its sign-in is a plain key file, which the page warns of", here.get("here", {}).get("plain_key_file") is True, here.get("here"))
     # Bug caught: a page, or an agent driving it, signing with a key file that asks for nobody.
     inputs = ["eyJhbGciOiJFUzI1NiIsInR5cCI6InNwbGludC1ydWxlcyJ9.e30"]
@@ -458,10 +474,11 @@ def a_website_opening_a_link_puts_nothing_in_front_of_the_person(signup: Signup,
     host = signup.open_host
     eve = signup.device("eve")
     check("control: eve joins on her own", signup.walk.run_as("eve", f"splint join eve~{host}").returncode == 0)
+    eve_at = address_of(eve)
     status, made = eve.api("POST", "/v0/asks", {"changes": [{"change": "controls", "delegate": ""}]})
     check("control: eve's agent signs an ask for controls, as for a link", status == 200, made)
     same = page_key(ivy, port)
-    link = f"http://localhost:{port}/ask#" + urllib.parse.urlencode({"ask": made.get("ask", ""), "at": f"eve~{host}"})
+    link = f"http://localhost:{port}/ask#" + urllib.parse.urlencode({"ask": made.get("ask", ""), "at": eve_at})
     LinkOpener.target = link
     website = ThreadingHTTPServer(("127.0.0.1", 0), LinkOpener)
     threading.Thread(target=website.serve_forever, daemon=True).start()
@@ -477,7 +494,7 @@ def a_website_opening_a_link_puts_nothing_in_front_of_the_person(signup: Signup,
         browser.goto(f"http://127.0.0.1:{website.server_address[1]}/")
         check("control: the website sends the browser to the link", browser.wait_for("document.body.innerText.includes('Open request')", 20), browser.text())
         time.sleep(3)
-        eves = lambda: [one for one in every_waiting(port, same) if one.get("address") == f"eve~{host}"]  # noqa: E731
+        eves = lambda: [one for one in every_waiting(port, same) if one.get("address") == eve_at]  # noqa: E731
         # Bug caught: any website putting a stranger's ask in front of the person, and on a Mac into the
         # next Touch ID prompt with their own asks, with no click.
         check("a website opening an agent's link puts nothing waiting until the person clicks", eves() == [], eves())
@@ -486,11 +503,12 @@ def a_website_opening_a_link_puts_nothing_in_front_of_the_person(signup: Signup,
         # checked when nothing has checked them yet.
         before = browser.eval("(document.getElementById('offered') || {innerText: ''}).innerText") or ""
         check("before the click, the page names the agent and what it asks, from the link, saying it's checked on opening",
-              "Eve wants to act for you" in before and f"eve~{host}" in before
+              "Eve wants to act for you" in before and eve_at in before
               and browser.eval("document.getElementById('link-unchecked') !== null") is True, before)
         check("control: the person clicks to see it", browser.click("body", "Open request"))
         check("then it waits, shown as from a link", wait_until(lambda: [one.get("from_link") for one in eves()] == [True], 20), eves())
-        check("named by its address, with the check that it's her agent", browser.wait_for(f"document.body.innerText.includes('Eve wants to act for you') && document.body.innerText.includes('eve~{host}') && document.body.innerText.includes('chat shows it joining Splint as this address')", 20), browser.text())
+        # Her person has a name at that host already, so an ask naming none goes under it.
+        check("named by its address, with the check that it's her agent, and the name it would have under theirs", browser.wait_for(f"document.body.innerText.includes('Eve wants to act for you') && document.body.innerText.includes('{eve_at}') && document.body.innerText.includes('eve.ivo~{host}') && document.body.innerText.includes('chat shows it joining Splint as this address')", 20), browser.text())
         asked = signup.walk.run_as("ivy", "splint ask --paid-at ivy@wallet.example --json")
         check("control: ivy asks where her person gets paid", asked.returncode == 0, asked.stderr)
         browser.goto(f"http://localhost:{port}/ask")
@@ -681,10 +699,9 @@ def a_passphrase_lets_the_page_sign_and_read_until_viewing_says(signup: Signup, 
     ola = signup.device("ola")
     on_the_computer(ola, port)
     check("control: ola joins on her own", signup.walk.run_as("ola", f"splint join ola~{host}").returncode == 0)
-    ola.address = f"ola~{host}"
     # With --wait, as an agent passes where its person is at this computer, and as an ask for controls
     # does by itself where a Mac's own prompt asks for them.
-    asking = in_background(signup, "ola", "splint ask --controls --wait --json")
+    asking = in_background(signup, "ola", "splint ask --controls --name olga --wait --json")
     check("control: Splint on her computer starts", wait_until(lambda: socket_of(ola).exists(), 60))
     same = page_key(ola, port)
     waiting = lambda: http("GET", port, "/local/asks", headers=same)[1].get("asks")  # noqa: E731
@@ -698,6 +715,7 @@ def a_passphrase_lets_the_page_sign_and_read_until_viewing_says(signup: Signup, 
     # Bug caught: an agent waiting on this computer told its ask still waits once its person has
     # approved it here, or left to take the answer up in another call.
     check("an agent that waits takes up what was signed in that same call, with nothing pasted", answered.get("status") == "done", answered)
+    ola.address = address_of(ola)
     agent = ola.api("GET", "/v0/identity")[1].get("agent_id", "")
     check("control: ola's owner has confirmed it", wait_until(lambda: ola.api("GET", "/v0/identity")[1].get("owner_confirmed") is True, SIGNET_HEARS_SECONDS))
     check("control: viewing every hour is kept", http("POST", port, "/local/viewing", {"every": "hourly"}, same)[0] == 200)
@@ -823,24 +841,37 @@ def address_of(person) -> str:
     return person.api("GET", "/v0/identity")[1].get("address", "")
 
 
+def is_temporary(address: str, word: str, host: str) -> bool:
+    """The word an agent chose, a hyphen and a code of 6 lowercase base32 characters, one a digit."""
+    shaped = re.fullmatch(rf"{re.escape(word)}-([a-z2-7]{{6}})~{re.escape(host)}", address)
+    return shaped is not None and re.search(r"[2-7]", shaped.group(1)) is not None
+
+
+def owner_id_form(owner_id: str) -> str:
+    """The first 128 bits of an owner's ID in lowercase base32, as an address takes it after a handle."""
+    return base64.b32encode(bytes.fromhex(owner_id.removeprefix("splint1")[:32])).decode().lower().rstrip("=")
+
+
 def bodies_of(person) -> list:
     return [message.get("untrusted", {}).get("body") for message in person.api("GET", "/v0/inbox")[1].get("messages", [])]
 
 
-def taken_up(signup: Signup, name: str, ask: str) -> dict:
-    return json.loads(signup.walk.run_as(name, f"splint ask {ask} --json").stdout or "{}")
+def taken_up(signup: Signup, name: str, ask: str, profile: str = "") -> dict:
+    return json.loads(signup.walk.run_as(name, f"splint {profile}ask {ask} --json").stdout or "{}")
 
 
 def a_name_after_the_dot_comes_with_one_approval(signup: Signup, port: int):
-    """Lea's person gave her `lea.ana`. Nobody has signed for her when she joins, so she joins as `lea`,
-    and her ask for controls names `ana`, which the one approval signs with them."""
+    """Lea's person gave her `lea.ana`. Nobody has signed for her when she joins, so she joins under a
+    temporary name, and her ask for controls names `ana`, which the one approval signs with them."""
     host = signup.open_host
     lea = signup.device("lea")
     on_the_computer(lea, port)
     joined = signup.walk.run_as("lea", f"splint join lea.ana~{host}")
-    # Bug caught: `splint join lea.ana` refused, so an agent following its person's name had to drop it,
-    # and one touch then set it up with no name it could ever add.
-    check("an agent given its person's name after the dot joins as its handle, and says the name waits for their controls", joined.returncode == 0 and f"You're lea~{host}" in joined.stdout and f"lea.ana~{host}" in joined.stdout, joined.stdout + joined.stderr)
+    temporary = address_of(lea)
+    # Bug caught: `splint join lea.ana` refused, so an agent following its person's name had to drop
+    # it, and one touch then set it up with no name.
+    check("an agent given its person's name after the dot joins under a temporary name, and says the name waits for their controls",
+          joined.returncode == 0 and is_temporary(temporary, "lea", host) and f"lea.ana~{host}" in joined.stdout, joined.stdout + joined.stderr)
     asked = asked_without_waiting(signup, "lea", "splint controls --json")
     check("control: her ask for controls waits on her person's computer", asked.get("status") == "waiting" and wait_until(lambda: asked.get("id") in waiting_ids(lea), 60), asked)
     approved = signup.walk.run_as("lea", "splint computer approve --plain-key-file", "yes\n")
@@ -848,49 +879,59 @@ def a_name_after_the_dot_comes_with_one_approval(signup: Signup, port: int):
     # Bug caught: the name taken from the agent's words, or signed with nothing said of it.
     check("the approval names the whole address in Splint's words, and that the name is theirs there for good", "Approved 1" in approved.stdout and f"act for you as lea.ana~{host}, with ana as your name at {host} for good" in listed, listed)
     check("she takes it up and runs under her person's name", wait_until(lambda: taken_up(signup, "lea", asked.get("id", "")).get("status") == "done", SIGNET_HEARS_SECONDS) and address_of(lea) == f"lea.ana~{host}", address_of(lea))
+    _, found = e2e.http("GET", f"http://{host}/.well-known/splint/agents/{temporary.split('~')[0]}")
+    check("her temporary name answers with where she went", found.get("moved_to") == f"lea.ana~{host}", found)
     lea.address = f"lea.ana~{host}"
     return lea
 
 
-def a_name_is_added_once_to_an_agent_set_up_with_none(signup: Signup, port: int, lea) -> None:
-    """Kai was set up with one approval and no name, as happened whenever an ask named none. He asks once
-    to add his person's: one another owner holds is refused at his host with nothing changed, his own is
-    taken, his old address points to the new one, a contact reaches him under either, and nothing adds a
-    second."""
+def names_are_owners_and_an_owners_id_reaches_them(signup: Signup, port: int, lea) -> None:
+    """Kai joins under a temporary name and invites lea. His ask with a name another owner holds isn't
+    put to his person; with his person's own, one approval names him `kai.kayla`, and lea still reaches
+    him at the temporary name she knew. A second agent of his person's, on the same computer, gets
+    their name with nothing asked, and shares a handle with lea. Lea reaches him by his owner's ID in
+    place of their name, and nothing changes a name's owner part once it's set."""
     host = signup.open_host
     kai = signup.device("kai")
     on_the_computer(kai, port)
     check("control: kai joins on his own", signup.walk.run_as("kai", f"splint join kai~{host}").returncode == 0)
-    asked = asked_without_waiting(signup, "kai", "splint controls --json")
-    check("control: his ask for controls names no name", asked.get("status") == "waiting" and wait_until(lambda: asked.get("id") in waiting_ids(kai), 60), asked)
-    approved = signup.walk.run_as("kai", "splint computer approve --plain-key-file", "yes\n")
-    check("control: one approval sets him up, as kai", "Approved 1" in approved.stdout and wait_until(lambda: taken_up(signup, "kai", asked.get("id", "")).get("status") == "done", SIGNET_HEARS_SECONDS) and address_of(kai) == f"kai~{host}", approved.stdout + approved.stderr)
+    temporary = address_of(kai)
     sent = signup.walk.run_as("kai", f"splint invite {lea.address} --json")
     check("control: kai invites lea", sent.returncode == 0, sent.stdout + sent.stderr)
-    check("control: and she accepts", wait_until(lambda: signup.walk.run_as("lea", f"splint accept kai~{host}").returncode == 0, 60))
+    check("control: and she accepts", wait_until(lambda: signup.walk.run_as("lea", f"splint accept {temporary}").returncode == 0, 60))
 
-    held = json.loads(signup.walk.run_as("kai", "splint ask --name ana --json").stdout or "{}")
-    check("control: kai asks for a name lea's person holds", held.get("status") == "waiting", held)
-    approved = signup.walk.run_as("kai", "splint computer approve", "yes\n")
-    check("the approval names the rename in Splint's words", "Approved 1" in approved.stdout and f"rename kai~{host} to kai.ana~{host}, with ana as your name at {host} for good" in approved.stdout + approved.stderr, approved.stdout + approved.stderr)
-    refused = signup.walk.run_as("kai", f"splint ask {held.get('id', '')} --json")
-    # Bug caught: one owner taking another's name by adding it to an agent of theirs.
-    check("a name another owner holds is refused at his host, with nothing changed", refused.returncode != 0 and address_of(kai) == f"kai~{host}", refused.stdout + refused.stderr)
-
-    named = json.loads(signup.walk.run_as("kai", "splint ask --name kayla --json").stdout or "{}")
-    approved = signup.walk.run_as("kai", "splint computer approve", "yes\n")
+    held = asked_without_waiting(signup, "kai", "splint controls --name ana --json")
+    # Bug caught: one owner taking another's name, or a person asked to approve a name their host
+    # would refuse, after they'd touched.
+    check("an ask with a name another owner holds there isn't put to his person, and says so", held.get("status") == "not_approved" and "someone else's" in held.get("said", "") and waiting_ids(kai) == [], held)
+    asked = asked_without_waiting(signup, "kai", "splint controls --name kayla --json")
+    approved = signup.walk.run_as("kai", "splint computer approve --plain-key-file", "yes\n")
     check("control: his person approves their own name", "Approved 1" in approved.stdout, approved.stdout + approved.stderr)
-    # Bug caught: the host refusing any rename by the same owner, so an agent set up with no name kept
-    # it for good.
-    check("he takes it up and runs as kai.kayla", wait_until(lambda: taken_up(signup, "kai", named.get("id", "")).get("status") == "done", SIGNET_HEARS_SECONDS) and address_of(kai) == f"kai.kayla~{host}", address_of(kai))
-    _, found = e2e.http("GET", f"http://{host}/.well-known/splint/agents/kai")
-    check("his old address answers with where it went", found.get("moved_to") == f"kai.kayla~{host}", found)
+    check("he takes it up and runs as kai.kayla", wait_until(lambda: taken_up(signup, "kai", asked.get("id", "")).get("status") == "done", SIGNET_HEARS_SECONDS) and address_of(kai) == f"kai.kayla~{host}", address_of(kai))
     kept = json.loads((kai.dot / "setup.json").read_text()).get("address")
     check("and his folder starts him there next time", kept == f"kai.kayla~{host}", kept)
-    status, _ = lea.api("POST", "/v0/send", {"to": f"kai~{host}", "body": "to kai's old address"})
-    check("a contact who has his old address still reaches him", status == 200 and wait_until(lambda: "to kai's old address" in bodies_of(kai), 60), bodies_of(kai))
+    status, _ = lea.api("POST", "/v0/send", {"to": temporary, "body": "to kai's temporary address"})
+    check("a contact who has his temporary address still reaches him", status == 200 and wait_until(lambda: "to kai's temporary address" in bodies_of(kai), 60), bodies_of(kai))
     status, _ = kai.api("POST", "/v0/send", {"to": lea.address, "body": "from kai.kayla"})
     check("and hears from him under his new one", status == 200 and wait_until(lambda: "from kai.kayla" in bodies_of(lea), 60), bodies_of(lea))
+
+    joined = signup.walk.run_as("kai", f"splint --as two join lea~{host}")
+    check("control: a second agent of his person's joins on the same computer", joined.returncode == 0, joined.stderr)
+    second = json.loads(signup.walk.run_as("kai", "splint --as two controls --json").stdout or "{}")
+    check("control: it asks with no name", second.get("status") == "waiting", second)
+    approved = signup.walk.run_as("kai", "splint computer approve", "yes\n")
+    # Bug caught: an owner asked their name again for each agent, or given a second one.
+    check("and goes under his person's name with nothing asked, sharing its handle with another owner's agent",
+          f"as lea.kayla~{host}" in approved.stdout + approved.stderr
+          and wait_until(lambda: taken_up(signup, "kai", second.get("id", ""), "--as two ").get("status") == "done", SIGNET_HEARS_SECONDS)
+          and json.loads(signup.walk.run_as("kai", "splint --as two status --json").stdout or "{}").get("address") == f"lea.kayla~{host}",
+          approved.stdout + approved.stderr)
+
+    owner = kai.api("GET", "/v0/identity")[1].get("owner_id", "")
+    by_id = f"kai.{owner_id_form(owner)}~{host}"
+    status, _ = lea.api("POST", "/v0/send", {"to": by_id, "body": "to kai by his owner's ID"})
+    # Bug caught: an owner's agent reachable only by a name that differs from host to host.
+    check("his owner's ID in place of their name reaches him", status == 200 and wait_until(lambda: "to kai by his owner's ID" in bodies_of(kai), 60), (status, bodies_of(kai)))
     status, _ = kai.api("POST", "/v0/asks", {"changes": [{"change": "owner_part", "to": "other"}]})
     # Bug caught: an owner part changed by its own owner once it's set.
     check("a name that has an owner part isn't asked to change it", status == 400, status)
@@ -901,8 +942,8 @@ def an_agent_asks_for_its_controls_while_its_host_is_up(signup: Signup, port: in
     noa = signup.device("noa")
     on_the_computer(noa, port)
     check("control: noa joins on her own", signup.walk.run_as("noa", f"splint join noa~{signup.open_host}").returncode == 0)
-    noa.address = f"noa~{signup.open_host}"
-    asked = asked_without_waiting(signup, "noa", "splint controls --json")
+    noa.address = address_of(noa)
+    asked = asked_without_waiting(signup, "noa", "splint controls --name nora --json")
     check("control: noa's ask for her controls waits on her person's computer", asked.get("status") == "waiting" and wait_until(lambda: asked.get("id") in waiting_ids(noa), 60), asked)
     return noa, asked.get("id", "")
 
@@ -1072,7 +1113,7 @@ def main() -> None:
         una_becomes_an_owner_on_her_page_with_a_passphrase(signup, e2e.free_port(), work)
         controls_say_why_splint_here_wont_start(signup, e2e.free_port())
         lea = a_name_after_the_dot_comes_with_one_approval(signup, e2e.free_port())
-        a_name_is_added_once_to_an_agent_set_up_with_none(signup, e2e.free_port(), lea)
+        names_are_owners_and_an_owners_id_reaches_them(signup, e2e.free_port(), lea)
         # Last, as a host that starts again lets no more agents join from here for a while.
         noa, noas_ask = an_agent_asks_for_its_controls_while_its_host_is_up(signup, e2e.free_port())
         an_approval_with_its_host_down_is_still_done(signup, ivy, port, noa, noas_ask)

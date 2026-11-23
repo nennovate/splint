@@ -208,6 +208,10 @@ pub struct Shown {
     /// Handed over by a link a browser opened, rather than by an agent here or its view.
     #[serde(default)]
     pub from_link: bool,
+    /// The owner's name what's signed names the agent under, which this computer chose, so a page
+    /// shows the line naming it even where it shows no other line setting the agent up.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub owner_part: Option<String>,
 }
 
 /// The asks one approval signs, as a page or terminal lists them, with the code that approval checks.
@@ -843,6 +847,7 @@ fn shown_one(asked: &Asked, now: u64) -> Option<Shown> {
         in_words: asked.in_words.clone(),
         lets_more_in,
         from_link: asked.linked,
+        owner_part: asked.owner_part.clone(),
     })
 }
 
