@@ -48,9 +48,8 @@ pub fn is_valid_name(name: &str) -> bool {
 /// signing up for nothing can't sweep them all up. Provisional.
 pub const MIN_HANDLE_CHARS_WITHOUT_CODE: usize = 3;
 /// Handles that would pass for whoever runs a host, or for Splint, so nobody takes one with no signup
-/// code, and nobody has one as their own name at all, alone or after an agent's handle. Whoever runs a
-/// host can still give one out as an agent's handle under an owner's name with a code, as
-/// `support.ana`. Neither goes for any handle starting `splint`. Provisional.
+/// code, as a handle or as their own name. Whoever runs a host can still give one out with a code.
+/// Neither goes for any handle starting `splint`. Provisional.
 const RESERVED_HANDLES: &[&str] = &[
     "abuse",
     "account",
@@ -278,8 +277,14 @@ fn looks_like_an_id(owner_part: &str) -> bool {
 /// names their own agent: one a host gives out with no code, and none that reads as a temporary name or
 /// an owner's ID. A host's operator can keep more back.
 pub fn may_be_owner_name(name: &str) -> bool {
+    may_be_owner_name_with_code(name) && may_take_without_code(name)
+}
+
+/// The same where whoever runs the host gives it out with a signup code, as they can a short handle or
+/// one that would pass for the host: one handle that reads as neither a temporary name nor an owner's ID.
+pub fn may_be_owner_name_with_code(name: &str) -> bool {
     name_parts(name).1.is_none()
-        && may_take_without_code(name)
+        && is_valid_handle(name)
         && !is_temporary_name(name)
         && !looks_like_an_id(name)
 }

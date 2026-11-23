@@ -25,8 +25,8 @@ use splint_core::host_api::{
 use splint_core::{
     ADDRESS_SEPARATOR, Error, Identity, MIN_SIGNUP_CODE_CHARS, RECOVERY_WINDOW_SECS, SplintId,
     VerifiedRegistration, VerifiedRelease, VerifiedRetirement, claimed_released_agent,
-    claimed_retired_agent, is_temporary_name, may_be_owner_name, may_take_without_code, name_parts,
-    owner_id_start, signup_id, unix_now,
+    claimed_retired_agent, is_temporary_name, may_be_owner_name, may_be_owner_name_with_code,
+    may_take_without_code, name_parts, owner_id_start, signup_id, unix_now,
 };
 use sqlx::{PgPool, Postgres, Row, Transaction};
 
@@ -319,7 +319,7 @@ async fn take_newer_statement(
     let now = host.clock.now_for_sql().await;
     let mut transaction = database::begin(&host.db).await?;
     if renamed {
-        may_take_new_name(&mut transaction, host, registration, now).await?;
+        may_take_new_name(&mut transaction, host, registration, now, false).await?;
         // A temporary name points to the new one for a while, and then anyone can have it again.
         let until =
             is_temporary_name(&held_name).then(|| now.saturating_add(TEMPORARY_NAME_KEPT_SECS));
@@ -542,7 +542,7 @@ async fn claim_handle(
         spend_code(&mut transaction, registration).await?;
     }
     let now = host.clock.now_for_sql().await;
-    may_take_new_name(&mut transaction, host, registration, now).await?;
+    may_take_new_name(&mut transaction, host, registration, now, !open).await?;
     let inserted = sqlx::query(
         "INSERT INTO agents (id, handle, identity, owner_id, owner_identity, binding, binding_seq,
              open_source, stand_in)
@@ -600,13 +600,15 @@ const NAMES_ANOTHER_OWNER: &str =
 /// Whether this registration may take its name here as a new one. An agent nobody has set up controls
 /// for takes only a temporary name, and none an owner holds. An owner's agent takes their own name
 /// alone, or a handle and their name after it, as `muse.jeff`, never a temporary name or one this
-/// host keeps back, and that name has to be theirs or free, as `claim_owner_name` says. A name another
-/// agent left, or a handle an agent let go holds, is refused before this.
+/// host keeps back, and that name has to be theirs or free, as `claim_owner_name` says. With a signup
+/// code, whoever runs the host can give out a short name, or one that would pass for the host, as they
+/// can a handle. A name another agent left, or a handle an agent let go holds, is refused before this.
 async fn may_take_new_name(
     transaction: &mut Transaction<'_, Postgres>,
     host: &Host,
     registration: &VerifiedRegistration,
     now: i64,
+    with_code: bool,
 ) -> Result<(), ApiError> {
     let name = registration.name();
     if registration.owner().is_unconfirmed_owner() {
@@ -626,10 +628,12 @@ async fn may_take_new_name(
     }
     let (handle, part) = name_parts(name);
     let owner_name = part.unwrap_or(handle);
-    if is_temporary_name(name)
-        || !may_be_owner_name(owner_name)
-        || host.kept_names.holds(owner_name)
-    {
+    let may_be = if with_code {
+        may_be_owner_name_with_code(owner_name)
+    } else {
+        may_be_owner_name(owner_name)
+    };
+    if is_temporary_name(name) || !may_be || host.kept_names.holds(owner_name) {
         return Err(ApiError::Forbidden(NAMED_UNDER_AN_OWNER));
     }
     claim_owner_name(transaction, registration.owner().id(), owner_name, now).await

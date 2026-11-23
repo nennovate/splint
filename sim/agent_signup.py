@@ -825,10 +825,10 @@ def open_signups_have_limits_of_their_own(signup: Signup) -> None:
     coded.mkdir()
     status = raw_register(host, coded, "support.ops", owner(), "192.0.2.202", a_code("support"))
     check("with a code, whoever runs the host can give one out, as an agent's handle under its owner's name", status == 200, status)
-    # A name alone is an owner's, and their own agent's address. Bug caught: a code making `support`
-    # someone's name, so their agent was `support~host` and every other one `<handle>.support~host`.
+    # A name alone is an owner's, and their own agent's address, which a code gives out as it does a
+    # handle. Bug caught: a code that let in `support.ops` refusing the host's own `support`.
     status = raw_register(host, coded, "support", owner(), "192.0.2.203", a_code("support-alone"))
-    check("but not as anyone's name, code or not", status == 403, status)
+    check("and as someone's own name, with a code", status == 200, status)
     agents_with_no_controls_have_room_of_their_own(signup, host, work, time_passes)
     check("a network whose agents went unused gets room again", wait_until(lambda: register("203.0.113.1") == 200))
 
