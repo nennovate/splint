@@ -291,6 +291,7 @@ table.tbl .hot { color: var(--waiting-ink); font-weight: 600; }
 .sheet h2 { font-size: 17px; font-weight: 600; letter-spacing: -0.012em; }
 .sheet .lead { color: var(--soft); font-size: 13px; margin-top: -8px; }
 .sheet .surface { box-shadow: none; background: var(--bg); }
+#account-panel { display: grid; gap: 14px; }
 .grabber { display: none; width: 34px; height: 4px; border-radius: 2px; background: var(--fill-strong); justify-self: center; margin: -6px 0 -2px; }
 .toast {
   position: fixed; left: 50%; bottom: calc(22px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 50;
