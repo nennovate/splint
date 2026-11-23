@@ -3055,9 +3055,12 @@ def change_vectors():
     bens_renamed = jws("ben-owner", "splint-binding", {"v": 2, "owner": owner_id("ben"), "agent": agent_id("ana"), "address": renamed_to, "seq": 8, "issued_at": NOW})
     renamed = change_event({"kind": "owner", "binding": whole_binding(bens_renamed, "ana-agent", release=release, vouch_signer="ana-agent-next"), "previous_owner_recoveries": 0}, 2, head, owner=owner_id("ben"))
     good("a_new_owner_renames_the_owner_part", "The owner part of a name follows the owner, so the address changes with them.", [bound, renamed], ["bound", "owner"], ["signed", "signed"], owner="ben", owners=(ana, ben), address=renamed_to)
+    named_to = "muse.ben~host.example"
+    bens_named = jws("ben-owner", "splint-binding", {"v": 2, "owner": owner_id("ben"), "agent": agent_id("ana"), "address": named_to, "seq": 8, "issued_at": NOW})
+    named = change_event({"kind": "owner", "binding": whole_binding(bens_named, "ana-agent", release=release, vouch_signer="ana-agent-next"), "previous_owner_recoveries": 0}, 2, head, owner=owner_id("ben"))
+    good("a_new_owner_names_it_under_their_own", "A new owner names the agent under their own name at the same host, as their own agent may have its handle there already. Its host holds them to names that are theirs.", [bound, named], ["bound", "owner"], ["signed", "signed"], owner="ben", owners=(ana, ben), address=named_to)
     for name, address, why in [
-        ("a_new_owner_takes_another_handle", "mallory~host.example", "A new owner can't give the agent another handle."),
-        ("a_new_owner_takes_it_to_another_host", "ana.ben~other.example", "Or take it to another host: that's a change of its own."),
+        ("a_new_owner_takes_it_to_another_host", "ana.ben~other.example", "A new owner can't take it to another host: that's a change of its own."),
     ]:
         elsewhere = jws("ben-owner", "splint-binding", {"v": 2, "owner": owner_id("ben"), "agent": agent_id("ana"), "address": address, "seq": 8, "issued_at": NOW})
         event = change_event({"kind": "owner", "binding": whole_binding(elsewhere, "ana-agent", release=release, vouch_signer="ana-agent-next"), "previous_owner_recoveries": 0}, 2, head, owner=owner_id("ben"))

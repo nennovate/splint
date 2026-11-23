@@ -241,8 +241,8 @@ func (w *historyWalk) step(i int, compact string) error {
 		if r.Seq < held || r.Seq >= b.Seq {
 			return Stale
 		}
-		// Only the owner part of the name follows a new owner: same handle, same host.
-		if domainOf(b.Address) != domainOf(w.address) || agentOf(b.Address) != agentOf(w.address) {
+		// A new owner keeps the host and names the agent under their own name there.
+		if domainOf(b.Address) != domainOf(w.address) {
 			return ProofMismatch
 		}
 		w.address = b.Address
@@ -393,13 +393,6 @@ func isDeclaration(s string) bool {
 func mustStr(f fields, k string) string {
 	s, _ := f.str(k)
 	return s
-}
-
-// agentOf is the agent's handle in an address, without any owner part.
-func agentOf(address string) string {
-	name, _, _ := strings.Cut(address, "~")
-	agent, _, _ := strings.Cut(name, ".")
-	return agent
 }
 
 func domainOf(address string) string {

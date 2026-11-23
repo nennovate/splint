@@ -702,9 +702,9 @@ impl VerifiedHistory {
                     last.binding_seq
                 };
                 bound.may_replace(&previous, held)?;
-                // A new owner keeps the agent's handle and host, and can change only the owner part
-                // of its name. A move of host is a change of its own.
-                if !crate::same_handle_and_host(bound.address(), &last.address) {
+                // A new owner keeps the agent's host and names it under their own name, as two
+                // owners' agents can share a handle. A move of host is a change of its own.
+                if !crate::same_host(bound.address(), &last.address) {
                     return Err(Error::ProofMismatch);
                 }
                 walked.address = bound.address().to_owned();
@@ -1893,10 +1893,10 @@ mod tests {
         assert!(VerifiedHistory::read(&text).is_ok());
     }
 
-    /// The owner part of a name follows the owner, and nothing else about the address can change
-    /// with them, so a new owner can't take an agent to another handle or host under cover of it.
+    /// A new owner names the agent under their own name at the same host, and can't take it to another
+    /// host under cover of that, which only a `host` event does.
     #[test]
-    fn a_new_owner_can_change_only_the_owner_part_of_the_name() {
+    fn a_new_owner_names_the_agent_at_the_same_host() {
         let (ana, ben, agent) = (holder(), holder(), holder());
         let on = started(&ana, &agent);
         let release = VerifiedRelease::sign(
@@ -1938,7 +1938,8 @@ mod tests {
                 .address(),
             Some(renamed)
         );
-        for elsewhere in ["mallory~host.example", "ana.ben~elsewhere.example"] {
+        assert!(bens_at("muse.ben~host.example").is_ok());
+        for elsewhere in ["ana.ben~elsewhere.example", "muse~elsewhere.example"] {
             assert_eq!(
                 bens_at(elsewhere).err(),
                 Some(Error::ProofMismatch),

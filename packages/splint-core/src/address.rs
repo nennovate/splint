@@ -113,16 +113,134 @@ pub fn same_handle_and_host(one: &str, other: &str) -> bool {
 }
 
 /// `ana~splint.example` with `jeff` after its handle, as `ana.jeff~splint.example`: the address an
-/// owner's binding names when they give an agent that has no owner part yet theirs. One that has an
-/// owner part already keeps it, so this refuses it, as it does a name that wouldn't fit.
+/// owner's binding names when they give an agent that has no owner part yet theirs. An agent under a
+/// [temporary name](temporary_name) keeps only the word it chose, so `ana-7k3p2a` becomes `ana.jeff`
+/// too. One that has an owner part already keeps it, so this refuses it, as it does a name that
+/// wouldn't fit or a part that isn't an owner's name.
 pub fn with_owner_part(address: &str, owner_part: &str) -> Result<String, Error> {
     let (name, domain) = parse_address(address)?;
-    if name_parts(name).1.is_some() || !is_valid_handle(owner_part) {
+    if name_parts(name).1.is_some() || !is_valid_handle(owner_part) || looks_like_an_id(owner_part)
+    {
         return Err(Error::Malformed);
     }
-    let named = format!("{name}{OWNER_SEPARATOR}{owner_part}{ADDRESS_SEPARATOR}{domain}");
+    let word = agent_word(name);
+    let named = format!("{word}{OWNER_SEPARATOR}{owner_part}{ADDRESS_SEPARATOR}{domain}");
     parse_address(&named)?;
     Ok(named)
+}
+
+/// How many characters of code follow the word in a temporary name. At least one is a digit, so no
+/// word of letters alone, such as `london` in `anna-london`, reads as one.
+const TEMPORARY_CODE_CHARS: usize = 6;
+const DIGITS_IN_BASE32: &[u8] = b"234567";
+
+/// The name an agent nobody has set up controls for joins under: the word it chose, a hyphen and a
+/// random code, as `claude-7k3p2a`. Its person's controls give it a name under theirs, as
+/// `claude.nenye`, and this one is let go a while later. Provisional.
+pub fn temporary_name(word: &str) -> Result<String, Error> {
+    use aws_lc_rs::rand::{SecureRandom, SystemRandom};
+    let mut random = [0_u8; TEMPORARY_CODE_CHARS];
+    SystemRandom::new()
+        .fill(&mut random)
+        .map_err(|_| Error::Crypto)?;
+    let mut code: Vec<u8> = random
+        .iter()
+        .map(|byte| crate::pairing::BASE32_LETTERS.get(usize::from(byte & 0x1f)).copied())
+        .collect::<Option<_>>()
+        .ok_or(Error::Crypto)?;
+    if !code.iter().any(|byte| DIGITS_IN_BASE32.contains(byte))
+        && let (Some(last), Some(first)) = (code.last_mut(), random.first())
+    {
+        *last = DIGITS_IN_BASE32
+            .get(usize::from(*first) % DIGITS_IN_BASE32.len())
+            .copied()
+            .ok_or(Error::Crypto)?;
+    }
+    let code = String::from_utf8(code).map_err(|_| Error::Crypto)?;
+    let name = format!("{word}-{code}");
+    if name_parts(word).1.is_some() || !is_valid_handle(word) || !is_valid_name(&name) {
+        return Err(Error::Malformed);
+    }
+    Ok(name)
+}
+
+/// Whether a name is a temporary one: no owner part, and a word, a hyphen and a code of 6 lowercase
+/// base32 characters, at least one a digit.
+pub fn is_temporary_name(name: &str) -> bool {
+    temporary_word(name).is_some()
+}
+
+fn temporary_word(name: &str) -> Option<&str> {
+    let (handle, owner) = name_parts(name);
+    let (word, code) = handle.rsplit_once('-')?;
+    let shaped = owner.is_none()
+        && !word.is_empty()
+        && code.len() == TEMPORARY_CODE_CHARS
+        && code.bytes().all(|byte| crate::pairing::BASE32_LETTERS.contains(&byte))
+        && code.bytes().any(|byte| DIGITS_IN_BASE32.contains(&byte));
+    shaped.then_some(word)
+}
+
+/// The word an agent's name is made from: the handle before any owner part, and for a temporary
+/// name, the word before its code.
+pub fn agent_word(name: &str) -> &str {
+    temporary_word(name).unwrap_or_else(|| name_parts(name).0)
+}
+
+/// How many characters an owner's ID takes after an agent's handle in place of their name.
+pub const OWNER_ID_FORM_CHARS: usize = 26;
+
+/// An owner's ID as it goes after an agent's handle in place of their name: its first 128 bits in
+/// lowercase base32, as a pairing code writes them. `claude.<that>~host` reaches the agent its host
+/// names `claude.<their name>~host`, which is what's kept and shown from then on.
+pub fn owner_id_form(owner: &crate::SplintId) -> Result<String, Error> {
+    let start = owner
+        .as_str()
+        .strip_prefix(crate::identity::ID_PREFIX)
+        .and_then(|hash| hash.get(..32))
+        .ok_or(Error::Malformed)?;
+    let bytes: [u8; 16] = crate::join::lower_hex(start, 16)?
+        .try_into()
+        .map_err(|_| Error::Malformed)?;
+    Ok(crate::pairing::to_base32(&bytes))
+}
+
+/// The start of an owner's ID, in its own spelling, that an owner part in ID form names, or `None`
+/// for one that's a name.
+pub fn owner_id_start(owner_part: &str) -> Option<String> {
+    let bytes = crate::pairing::from_base32(owner_part).ok()?;
+    Some(format!(
+        "{}{}",
+        crate::identity::ID_PREFIX,
+        crate::identity::hex(&bytes)
+    ))
+}
+
+/// Whether an owner part could be read as an owner's ID, so no name is ever one.
+fn looks_like_an_id(owner_part: &str) -> bool {
+    owner_part.len() == OWNER_ID_FORM_CHARS
+        && owner_part
+            .bytes()
+            .all(|byte| crate::pairing::BASE32_LETTERS.contains(&byte))
+}
+
+/// Whether `name` may be an owner's name at a host, which goes after their agents' handles and, alone,
+/// names their own agent: one a host gives out with no code, and none that reads as a temporary name or
+/// an owner's ID. A host's operator can keep more back.
+pub fn may_be_owner_name(name: &str) -> bool {
+    name_parts(name).1.is_none()
+        && may_take_without_code(name)
+        && !is_temporary_name(name)
+        && !looks_like_an_id(name)
+}
+
+/// Whether two addresses are at the same host, whatever their names: all a new owner's binding keeps,
+/// as they choose the agent's name under their own.
+pub fn same_host(one: &str, other: &str) -> bool {
+    match (parse_address(one), parse_address(other)) {
+        (Ok((_, one_domain)), Ok((_, other_domain))) => one_domain == other_domain,
+        _ => false,
+    }
 }
 
 /// Splits `name~domain`, in its one spelling. It's strict because the domain becomes part of a
