@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """Three agents of one person on one machine, each a profile with its own Signet, talking through Splint.
 
-Nenye's home already has an agent of its own, the default. Two more set up as profiles, one with
-`--as` and one with `SPLINT_AS` as a runtime would set it, and a third joins on its own and is
-confirmed by the same owner key, which every profile shares and none of them deletes. Before any of
-that, a profile that joins on a machine with no owner key can't get one made beside it. They add each
-other, hold a sealed conversation and a request, each through its own Signet, and an adapter started
-with nothing but `SPLINT_AS` reaches the right one. One profile's token gets nothing from another's
-Signet, and the default agent is as it was.
+Nenye's home already has an agent of its own, the default, which goes by her name alone at its host,
+`nenye`, and so makes that her name there. Two more set up as profiles under it, `one.nenye` with
+`--as` and `two.nenye` with `SPLINT_AS` as a runtime would set it, and a third joins on its own, under a
+temporary name, and is confirmed by the same owner key as `three.nenye`. Every profile shares that key
+and none of them deletes it. Before any of that, a profile that joins on a machine with no owner key
+can't get one made beside it. They add each other, hold a sealed conversation and a request, each
+through its own Signet, and an adapter started with nothing but `SPLINT_AS` reaches the right one. One
+profile's token gets nothing from another's Signet, and the default agent is as it was.
 
     python3 sim/profiles.py
 
@@ -149,7 +150,9 @@ def no_owner_key_beside_an_agent_that_joined_first(machine: Machine) -> None:
     asked = for_the_owner(machine.run("splint --as zed ask-owner to work with my other agents").stdout)
     # Issue 707: with no owner key here, its person sets up their controls on their own computer.
     check("with no owner key on this machine, ask-owner gives the controls path, not splint authorize", f"splint controls {machine.host}" in asked and "splint authorize" not in asked, asked)
-    command = f"splint authorize zed~{machine.host} {zed.api('GET', '/v0/identity')[1]['key']}"
+    # At the temporary name it joined under, as its person would be given it.
+    joined_as = zed.api("GET", "/v0/identity")[1]
+    command = f"splint authorize {joined_as['address']} {joined_as['key']}"
     signed = machine.run(command + NAMED, CONFIRM)
     check("confirming it from this machine's own folder is refused", signed.returncode != 0 and "this is the machine" in signed.stderr, signed.stderr)
     check("and makes no owner key where that agent can read it", not (machine.default.dot / "owner").exists(), list(machine.default.dot.iterdir()))
@@ -175,26 +178,28 @@ def no_owner_key_beside_an_agent_that_joined_first(machine: Machine) -> None:
 
 
 def the_default_agent_first(machine: Machine) -> dict:
-    ana = machine.default
-    ana.address = f"ana~{machine.host}"
-    done = machine.run(f"splint setup {ana.address} --owner-key-here")
+    """Under Nenye's name alone, which makes it hers at this host, so her other agents go under it."""
+    default = machine.default
+    default.address = f"{OWNER_NAME}~{machine.host}"
+    done = machine.run(f"splint setup {default.address} --owner-key-here")
     check("control: the default agent sets up as before", done.returncode == 0, done.stderr)
-    ana.line = OWN_LINE.search(done.stdout).group(0)
-    return {"setup": (ana.dot / "setup.json").read_bytes(), "owner": (ana.dot / "owner" / "owner.identity").read_text()}
+    default.line = OWN_LINE.search(done.stdout).group(0)
+    return {"setup": (default.dot / "setup.json").read_bytes(), "owner": (default.dot / "owner" / "owner.identity").read_text()}
 
 
 def two_profiles_set_up_with_the_one_owner_key(machine: Machine) -> None:
-    for name, command in (("one", "splint --as one setup one~{host} --owner-key-here"), ("two", "SPLINT_AS=two splint setup two~{host} --owner-key-here")):
+    # Under Nenye's name, as the bare name at a host is only an owner's own agent's.
+    for name, command in (("one", "splint --as one setup one.{owner}~{host} --owner-key-here"), ("two", "SPLINT_AS=two splint setup two.{owner}~{host} --owner-key-here")):
         agent = as_profile(machine.nenye, name)
-        agent.address = f"{name}~{machine.host}"
-        done = machine.run(command.format(host=machine.host))
+        agent.address = f"{name}.{OWNER_NAME}~{machine.host}"
+        done = machine.run(command.format(owner=OWNER_NAME, host=machine.host))
         check(f"{name} sets up as a profile", done.returncode == 0, done.stderr)
         agent.line = OWN_LINE.search(done.stdout).group(0)
         check(f"{name}'s token is in its own folder", str(agent.dot / "agent.curl") in done.stdout, done.stdout)
         machine.agents[name] = agent
     owner = machine.default.dot / "owner" / "owner.identity"
     for name in ("one", "two"):
-        found = registered(machine.host, name)
+        found = registered(machine.host, f"{name}.{OWNER_NAME}")
         check(f"{name} acts for the same owner as the default", found is not None and found["owner_identity"] == owner.read_text().strip(), found)
         check(f"and no second owner key was made for {name}", not (machine.agents[name].dot / "owner").exists())
 
@@ -214,7 +219,8 @@ def a_third_joins_on_its_own_and_the_same_owner_confirms_it(machine: Machine) ->
     check("and to listen as itself", listens is not None and listens.group(1).endswith("--as three"), joined.stdout)
     check("with a stand-in of its own, beside the owner's key", (three.dot / "owner").exists() and (machine.default.dot / "owner" / "owner.key").exists())
     listed = machine.run("splint profiles").stdout
-    check("splint profiles says its controls aren't set up yet", re.search(r"three\s+three~\S+\s+Signet running\s+no controls set up yet", listed), listed)
+    temporary = three.api("GET", "/v0/identity")[1].get("address", "")
+    check("splint profiles says its controls aren't set up yet", re.search(rf"three\s+{re.escape(temporary)}\s+Signet running\s+no controls set up yet", listed), listed)
     asked = machine.run("splint --as three ask-owner to work with my other agents")
     check("it asks its owner, who keeps an owner key on this machine, to confirm it here with splint authorize", asked.returncode == 0 and AUTHORIZE_LINE.search(for_the_owner(asked.stdout)) is not None, asked.stdout + asked.stderr)
     command = AUTHORIZE_LINE.search(for_the_owner(asked.stdout)).group(0)
@@ -416,7 +422,7 @@ def an_adapter_started_with_only_the_profile(machine: Machine) -> None:
     try:
         adapter.rpc("initialize", {"protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "sim", "version": "0"}})
         names = sorted(contact["name"] for contact in adapter.tool("contacts"))
-        check("the adapter reaches two's Signet, with two's contacts", names == ["one", "three.nenye"], names)
+        check("the adapter reaches two's Signet, with two's contacts", names == [f"one.{OWNER_NAME}", f"three.{OWNER_NAME}"], names)
     finally:
         adapter.finish()
     nobody = McpAgent("", "", {"SPLINT_AS": "nobody", "HOME": str(machine.nenye.home)}, script)

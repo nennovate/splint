@@ -2,11 +2,12 @@
 """A person loses the computer their sign-in and their agent were on, and gets both back on a new one
 with their recovery code, in one command, with nobody else acting.
 
-Ivy joins on her own on her person's computer, and one approval there sets up controls. Her `splint
-status` says no recovery code is set, and says it until her person sets one with `splint computer
-recovery`, which also leaves the owner's list, with Ivy's backup sealed in it, at her host. Sol, at a
-second host, runs on another machine under the same owner. Then the whole home is gone. On a new
-computer her person types `splint recover ivy~HOST` and the code. Run with no terminal, as an agent
+Ivy joins on her own on her person's computer, under a temporary name, and asks for her controls with
+the name her person goes by, Ana. One approval there sets them up, as `ivy.ana`. Her `splint status`
+says no recovery code is set, and says it until her person sets one with `splint computer recovery`,
+which also leaves the owner's list, with Ivy's backup sealed in it, at her host. Sol, at a second host,
+runs on another machine under the same owner, as `sol.ana`. Then the whole home is gone. On a new
+computer her person types `splint recover ivy.ana~HOST` and the code. Run with no terminal, as an agent
 would, it takes nothing. A wrong code changes nothing anywhere. Neither does a host that can't say
 whether it holds the list, or a host that doesn't hold it, where the person is asked first and says no:
 the code still works after each. The right code brings the owner ID back on that computer's sign-in,
@@ -37,11 +38,14 @@ import time
 import e2e
 from agent_asks import TOUCH_SECONDS, in_background, on_the_computer
 from agent_signup import Signup
-from asked_by_link import local
+from asked_by_link import address_of, local, name_of
 from e2e import check, wait_until
 
 PASSPHRASE = "correct horse"
 OWNER_KEY = "$HOME/.splint/bin/splint-owner-key"
+# The name Ivy's person goes by, which her controls name her under, as `ivy.ana`.
+IVYS_PERSON = "ana"
+IVY = f"ivy.{IVYS_PERSON}"
 
 
 def in_a_terminal(signup: Signup, name: str, command: str, answers: list[tuple[str, str]], timeout: int = 300) -> tuple[int, str]:
@@ -107,7 +111,7 @@ def status_of(signup: Signup, name: str) -> dict:
 
 def held_owner(signup: Signup) -> str:
     """The copy of Ivy's owner's ID her host holds, as its operator reads it."""
-    return signup.sql("hana", "SELECT owner_identity FROM agents WHERE handle = 'ivy'")
+    return signup.sql("hana", f"SELECT owner_identity FROM agents WHERE handle = '{IVY}'")
 
 
 def ivy_is_set_up_and_told_no_code_is_set(signup: Signup, port: int):
@@ -116,7 +120,7 @@ def ivy_is_set_up_and_told_no_code_is_set(signup: Signup, port: int):
     on_the_computer(ivy, port)
     check("control: ivy joins on her own", signup.walk.run_as("ivy", f"splint join ivy~{host}").returncode == 0)
     # --wait, as splint controls waits only where a prompt here asks by itself, which a key file doesn't.
-    asking = in_background(signup, "ivy", "splint ask --controls --wait --json")
+    asking = in_background(signup, "ivy", f"splint ask --controls --name {IVYS_PERSON} --wait --json")
     approved = ""
     for _ in range(60):
         time.sleep(1)
@@ -126,7 +130,8 @@ def ivy_is_set_up_and_told_no_code_is_set(signup: Signup, port: int):
             break
     check("control: one approval sets up her controls", "Approved 1" in approved, approved)
     asking["thread"].join(TOUCH_SECONDS + 40)
-    check("control: she takes it up", wait_until(lambda: ivy.api("GET", "/v0/identity")[1].get("owner_confirmed") is True, 60), ivy.api("GET", "/v0/identity")[1])
+    check("control: she takes it up, under her person's name", wait_until(lambda: ivy.api("GET", "/v0/identity")[1].get("owner_confirmed") is True, 60) and address_of(ivy) == f"{IVY}~{host}", ivy.api("GET", "/v0/identity")[1])
+    ivy.address = address_of(ivy)
     # Bug caught: an agent never told that losing its person's computer would lose it.
     check("her status says no recovery code is set", status_of(signup, "ivy").get("recovery_code") == "not_set", status_of(signup, "ivy"))
     check("and keeps no list of her at her host while there's no code to open it", signup.sql("hana", "SELECT count(*) FROM owner_agent_lists") == "0")
@@ -143,26 +148,29 @@ def ivy_is_set_up_and_told_no_code_is_set(signup: Signup, port: int):
     return ivy, code, who, handle
 
 
-def asks_by_link(signup: Signup, name: str, host: str, person: str, port: int, approving: str):
-    """An agent on a machine of its own joins, and a person approves its controls on their computer."""
+def asks_by_link(signup: Signup, name: str, host: str, person: str, port: int, approving: str, goes_by: str):
+    """An agent on a machine of its own joins, and a person approves its controls on their computer,
+    which name it under `goes_by`, the name they go by, as its ask says."""
     agent = signup.device(name)
     on_the_computer(agent, e2e.free_port())
     check(f"control: {name} joins on its own", signup.walk.run_as(name, f"splint join {name}~{host}").returncode == 0)
-    asked = json.loads(signup.walk.run_as(name, "splint controls --json").stdout or "{}")
+    agent.address = address_of(agent)
+    asked = json.loads(signup.walk.run_as(name, f"splint controls --name {goes_by} --json").stdout or "{}")
     _, ask = agent.api("GET", f"/v0/asks/{asked.get('id', '')}")
-    status, _ = local("POST", port, "/local/asks", {"ask": ask.get("ask", ""), "address": f"{name}~{host}"})
-    check(f"control: its link hands {person}'s computer the ask", status == 200, status)
+    status, taken = local("POST", port, "/local/asks", {"ask": ask.get("ask", ""), "address": agent.address})
+    check(f"control: its link hands {person}'s computer the ask, which waits for them", bool(asked.get("computer_link")) and status == 200 and taken.get("status") == "waiting", (asked, status, taken))
     approved = signup.walk.run_as(person, approving, "yes\n")
     check(f"control: {person} approves {name}", "Approved 1" in approved.stdout + approved.stderr, approved.stdout + approved.stderr)
     signup.walk.run_as(name, "splint auto --once")
     check(f"control: {name} takes it up", wait_until(lambda: agent.api("GET", "/v0/identity")[1].get("owner_confirmed") is True, 60), agent.api("GET", "/v0/identity")[1])
+    agent.address = address_of(agent)
     return agent
 
 
 def sol_runs_on_another_machine(signup: Signup, port: int):
     """Sol is at a second host, on a machine of his own, under the same owner as Ivy."""
     second = signup.start_host("kofi")
-    return asks_by_link(signup, "sol", second, "ivy", port, "splint computer approve"), second
+    return asks_by_link(signup, "sol", second, "ivy", port, "splint computer approve", IVYS_PERSON), second
 
 
 def hold_back_recoveries(signup: Signup) -> None:
@@ -176,7 +184,7 @@ def let_recoveries_through(signup: Signup) -> None:
     signup.sql("hana", "DROP TRIGGER hold_back ON agents; DROP FUNCTION hold_back()")
 
 
-def uma_deals_with_ivy_before_the_loss(signup: Signup):
+def uma_deals_with_ivy_before_the_loss(signup: Signup, ivy_address: str):
     """Uma is another owner's agent, on another computer, and Ivy's contact by invite."""
     host = signup.open_host
     una = signup.device("una")
@@ -184,9 +192,8 @@ def uma_deals_with_ivy_before_the_loss(signup: Signup):
     on_the_computer(una, port)
     check("control: splint starts on una's computer", signup.walk.run_as("una", "splint computer start").returncode == 0)
     check("control: and serves her page", wait_until(lambda: local("POST", port, "/local/asks", {})[0] != 0, 60))
-    uma = asks_by_link(signup, "uma", host, "una", port, "splint computer approve --plain-key-file")
-    uma.address = f"uma~{host}"
-    meet(signup, "ivy", f"ivy~{host}", uma)
+    uma = asks_by_link(signup, "uma", host, "una", port, "splint computer approve --plain-key-file", "una")
+    meet(signup, "ivy", ivy_address, uma)
     return uma
 
 
@@ -202,11 +209,10 @@ def bodies_of(person) -> list[str]:
     return [message["untrusted"]["body"] for message in person.inbox()]
 
 
-def uma_carries_on_with_nobody_acting(signup: Signup, uma) -> None:
+def uma_carries_on_with_nobody_acting(signup: Signup, uma, ivy_address: str) -> None:
     """Bug caught: each contact's owner had to find an Allow button before a recovered owner's agent
     could deal with theirs, and nothing told them to. The agents meet again, as Ivy's contacts don't
     come back with her, and no person on either side does anything."""
-    ivy_address = f"ivy~{signup.open_host}"
     new = signup.walk.people["ivy-new"]
     meet(signup, "ivy-new", ivy_address, uma)
     sends = lambda: new.api("POST", "/v0/send", {"to": uma.address, "body": "back after the loss"})[0] == 200  # noqa: E731
@@ -237,19 +243,20 @@ def the_computer_is_lost(signup: Signup, ivy) -> str:
 
 def recovering_on_a_new_computer(signup: Signup, port: int, code: str, before: dict, old_handle: str, sol, second: str) -> str:
     host = signup.open_host
+    ivy = before["address"]
     owner_before = held_owner(signup)
     sol_before = sol.api("GET", "/v0/identity")[1]
     new = signup.device("ivy-new")
     on_the_computer(new, port)
     made = new.dot / "computer" / "owner" / "owner.identity"
-    piped = signup.walk.run_as("ivy-new", f"splint recover ivy~{host}", f"{code}\n{PASSPHRASE}\n{PASSPHRASE}\n")
+    piped = signup.walk.run_as("ivy-new", f"splint recover {ivy}", f"{code}\n{PASSPHRASE}\n{PASSPHRASE}\n")
     # Bug caught: a recovery code taken from a pipe, as from an agent's shell, where the new one lands
     # in its transcript. All it would need is here, so only the terminal check stops it.
     check("with no terminal, as an agent runs it, it takes no code", piped.returncode != 0 and "terminal" in piped.stderr + piped.stdout and not made.exists(), piped.stdout + piped.stderr)
     check("and the owner ID at her host is as it was, with everything an agent could pipe", held_owner(signup) == owner_before)
 
     wrong = "abcd-efgh-ijkl-mnop-qrst-uvwx-yq"
-    status, said = in_a_terminal(signup, "ivy-new", f"splint recover ivy~{host}", [
+    status, said = in_a_terminal(signup, "ivy-new", f"splint recover {ivy}", [
         ("recovery code:", wrong), ("Type yes to go on", "yes"), ("Choose a passphrase", PASSPHRASE), ("same passphrase again", PASSPHRASE)])
     # Bug caught: a wrong code that moves the owner ID.
     check("a wrong code is refused", status != 0 and "is back" not in said, said)
@@ -259,7 +266,7 @@ def recovering_on_a_new_computer(signup: Signup, port: int, code: str, before: d
     # Bug caught: a host that failed to answer read as one holding no list, which spent the code and
     # left every agent behind for good.
     with AfterOwnerKey(signup, "ivy-new", "list-handle", lambda _pid: host_stops(signup)):
-        status, said = in_a_terminal(signup, "ivy-new", f"splint recover ivy~{host}", [
+        status, said = in_a_terminal(signup, "ivy-new", f"splint recover {ivy}", [
             ("recovery code:", code), ("Type yes to go on", "yes"), ("Choose a passphrase", PASSPHRASE), ("same passphrase again", PASSPHRASE)], timeout=120)
     check("a host that can't say whether it holds her list stops it", status != 0 and "Type yes to go on" not in said, said)
     check("with nothing made on this computer", not made.exists(), said)
@@ -267,7 +274,7 @@ def recovering_on_a_new_computer(signup: Signup, port: int, code: str, before: d
     check("and the owner ID at her host is as it was once it's back", held_owner(signup) == owner_before)
 
     # Bug caught: the code spent at a host holding no list, with no word that no agent would come back.
-    status, said = in_a_terminal(signup, "ivy-new", f"splint recover sol~{second}", [("recovery code:", code), ("Type yes to go on", "no")])
+    status, said = in_a_terminal(signup, "ivy-new", f"splint recover {sol.address}", [("recovery code:", code), ("Type yes to go on", "no")])
     check("at a host with no list of hers her person is asked first, and saying no stops it", status != 0 and "Type yes to go on" in said, said)
     check("with nothing made on this computer either", not made.exists(), said)
 
@@ -275,7 +282,7 @@ def recovering_on_a_new_computer(signup: Signup, port: int, code: str, before: d
     # question asked and left every backup sealed in it out of reach.
     kept = signup.sql("hana", "SELECT list FROM owner_agent_lists")
     signup.sql("hana", "UPDATE owner_agent_lists SET list = 'this is not a list'")
-    status, said = in_a_terminal(signup, "ivy-new", f"splint recover ivy~{host}", [
+    status, said = in_a_terminal(signup, "ivy-new", f"splint recover {ivy}", [
         ("recovery code:", code), ("Choose a passphrase", PASSPHRASE), ("same passphrase again", PASSPHRASE)], timeout=120)
     signup.sql("hana", f"UPDATE owner_agent_lists SET list = '{kept}'")
     check("a list her host can't give readably stops it, and says to try again", status != 0 and "try again" in said.lower() and "Type yes to go on" not in said, said)
@@ -284,7 +291,7 @@ def recovering_on_a_new_computer(signup: Signup, port: int, code: str, before: d
     # Bug caught: an agent called back already, or brought back, at a host that never took the owner's
     # recovery, which would undo the agent's when it did.
     hold_back_recoveries(signup)
-    status, said = in_a_terminal(signup, "ivy-new", f"splint recover ivy~{host}", [
+    status, said = in_a_terminal(signup, "ivy-new", f"splint recover {ivy}", [
         ("recovery code:", code), ("Choose a passphrase", PASSPHRASE), ("same passphrase again", PASSPHRASE)])
     let_recoveries_through(signup)
     check("a host that won't take the recovery is said to, and she waits for it", status == 0 and "couldn't be told" in said and "back already" not in said and "is back on this computer" not in said, said)
@@ -297,17 +304,17 @@ def recovering_on_a_new_computer(signup: Signup, port: int, code: str, before: d
         os.kill(pid, signal.SIGKILL)
 
     with AfterOwnerKey(signup, "ivy-new", "restore-agents", killed):
-        status, first = in_a_terminal(signup, "ivy-new", f"splint recover ivy~{host}", [("passphrase:", PASSPHRASE)])
+        status, first = in_a_terminal(signup, "ivy-new", f"splint recover {ivy}", [("passphrase:", PASSPHRASE)])
     check("control: the next run is cut off just after the approval", status != 0 and "is back on this computer" not in first, first)
 
     # Bug caught: a Signet that took the recovery while its host was down, refusing the next one signed.
     with AfterOwnerKey(signup, "ivy-new", "restore-agents", lambda _pid: host_stops(signup)):
-        status, said = in_a_terminal(signup, "ivy-new", f"splint recover ivy~{host}", [("passphrase:", PASSPHRASE)])
+        status, said = in_a_terminal(signup, "ivy-new", f"splint recover {ivy}", [("passphrase:", PASSPHRASE)])
     host_starts(signup)
     check("control: the next run finds her host down, and says to run it again", "isn't confirmed back yet" in said, said)
 
-    status, said = in_a_terminal(signup, "ivy-new", f"splint recover ivy~{host}", [("passphrase:", PASSPHRASE)])
-    check("run again with no code, it finishes", status == 0 and "ivy~" in said and "is back on this computer" in said, said)
+    status, said = in_a_terminal(signup, "ivy-new", f"splint recover {ivy}", [("passphrase:", PASSPHRASE)])
+    check("run again with no code, it finishes", status == 0 and ivy in said and "is back on this computer" in said, said)
     now = new.api("GET", "/v0/identity")[1]
     # Bug caught: a lost computer losing the agent, or bringing it back as someone else.
     check("ivy is back with the same ID and address", now.get("agent_id") == before.get("agent_id") and now.get("address") == before.get("address"), now)
@@ -319,14 +326,14 @@ def recovering_on_a_new_computer(signup: Signup, port: int, code: str, before: d
     check("her status says her controls are set and the new code is", standing.get("state") == "controls_set" and "recovery_code" not in standing, standing)
 
     # Bug caught: an agent on another machine taken over, or said to be left working when it's stopped.
-    check("sol is named as stopped on his own machine", f"sol~{second} ran on another computer" in said and "stopped" in said, said)
+    check("sol is named as stopped on his own machine", f"{sol.address} ran on another computer" in said and "stopped" in said, said)
     check("and isn't brought here", all(sol_before["agent_id"] not in path.read_text() for path in new.home.rglob("setup.json")))
     check("and his Signet there keeps its key", sol.api("GET", "/v0/identity")[1].get("key") == sol_before.get("key"), sol.api("GET", "/v0/identity")[1])
     check("and stops, as her person was told", wait_until(lambda: sol.api("GET", "/v0/identity")[1].get("registered") is False, 120), sol.api("GET", "/v0/identity")[1])
 
     the_new_codes_list_holds_her(signup, new_code, old_handle)
 
-    again, said = in_a_terminal(signup, "ivy-new", f"splint recover ivy~{host}", [("passphrase:", PASSPHRASE)])
+    again, said = in_a_terminal(signup, "ivy-new", f"splint recover {ivy}", [("passphrase:", PASSPHRASE)])
     check("run again, it needs no code and finds her back", again == 0 and "back already" in said, said)
     return owner_before
 
@@ -342,7 +349,7 @@ def the_new_codes_list_holds_her(signup: Signup, new_code: str, old_handle: str)
     third = signup.walk.work / "a-third-computer"
     opened = signup.walk.run_as("ivy-new", f"{OWNER_KEY} recover --dir {third} --sign-in file --plain-key-file yes --code -", f"{new_code}\n{given}")
     check("and the new code opens it", opened.returncode == 0 and json.loads(opened.stdout or "{}").get("list_found") is True, opened.stderr)
-    ivy_now = signup.sql("hana", "SELECT identity FROM agents WHERE handle = 'ivy'")
+    ivy_now = signup.sql("hana", f"SELECT identity FROM agents WHERE handle = '{IVY}'")
     fits = [signup.walk.run_as("ivy-new", f"{OWNER_KEY} check-backup --backup {key} --agent {ivy_now}").returncode == 0 for key in (third / "agent-backups").glob("*.key")]
     check("and it holds the backup her ID commits to now", any(fits), fits)
 
@@ -350,7 +357,7 @@ def the_new_codes_list_holds_her(signup: Signup, new_code: str, old_handle: str)
     # stopping every other agent coming back.
     stranger, stranger_id = e2e.new_identity(signup.walk.work / "a-stranger.key")
     who = signup.walk.people["ivy-new"].api("GET", "/v0/identity")[1]
-    both = [{"identity": one, "address": f"{handle}~{host}", "new_key": who["key"], "delegate": who["delegate"]} for one, handle in ((stranger, "stranger"), (ivy_now, "ivy"))]
+    both = [{"identity": one, "address": f"{handle}~{host}", "new_key": who["key"], "delegate": who["delegate"]} for one, handle in ((stranger, "stranger"), (ivy_now, IVY))]
     restored = signup.walk.run_as("ivy-new", f"{OWNER_KEY} restore-agents --dir {third} --schemas {signup.walk.people['ivy-new'].dot / 'schemas'}", json.dumps({"host": host, "rules": e2e.rules_draft([]), "here": both, "list": []}))
     printed = json.loads(restored.stdout or "{}")
     check("an agent whose ID fits no backup here is left out, and the rest still come back", [one.get("agent") for one in printed.get("agents", [])] == [who["agent_id"]] and printed.get("not_ours") == [stranger_id], restored.stdout + restored.stderr)
@@ -362,12 +369,12 @@ def what_the_old_sign_in_and_code_get(signup: Signup, stolen: str, code: str, ow
     new = signup.walk.people["ivy-new"]
     agent = new.api("GET", "/v0/identity")[1]
     # What the stolen folder remembers of her backup's vouch lets its key sign a binding with no backup.
-    signed = signup.walk.run_as("ivy-new", f"{OWNER_KEY} bind --dir {stolen} --agent {agent['identity']} --address ivy~{host}")
+    signed = signup.walk.run_as("ivy-new", f"{OWNER_KEY} bind --dir {stolen} --agent {agent['identity']} --address {agent['address']}")
     check("control: the stolen sign-in still signs a binding for her", signed.returncode == 0 and signed.stdout.strip(), signed.stderr)
     status, _ = new.api("PUT", "/v0/owner/binding", {"binding": signed.stdout.strip()})
     check("which her Signet refuses, as that key no longer counts", status == 403, status)
     check("so she's still bound under the recovered owner", new.api("GET", "/v0/identity")[1].get("registered") is True)
-    ours = signup.walk.run_as("ivy-new", f"{OWNER_KEY} bind --dir {new.dot / 'computer' / 'owner'} --passphrase - --agent {agent['identity']} --address ivy~{host}", f"{PASSPHRASE}\n")
+    ours = signup.walk.run_as("ivy-new", f"{OWNER_KEY} bind --dir {new.dot / 'computer' / 'owner'} --passphrase - --agent {agent['identity']} --address {agent['address']}", f"{PASSPHRASE}\n")
     status, _ = new.api("PUT", "/v0/owner/binding", {"binding": ours.stdout.strip()})
     check("control: the same call takes a binding from the sign-in that counts", status == 200, (status, ours.stderr))
 
@@ -393,11 +400,11 @@ def an_owner_with_only_an_agent_elsewhere(signup: Signup) -> None:
     on_the_computer(pat, port)
     check("control: splint starts on pat's computer", signup.walk.run_as("pat", "splint computer start").returncode == 0)
     check("control: and serves her page", wait_until(lambda: local("POST", port, "/local/asks", {})[0] != 0, 60))
-    asks_by_link(signup, "rae", host, "pat", port, "splint computer approve --plain-key-file")
+    rae = asks_by_link(signup, "rae", host, "pat", port, "splint computer approve --plain-key-file", "pat")
     status, made = in_a_terminal(signup, "pat", "splint computer recovery", [])
     code = next((line.strip() for line in made.splitlines() if line.startswith("  ") and line.count("-") >= 5), "")
     check("control: pat sets her recovery code", status == 0 and code, made)
-    held = lambda: signup.sql("hana", "SELECT handle FROM owner_agent_lists WHERE owner_id = (SELECT owner_id FROM agents WHERE handle = 'rae')")  # noqa: E731
+    held = lambda: signup.sql("hana", f"SELECT handle FROM owner_agent_lists WHERE owner_id = (SELECT owner_id FROM agents WHERE handle = '{name_of(rae.address)}')")  # noqa: E731
     old_handle = held()
     check("control: her list is at the host", len(old_handle) == 64, old_handle)
     signup.walk.run_as("pat", "splint stop")
@@ -405,7 +412,7 @@ def an_owner_with_only_an_agent_elsewhere(signup: Signup) -> None:
     pat.home.mkdir()
     new = signup.device("pat-new")
     on_the_computer(new, e2e.free_port())
-    status, said = in_a_terminal(signup, "pat-new", f"splint recover rae~{host}", [
+    status, said = in_a_terminal(signup, "pat-new", f"splint recover {rae.address}", [
         ("recovery code:", code), ("Choose a passphrase", PASSPHRASE), ("same passphrase again", PASSPHRASE)])
     new_code = next((line.strip() for line in said.splitlines() if line.startswith("  ") and line.count("-") >= 5), "")
     check("control: pat recovers, and rae stays where she runs", status == 0 and new_code and "ran on another computer" in said, said)
@@ -420,10 +427,10 @@ def main() -> None:
     try:
         ivy, code, before, handle = ivy_is_set_up_and_told_no_code_is_set(signup, port)
         sol, second = sol_runs_on_another_machine(signup, port)
-        uma = uma_deals_with_ivy_before_the_loss(signup)
+        uma = uma_deals_with_ivy_before_the_loss(signup, ivy.address)
         stolen = the_computer_is_lost(signup, ivy)
         owner_before = recovering_on_a_new_computer(signup, e2e.free_port(), code, before, handle, sol, second)
-        uma_carries_on_with_nobody_acting(signup, uma)
+        uma_carries_on_with_nobody_acting(signup, uma, ivy.address)
         what_the_old_sign_in_and_code_get(signup, stolen, code, owner_before)
         an_owner_with_only_an_agent_elsewhere(signup)
     finally:

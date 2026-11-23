@@ -3,9 +3,10 @@
 headless Chrome against a real host, Signet and Splint on the computer, with the agent assumed fully
 fooled.
 
-Lia's agent, on her computer, asks for its controls, and she approves on that computer, with a key file
-locked with her passphrase. She opens her controls from `splint controls`, unlocks them with her
-passphrase once, and sees them. In Permissions she asks to be asked first, which signs at once, with no
+Lia's agent, on her computer, joins under a temporary name and asks for its controls with the name she
+goes by, and she approves on that computer, with a key file locked with her passphrase, which names it
+`lia.lia`, under hers. She opens her controls from `splint controls`, unlocks them with her passphrase
+once, and sees them. In Permissions she asks to be asked first, which signs at once, with no
 passphrase, as her unlocked session does. Her price setting signs the same way. A place to be paid no
 Signet takes is refused on the page, with nothing signed. Her off switch pauses the agent at its host
 and its Signet, and turns it back on. A reminder sets her recovery code, which always asks for her
@@ -409,8 +410,7 @@ def lia_sets_up_her_controls_on_her_computer(signup: Signup, port: int):
     lia = signup.device("lia")
     on_the_computer(lia, port)
     check("control: lia's agent joins on its own", signup.walk.run_as("lia", f"splint join lia~{host}").returncode == 0)
-    lia.address = f"lia~{host}"
-    asking = in_background(signup, "lia", "splint ask --controls --wait --json")
+    asking = in_background(signup, "lia", "splint ask --controls --name lia --wait --json")
     check("control: Splint on her computer starts", wait_until(lambda: socket_of(lia).exists(), 60))
     same = page_key(lia, port)
     waiting = lambda: http("GET", port, "/local/asks", headers=same)[1].get("asks")  # noqa: E731
@@ -420,6 +420,9 @@ def lia_sets_up_her_controls_on_her_computer(signup: Signup, port: int):
     check("control: she approves it there, choosing her passphrase", status == 200 and approved.get("approved") == 1, approved)
     asking["thread"].join(TOUCH_SECONDS + 40)
     check("control: her agent takes up its controls", wait_until(lambda: lia.api("GET", "/v0/identity")[1].get("owner_confirmed") is True, SIGNET_HEARS_SECONDS))
+    # Under her name now, as her controls named it, which is where cal reaches it.
+    lia.address = lia.api("GET", "/v0/identity")[1].get("address", "")
+    check("control: under her name", lia.address == f"lia.lia~{host}", lia.address)
     return lia, lia.api("GET", "/v0/identity")[1].get("agent_id", "")
 
 

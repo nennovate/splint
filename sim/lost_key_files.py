@@ -43,7 +43,8 @@ from agent_asks import on_the_computer
 from agent_signup import Signup
 from e2e import check, wait_until
 from outbound_text import SCALAR_BYTES, SCALAR_STARTS_AFTER
-from recover_owner import PASSPHRASE, TOUCH_SECONDS, AfterOwnerKey, asks_by_link, in_a_terminal, in_background, ivy_is_set_up_and_told_no_code_is_set, status_of
+from asked_by_link import address_of
+from recover_owner import IVYS_PERSON, PASSPHRASE, TOUCH_SECONDS, AfterOwnerKey, asks_by_link, in_a_terminal, in_background, ivy_is_set_up_and_told_no_code_is_set, status_of
 
 KEY_FILES = ("agent.seal", "agent.key")
 # What a recovery that's still going keeps beside them, and anything else that would be a key made here.
@@ -424,9 +425,9 @@ def her_owner_here_puts_her_on_new_keys(signup: Signup, ivy, ivy_address: str) -
 
 def kit_joins_beside_her(signup: Signup, ivy) -> str:
     """A second agent of her person's, a profile on the same computer, so a recovery naming Ivy reaches it
-    only once her person's code is spent. Gives its address."""
-    address = f"kit~{signup.open_host}"
-    check("control: kit joins as a profile", signup.walk.run_as("ivy", f"splint --as kit join {address}").returncode == 0)
+    only once her person's code is spent. Her person has a name at their host already, which kit's
+    controls name it under with none asked. Gives its address."""
+    check("control: kit joins as a profile", signup.walk.run_as("ivy", f"splint --as kit join kit~{signup.open_host}").returncode == 0)
     asking = in_background(signup, "ivy", "splint --as kit ask --controls --wait --json")
     approved = ""
     for _ in range(60):
@@ -436,12 +437,14 @@ def kit_joins_beside_her(signup: Signup, ivy) -> str:
             break
     check("control: her person approves kit", "Approved 1" in approved, approved)
     asking["thread"].join(TOUCH_SECONDS + 40)
+    address = json.loads(signup.walk.run_as("ivy", "splint --as kit status --json").stdout or "{}").get("address", "")
+    check("control: kit takes it up, under the name her person has there", address == f"kit.{IVYS_PERSON}~{signup.open_host}", address)
     return address
 
 
 def kit_is_asked_about_in_turn(signup: Signup, ivy, address: str, kit_folder: Path) -> None:
     """Her person's code is spent by now, and Kit's keys are looked at as the run comes to it."""
-    ivy_address = f"ivy~{signup.open_host}"
+    ivy_address = ivy.address
     (kit_folder / "agent.key").chmod(0o600)
     kept = {name: (kit_folder / name).read_bytes() for name in KEY_FILES}
     os.replace(kit_folder / "agent.key", signup.walk.work / "aside-kit")
@@ -466,12 +469,12 @@ def recovery_replaces_a_key_on_purpose(signup: Signup, ivy, code: str, before: d
     (ivy.dot / "signet" / "agent.key").unlink()
     refused = signup.walk.run_as("ivy", "splint start")
     check("control: a start can't make her a new key, so her person turns to recovery", refused.returncode != 0 and "agent.key" in refused.stderr, refused.stderr)
-    status, said = in_a_terminal(signup, "ivy", f"splint recover ivy~{signup.open_host}", [("Type yes", "no"), ("recovery code:", code)])
+    status, said = in_a_terminal(signup, "ivy", f"splint recover {ivy.address}", [("Type yes", "no"), ("recovery code:", code)])
     # Bug caught: keys replaced with no word of what's lost, or the code spent before her person could stop.
     check("splint recover says what's lost, and a no stops it before the code is asked for", status != 0 and "can never be opened" in said and "recovery code:" not in said, said)
     (kit_folder / "agent.key").chmod(0o644)
     kit_keys = {name: (kit_folder / name).read_bytes() for name in KEY_FILES}
-    status, said = in_a_terminal(signup, "ivy", f"splint recover ivy~{signup.open_host}", [
+    status, said = in_a_terminal(signup, "ivy", f"splint recover {ivy.address}", [
         ("Type yes", "yes"), ("recovery code:", code), ("Choose a passphrase", PASSPHRASE), ("same passphrase again", PASSPHRASE)])
     # Bug caught: a second agent's working keys replaced over a permission, in a run that named another agent.
     check("kit's key that others can read leaves kit behind, with Signet's reason", f"{kit} wasn't brought back" in said and "readable only by this user" in said, said)
@@ -498,8 +501,8 @@ def his_owner_signs_in_on_another_computer() -> None:
     try:
         port = e2e.free_port()
         ivy_is_set_up_and_told_no_code_is_set(signup, port)
-        sol = asks_by_link(signup, "sol", signup.open_host, "ivy", port, "splint computer approve")
-        sol_address = f"sol~{signup.open_host}"
+        sol = asks_by_link(signup, "sol", signup.open_host, "ivy", port, "splint computer approve", IVYS_PERSON)
+        sol_address = sol.address
         crashes(sol)
         (sol.dot / "signet" / "agent.key").unlink()
         refused = signup.walk.run_as("sol", "splint start")
@@ -542,8 +545,8 @@ def main() -> None:
         ned = signup.device("ned")
         on_the_computer(ned, e2e.free_port())
         host = signup.open_host
-        ivy_address, ben_address = f"ivy~{host}", f"ben~{host}"
-        check("control: ben joins", signup.walk.run_as("ben", f"splint join {ben_address}").returncode == 0)
+        check("control: ben joins", signup.walk.run_as("ben", f"splint join ben~{host}").returncode == 0)
+        ivy_address, ben_address = ivy.address, address_of(ben)
         check("control: ivy invites ben", signup.walk.run_as("ivy", f"splint invite {ben_address} --json").returncode == 0)
         check("control: and he accepts", wait_until(lambda: signup.walk.run_as("ben", f"splint accept {ivy_address}").returncode == 0, 60))
         check("control: ben can write to her", wait_until(lambda: any(one["address"] == ivy_address for one in ben.api("GET", "/v0/contacts")[1].get("contacts", [])), 60))
