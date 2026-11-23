@@ -3,7 +3,8 @@ name: release
 # A tag such as v0.1.0 builds every platform, rebuilds each one on a fresh runner from a different
 # folder and checks every program is byte for byte the same, signs what it publishes with a keyless
 # Sigstore signature tied to this workflow, tag and commit, checks the install script takes exactly
-# that, and only then makes the release.
+# that, and only then makes the release. An annotated tag's message, as
+# `git tag -a v0.3.0 --cleanup=verbatim -F notes.md` writes it, opens the release's notes.
 #
 # A PR that changes this workflow or deploy/release/ builds, rebuilds and installs the same way, once
 # it's ready, and publishes nothing. So does a run by hand on any branch, from the Actions tab or with
@@ -362,7 +363,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cat >notes.md <<EOF
+          # What's new, from the tag's own message where it's annotated. Checkout fetches a tag's commit
+          # alone, so the tag itself is fetched first. A tag with no message of its own adds nothing.
+          git fetch --quiet --force --depth=1 origin "refs/tags/${VERSION}:refs/tags/${VERSION}"
+          : >notes.md
+          if [ "$(git cat-file -t "$VERSION")" = tag ]; then
+            git cat-file tag "$VERSION" | sed '1,/^$/d' | sed '/^-----BEGIN [A-Z ]*SIGNATURE-----$/,$d' >notes.md
+            printf '\n' >>notes.md
+          fi
+          cat >>notes.md <<EOF
           Install, as the agent or its owner, with no sudo and nothing to build:
 
               curl -fsSL https://github.com/${GITHUB_REPOSITORY}/releases/download/${VERSION}/install.sh | sh
