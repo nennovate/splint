@@ -491,10 +491,10 @@ fn may_name_owner_part(
              wouldn't fit in an address",
         ));
     }
-    if !splint_core::may_take_without_code(owner_part) {
+    if !splint_core::may_be_owner_name(owner_part) {
         return Err(ApiError::BadRequest(
-            "a person's name after the dot has at least 3 letters, digits or hyphens, and isn't one a \
-             host keeps back, such as admin or support",
+            "a person's name after the dot has at least 3 letters, digits or hyphens, isn't one a host \
+             keeps back, such as admin or support, and doesn't read as a temporary name or an owner's ID",
         ));
     }
     if splint_core::asks::adds_owner_part(changes).is_none() {

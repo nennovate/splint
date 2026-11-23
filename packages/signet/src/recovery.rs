@@ -12,7 +12,7 @@ use axum::routing::put;
 use axum::{Json, Router};
 use serde::{Deserialize, Serialize};
 use splint_core::rules::VerifiedRules;
-use splint_core::{Error, Identity, VerifiedBinding, same_handle_and_host, unix_now};
+use splint_core::{Error, Identity, VerifiedBinding, same_host, unix_now};
 
 use crate::Signet;
 use crate::agent_api::ApiError;
@@ -290,10 +290,9 @@ async fn take_transfer(
         &new_agent,
     )
     .map_err(ApiError::NotBound)?;
-    // A new owner can give the name their own owner part, and nothing else about the address.
+    // A new owner names the agent under their own name at the same host, and can't move it elsewhere.
     let address = signet.address();
-    let renamed =
-        new_owner.id() != who.owner.id() && same_handle_and_host(binding.address(), &address);
+    let renamed = new_owner.id() != who.owner.id() && same_host(binding.address(), &address);
     if binding.address() != address && !renamed {
         return Err(ApiError::NotBound(Error::ProofMismatch));
     }

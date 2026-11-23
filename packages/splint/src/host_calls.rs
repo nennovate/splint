@@ -170,6 +170,18 @@ impl HostCalls {
         }
     }
 
+    /// An address as someone typed it, where an owner's ID in place of their name becomes the name it
+    /// stands for at that host, checked against the binding there: the one spelling that's kept and
+    /// shown. Any other address is as it is, with nothing asked.
+    pub async fn name_form(address: &str) -> Result<String, Failure> {
+        let (name, domain) = parse_address(address).map_err(Failure::not_an_address)?;
+        let (_, part) = splint_core::name_parts(name);
+        if part.and_then(splint_core::owner_id_start).is_none() {
+            return Ok(address.to_owned());
+        }
+        Ok(Self::new(domain)?.resolve(address).await?.moved_to)
+    }
+
     /// Who has this name here, as the host says. The ID checks out against what's signed, and an agent
     /// that goes by it still has its Signet check it again before anything is sent.
     pub async fn resolve(&self, address: &str) -> Result<Resolved, Failure> {
@@ -193,7 +205,10 @@ impl HostCalls {
             .map_err(|_| Failure::refused("that host's answer doesn't make sense"))?;
         let agent = Identity::from_encoded(&found.identity)?;
         let owner = Identity::from_encoded(&found.owner_identity)?;
-        VerifiedBinding::verify_for(&found.binding, &owner, &agent, address)?;
+        // An owner's ID in place of their name stands for the name the host gives, for that owner.
+        let at = splint_core::address_named(address, &found.moved_to, owner.id())
+            .map_err(|_| Failure::refused("that host's answer doesn't check out"))?;
+        VerifiedBinding::verify_for(&found.binding, &owner, &agent, &at)?;
         if agent.id() != &found.agent_id {
             return Err(Failure::refused("that host's answer doesn't check out"));
         }

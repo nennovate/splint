@@ -154,12 +154,14 @@ pub async fn take_up_owner_part(home: &Home, binding: &str) -> Result<String, Fa
             .is_ok_and(|(name, _)| splint_core::name_parts(name).1.is_some())
     };
     if !named(&before) {
-        api.put_binding(binding).await.map_err(|failure| match failure {
-            Failure::Refused(why) => Failure::refused(format!(
-                "your host didn't take the name your person signed, so nothing changed: {why}"
-            )),
-            typed => typed,
-        })?;
+        api.put_binding(binding)
+            .await
+            .map_err(|failure| match failure {
+                Failure::Refused(why) => Failure::refused(format!(
+                    "your host didn't take the name your person signed, so nothing changed: {why}"
+                )),
+                typed => typed,
+            })?;
     }
     let address = api.who().await?.address;
     if !named(&address) {

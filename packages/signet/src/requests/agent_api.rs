@@ -20,7 +20,7 @@ use splint_core::{DeliveryState, Identity, MessageId, SplintId, unix_now};
 
 use crate::Signet;
 use crate::agent_api::refuse_if_stopped;
-use crate::agent_api::{ASK_YOUR_OWNER, ApiError, typed_address};
+use crate::agent_api::{ASK_YOUR_OWNER, ApiError, typed_address_named};
 use crate::budget;
 use crate::contacts::{Controls, controls_of};
 use crate::requests::held_opens::{HeldOpen, HeldOpenView};
@@ -698,7 +698,7 @@ async fn open(
 ) -> Result<Json<Moved>, ApiError> {
     secret_egress::refuse_secrets(&signet, &secret_egress::words_in(&body.terms)).await?;
     refuse_hidden_characters(&body.terms)?;
-    body.contact = typed_address(&body.contact)?;
+    body.contact = typed_address_named(&signet, &body.contact).await?;
     let contact = fresh_contact_at(&signet, &body.contact)
         .await?
         .ok_or(ApiError::BadRequest("that address isn't a contact"))?;

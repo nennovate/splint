@@ -24,8 +24,8 @@ use splint_core::host_api::{
 use splint_core::{
     ADDRESS_SEPARATOR, Error, Identity, MIN_SIGNUP_CODE_CHARS, RECOVERY_WINDOW_SECS, SplintId,
     VerifiedRegistration, VerifiedRelease, VerifiedRetirement, claimed_released_agent,
-    claimed_retired_agent, is_temporary_name, may_be_owner_name, may_take_without_code,
-    name_parts, owner_id_start, signup_id, unix_now,
+    claimed_retired_agent, is_temporary_name, may_be_owner_name, may_take_without_code, name_parts,
+    owner_id_start, signup_id, unix_now,
 };
 use sqlx::{PgPool, Postgres, Row, Transaction};
 
@@ -315,7 +315,8 @@ async fn take_newer_statement(
     if renamed {
         may_take_new_name(&mut transaction, host, registration, now).await?;
         // A temporary name points to the new one for a while, and then anyone can have it again.
-        let until = is_temporary_name(&held_name).then(|| now.saturating_add(TEMPORARY_NAME_KEPT_SECS));
+        let until =
+            is_temporary_name(&held_name).then(|| now.saturating_add(TEMPORARY_NAME_KEPT_SECS));
         rename(
             &mut transaction,
             agent.id(),
@@ -619,7 +620,9 @@ async fn may_take_new_name(
     }
     let (handle, part) = name_parts(name);
     let owner_name = part.unwrap_or(handle);
-    if is_temporary_name(name) || !may_be_owner_name(owner_name) || host.kept_names.holds(owner_name)
+    if is_temporary_name(name)
+        || !may_be_owner_name(owner_name)
+        || host.kept_names.holds(owner_name)
     {
         return Err(ApiError::Forbidden(NAMED_UNDER_AN_OWNER));
     }

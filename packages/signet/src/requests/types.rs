@@ -22,7 +22,7 @@ use splint_core::requests::{
 use splint_core::{MessageId, SplintId, unix_now};
 
 use crate::Signet;
-use crate::agent_api::{ApiError, typed_address};
+use crate::agent_api::{ApiError, typed_address_named};
 use crate::budget;
 use crate::requests::agent_api::{Moved, moved, send_open};
 use crate::requests::{contact_at, fresh_contact_at};
@@ -285,7 +285,7 @@ pub async fn list(
 ) -> Result<Json<TypeList>, ApiError> {
     let only = match &query.contact {
         Some(address) => {
-            let address = typed_address(address)?;
+            let address = typed_address_named(&signet, address).await?;
             let contact = contact_at(&signet, &address)
                 .await?
                 .ok_or(ApiError::BadRequest("that address isn't a contact"))?;
@@ -369,7 +369,7 @@ pub async fn propose(
     let proposed = ProposedSchema::new(schema)?;
     let schema = proposed.schema().clone();
     secret_egress::refuse_secrets(&signet, &schema.chosen_words()).await?;
-    let address = typed_address(&body.contact)?;
+    let address = typed_address_named(&signet, &body.contact).await?;
     let contact = fresh_contact_at(&signet, &address)
         .await?
         .ok_or(ApiError::BadRequest("that address isn't a contact"))?;

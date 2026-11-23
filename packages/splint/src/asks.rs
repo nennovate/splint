@@ -314,6 +314,7 @@ async fn changes_from(
                 let address = value(words.next())?;
                 let address =
                     splint_core::canonical_address(address).map_err(Failure::not_an_address)?;
+                let address = HostCalls::name_form(&address).await?;
                 let (_, domain) =
                     splint_core::parse_address(&address).map_err(Failure::not_an_address)?;
                 let agent = HostCalls::new(domain)?.resolve(&address).await?.agent_id;

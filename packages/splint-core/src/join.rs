@@ -138,9 +138,7 @@ impl JoinReply {
         let owner = self.confirming_owner()?;
         let address = VerifiedBinding::check_ahead(&self.binding, &owner, held, &self.commitment)?;
         let rules = VerifiedRules::verify(&self.rules, &owner, 0, now)?;
-        if !same_host(&address, held_address)
-            || rules.agent() != held.id()
-            || !rules.names_nobody()
+        if !same_host(&address, held_address) || rules.agent() != held.id() || !rules.names_nobody()
         {
             return Err(Error::ProofMismatch);
         }

@@ -214,6 +214,31 @@ async fn require_token(
     }
 }
 
+/// An address as an agent wrote it, in the one spelling the owner's rules and every lookup use, where
+/// an owner's ID in place of their name becomes the name it stands for, as its host says and the
+/// binding there shows, so that's the spelling kept and shown.
+pub async fn typed_address_named(signet: &Signet, text: &str) -> Result<String, ApiError> {
+    let address = typed_address(text)?;
+    let Ok((name, domain)) = parse_address(&address) else {
+        return Ok(address);
+    };
+    let (_, part) = splint_core::name_parts(name);
+    if part.and_then(splint_core::owner_id_start).is_none() {
+        return Ok(address);
+    }
+    signet
+        .lookup(&signet.who())
+        .name_form(name, domain)
+        .await
+        .map_err(|error| match error {
+            HostError::Unreachable => {
+                ApiError::CouldntReach("that address's host can't be reached now, so try again later")
+            }
+            HostError::TooMany => ApiError::Host(HostError::TooMany),
+            _ => ApiError::BadRequest("nobody answers at that address"),
+        })
+}
+
 /// An address as an agent wrote it, in the one spelling the owner's rules and every lookup use.
 pub fn typed_address(text: &str) -> Result<String, ApiError> {
     canonical_address(text).map_err(|error| {
@@ -782,7 +807,7 @@ async fn send(
         ));
     }
     secret_egress::refuse_secrets(&signet, &request.body).await?;
-    request.to = typed_address(&request.to)?;
+    request.to = typed_address_named(&signet, &request.to).await?;
     let (handle, domain) = parse_address(&request.to).map_err(|_| {
         ApiError::BadRequest("an address is name~domain, such as ana~splint.example")
     })?;

@@ -145,7 +145,11 @@ pub fn temporary_name(word: &str) -> Result<String, Error> {
         .map_err(|_| Error::Crypto)?;
     let mut code: Vec<u8> = random
         .iter()
-        .map(|byte| crate::pairing::BASE32_LETTERS.get(usize::from(byte & 0x1f)).copied())
+        .map(|byte| {
+            crate::pairing::BASE32_LETTERS
+                .get(usize::from(byte & 0x1f))
+                .copied()
+        })
         .collect::<Option<_>>()
         .ok_or(Error::Crypto)?;
     if !code.iter().any(|byte| DIGITS_IN_BASE32.contains(byte))
@@ -176,7 +180,9 @@ fn temporary_word(name: &str) -> Option<&str> {
     let shaped = owner.is_none()
         && !word.is_empty()
         && code.len() == TEMPORARY_CODE_CHARS
-        && code.bytes().all(|byte| crate::pairing::BASE32_LETTERS.contains(&byte))
+        && code
+            .bytes()
+            .all(|byte| crate::pairing::BASE32_LETTERS.contains(&byte))
         && code.bytes().any(|byte| DIGITS_IN_BASE32.contains(&byte));
     shaped.then_some(word)
 }
@@ -214,6 +220,33 @@ pub fn owner_id_start(owner_part: &str) -> Option<String> {
         crate::identity::ID_PREFIX,
         crate::identity::hex(&bytes)
     ))
+}
+
+/// The address an answer about `typed` is for. Where `typed` names an owner by their ID in place of
+/// their name, as `claude.<ID form>~host`, that's the address its host said it stands for, `moved_to`:
+/// at the same host, with the same handle, for an owner whose ID starts as the form says, which a
+/// caller checks against the binding before taking it. That's what's kept and shown from then on, as
+/// an address has one spelling. Anything else is `typed` itself.
+pub fn address_named(
+    typed: &str,
+    moved_to: &str,
+    owner: &crate::SplintId,
+) -> Result<String, Error> {
+    let (name, domain) = parse_address(typed)?;
+    let (handle, part) = name_parts(name);
+    let Some(start) = part.and_then(owner_id_start) else {
+        return Ok(typed.to_owned());
+    };
+    let (named, named_at) = parse_address(moved_to)?;
+    let (named_handle, named_part) = name_parts(named);
+    if named_at != domain
+        || named_handle != handle
+        || named_part.is_none_or(looks_like_an_id)
+        || !owner.as_str().starts_with(&start)
+    {
+        return Err(Error::ProofMismatch);
+    }
+    Ok(moved_to.to_owned())
 }
 
 /// Whether an owner part could be read as an owner's ID, so no name is ever one.
@@ -643,7 +676,10 @@ mod tests {
     #[test]
     fn an_owners_name_is_never_a_temporary_name_or_an_id() {
         let made = temporary_name("claude").unwrap();
-        assert!(is_temporary_name(&made) && agent_word(&made) == "claude", "{made}");
+        assert!(
+            is_temporary_name(&made) && agent_word(&made) == "claude",
+            "{made}"
+        );
         assert!(!may_be_owner_name(&made), "{made}");
         assert!(!is_temporary_name("anna-london") && may_be_owner_name("anna-london"));
         assert_eq!(
@@ -662,5 +698,22 @@ mod tests {
         assert!(!may_be_owner_name(&form));
         assert!(with_owner_part("claude~host.example", &form).is_err());
         assert!(owner_id_start("anna").is_none());
+        // An ID form stands for the name its host gives, only for that owner, handle and host.
+        let typed = format!("claude.{form}~host.example");
+        assert_eq!(
+            address_named(&typed, "claude.jeff~host.example", owner.id()).as_deref(),
+            Ok("claude.jeff~host.example")
+        );
+        let stranger = crate::test_identity(&crate::SigningKey::generate().unwrap());
+        for (moved_to, bound_for) in [
+            ("claude.jeff~host.example", stranger.id()),
+            ("muse.jeff~host.example", owner.id()),
+            ("claude.jeff~elsewhere.example", owner.id()),
+        ] {
+            assert!(
+                address_named(&typed, moved_to, bound_for).is_err(),
+                "{moved_to}"
+            );
+        }
     }
 }

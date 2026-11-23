@@ -1510,8 +1510,10 @@ mod tests {
         .unwrap();
         assert_eq!(
             shown.asks[0].said,
-            ["let lia~host.example act for you as lia.jeff~host.example, with jeff as your name at \
-              host.example for good"]
+            [
+                "let lia~host.example act for you as lia.jeff~host.example, with jeff as your name at \
+              host.example for good"
+            ]
         );
         let answered = approved(&dir, vec![lia_at(&controls)]);
         let reply = JoinReply::decode(answered.approved[0].answer.as_deref().unwrap()).unwrap();
