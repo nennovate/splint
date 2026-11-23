@@ -549,7 +549,7 @@ their signature.
 Their controls are their own signature that you act for them, the limits code holds you to, and
 letting you say yes within those limits while they're away. To ask them to set those up, run
 
-  {splint} controls
+  {asking}
 
 It gives you computer_link to hand them, which opens on Splint on their own computer: owners sign
 only there, with their computer's chip or a key file locked with a passphrase, never on a host's
@@ -579,6 +579,11 @@ How and when you bring this up is yours. Never ask for or accept their recovery 
 
 Your Signet listens on {socket}.{not_at_login} Your token is only in {curl}, and nothing prints it.
 {splint} connect prints how to use it.",
+        asking = if owner_part.is_some() {
+            format!("{} controls", home.command())
+        } else {
+            format!("{} controls --name NAME", home.command())
+        },
         install = controls_install_line(domain),
         install_on_windows = controls_install_line_on_windows(domain),
         open = controls_open_line(domain),

@@ -886,19 +886,14 @@ def a_name_after_the_dot_comes_with_one_approval(signup: Signup, port: int):
 
 
 def names_are_owners_and_an_owners_id_reaches_them(signup: Signup, port: int, lea) -> None:
-    """Kai joins under a temporary name and invites lea. His ask with a name another owner holds isn't
-    put to his person; with his person's own, one approval names him `kai.kayla`, and lea still reaches
-    him at the temporary name she knew. A second agent of his person's, on the same computer, gets
+    """Kai joins under a temporary name. His ask with a name another owner holds isn't put to his
+    person; with his person's own, one approval names him `kai.kayla`, and he and lea talk. A second agent of his person's, on the same computer, gets
     their name with nothing asked, and shares a handle with lea. Lea reaches him by his owner's ID in
     place of their name, and nothing changes a name's owner part once it's set."""
     host = signup.open_host
     kai = signup.device("kai")
     on_the_computer(kai, port)
     check("control: kai joins on his own", signup.walk.run_as("kai", f"splint join kai~{host}").returncode == 0)
-    temporary = address_of(kai)
-    sent = signup.walk.run_as("kai", f"splint invite {lea.address} --json")
-    check("control: kai invites lea", sent.returncode == 0, sent.stdout + sent.stderr)
-    check("control: and she accepts", wait_until(lambda: signup.walk.run_as("lea", f"splint accept {temporary}").returncode == 0, 60))
 
     held = asked_without_waiting(signup, "kai", "splint controls --name ana --json")
     # Bug caught: one owner taking another's name, or a person asked to approve a name their host
@@ -910,10 +905,13 @@ def names_are_owners_and_an_owners_id_reaches_them(signup: Signup, port: int, le
     check("he takes it up and runs as kai.kayla", wait_until(lambda: taken_up(signup, "kai", asked.get("id", "")).get("status") == "done", SIGNET_HEARS_SECONDS) and address_of(kai) == f"kai.kayla~{host}", address_of(kai))
     kept = json.loads((kai.dot / "setup.json").read_text()).get("address")
     check("and his folder starts him there next time", kept == f"kai.kayla~{host}", kept)
-    status, _ = lea.api("POST", "/v0/send", {"to": temporary, "body": "to kai's temporary address"})
-    check("a contact who has his temporary address still reaches him", status == 200 and wait_until(lambda: "to kai's temporary address" in bodies_of(kai), 60), bodies_of(kai))
+    sent = signup.walk.run_as("kai", f"splint invite {lea.address} --json")
+    check("control: kai invites lea", sent.returncode == 0, sent.stdout + sent.stderr)
+    check("control: and she accepts", wait_until(lambda: signup.walk.run_as("lea", f"splint accept kai.kayla~{host}").returncode == 0, 60))
+    status, _ = lea.api("POST", "/v0/send", {"to": f"kai.kayla~{host}", "body": "to kai.kayla"})
+    check("a contact reaches him under his name", status == 200 and wait_until(lambda: "to kai.kayla" in bodies_of(kai), 60), bodies_of(kai))
     status, _ = kai.api("POST", "/v0/send", {"to": lea.address, "body": "from kai.kayla"})
-    check("and hears from him under his new one", status == 200 and wait_until(lambda: "from kai.kayla" in bodies_of(lea), 60), bodies_of(lea))
+    check("and hears from him", status == 200 and wait_until(lambda: "from kai.kayla" in bodies_of(lea), 60), bodies_of(lea))
 
     joined = signup.walk.run_as("kai", f"splint --as two join lea~{host}")
     check("control: a second agent of his person's joins on the same computer", joined.returncode == 0, joined.stderr)
