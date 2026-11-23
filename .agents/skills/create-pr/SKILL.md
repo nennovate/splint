@@ -37,7 +37,7 @@ Stack only when two groups depend on each other and still shouldn't be one PR. U
 
 Commit and push as you go, in commits that make sense, rather than holding work until it's finished. Nothing has to pass before a push to a branch.
 
-Open a work-in-progress PR at a checkpoint, or when Nenye would need the context to follow what's happening. One PR per branch, not one per update.
+Open a work-in-progress PR at a checkpoint, or when a reviewer would need the context to follow what's happening. One PR per branch, not one per update.
 
 - Open it as a draft, with a title starting `WIP:`.
 - The description rules still apply. It says what exists now and what isn't done yet, and a test run isn't needed until it's ready.
@@ -53,6 +53,7 @@ A reviewer won't read a long description. Write for a teammate who wasn't in the
 
 - **`## How it works`:** three to six lines on the implementation: the main objects, where they live, and the flow. Name a type or file when it helps the reader find it. It isn't a tour of the diff.
 - **`## Trade-offs`:** what this chose against, what it costs, and what's still not covered. Link an issue for each thing deferred. Say "None known" only after looking.
+- **`## How it was tested`:** two to four lines: what ran and where, one or two real examples of what went in and what came out, and what couldn't be checked. "Make it easy to audit", below, says what a good one holds. Logs still go in the evidence comment.
 
 When stacked, the first line is `Stack: 3 of 7, builds on <PR link>.` Anything more goes in one form: a table, a diagram, a few lines or numbers, plus any line step 2 marks as required. The form replaces sentences. It never sits under a paragraph saying the same thing.
 
@@ -159,7 +160,7 @@ Not an implication: After said again, how the code works, or which files changed
 
 - A recap of the diff, file lists and function names. Say what the owner, agent or host does now, and skip code identifiers unless the PR is about that name.
 - Line-by-line detail. `## How it works` covers the design in a few lines.
-- Test logs and suite lists in the description. A pass is shown by the label, and numbers appear only when the number is the point. Logs go in an evidence comment instead.
+- Test logs and suite lists in the description. `## How it was tested` says what ran in a few lines, numbers appear only when the number is the point, and logs go in an evidence comment.
 - Links to closed PRs, except the one that caused the bug or the one this builds on.
 - `Update` or `Edit` sections. See "When the PR changes".
 
@@ -185,7 +186,7 @@ Write them in mermaid, which GitHub renders, so they can be changed in the same 
 
 ### Make it easy to audit
 
-For a test or a review, show what really happened, so nobody has to take the summary on trust. Keep it short.
+Under `## How it was tested`, show what really happened, so nobody has to take the summary on trust. Keep it short.
 
 - **Two to four real examples:** what went in, and what came out. "A message with a NUL in the handle: refused with 400" says more than "hostile bodies".
 - **How to repeat it:** the command, and any seed.
@@ -272,6 +273,10 @@ Write `pr_summary.md` in the repo root, which is gitignored:
 ## Trade-offs
 
 <what this chose against, what it costs, what's deferred, with issue links>
+
+## How it was tested
+
+<what ran and where, one or two real examples, and what couldn't be checked>
 
 <the form from step 2, or nothing>
 ```

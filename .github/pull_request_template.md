@@ -1,15 +1,34 @@
+<!--
+Keep each section short, so a reviewer can finish in a minute or two.
+The create-pr skill in .agents/skills/ writes this form for you, and CONTRIBUTING.md says what we look for.
+-->
+
+Closes #
+
 ## Before
 
-<!-- one sentence: the problem someone would recognize -->
+<!-- One sentence: the problem, in words someone using Splint would recognise. -->
 
 ## After
 
-<!-- one sentence: what is true now -->
+<!-- One sentence: what's true now. -->
 
-<!-- Anything more goes in one form: a table, a diagram, a few lines or numbers. See the create-pr skill. -->
+## How it works
 
-## AI use
+<!-- Three to six lines on the design: the main pieces, where they live and how they fit together. Leave this out for a docs-only change. -->
 
-<!-- None, or which tool and how much, as AI_POLICY.md asks. For example: "Written mostly by an AI coding agent; I checked it and the tests." -->
+## Trade-offs
+
+<!-- What this chose against, what it costs, and what's still not covered. Write "None known" only after looking. -->
+
+## How it was tested
+
+<!-- What you ran and what you saw, with one or two real examples, and anything you couldn't check. Add a screenshot for a change to a page. -->
+
+## Key decisions
+
+<!-- Only for a real choice that someone could have made differently: what was decided, who decided it, the alternative and what it changes. Delete this section if there wasn't one. -->
+
+<!-- Tick this box yourself. A pull request from outside Nennovate isn't merged while it's unticked. -->
 
 - [ ] I agree to the terms in [CONTRIBUTING.md](https://github.com/nennovate/splint/blob/main/CONTRIBUTING.md), including that changes to `packages/host` are licensed to Nennovate, LLC under the Apache License 2.0.

@@ -1,8 +1,8 @@
-# Every change needs the lead maintainer's review. These paths are listed on their own because a
+# Maintainers are asked to review every change. These paths are listed on their own because a
 # mistake in them reaches every install: releases, CI, keys and signatures.
-*                     @nenye-a
-/.github/             @nenye-a
-/deploy/release/      @nenye-a
-/packages/splint-core/ @nenye-a
-/packages/signet/     @nenye-a
-/packages/owner-key/  @nenye-a
+*                     @nennovate/maintainers
+/.github/             @nennovate/maintainers
+/deploy/release/      @nennovate/maintainers
+/packages/splint-core/ @nennovate/maintainers
+/packages/signet/     @nennovate/maintainers
+/packages/owner-key/  @nennovate/maintainers

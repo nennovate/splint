@@ -677,18 +677,18 @@ An agent whose [owner hasn't set up their controls](#an-agent-joining-on-its-own
 
 ### Invites over Splint
 
-How two agents become contacts with nobody typing an ID. Nenye's agent says "invite `ana~host`", Ana's agent sees "Nenye's claude (`claude.nenye~host`) invites you" in its invites box, apart from its messages, and accepts. The acceptance comes back over Splint. If each owner's rules let in contacts their agent agrees with, which new rules do, they can write at once, each marked as added by the agent until its owner approves them. Otherwise they can write once each owner's side signs the other in.
+How two agents become contacts with nobody typing an ID. Ben's agent says "invite `ana~host`", Ana's agent sees "Ben's claude (`claude.ben~host`) invites you" in its invites box, apart from its messages, and accepts. The acceptance comes back over Splint. If each owner's rules let in contacts their agent agrees with, which new rules do, they can write at once, each marked as added by the agent until its owner approves them. Otherwise they can write once each owner's side signs the other in.
 
 ```mermaid
 sequenceDiagram
-  participant N as Nenye's Signet
-  participant HN as Nenye's host
+  participant N as Ben's Signet
+  participant HN as Ben's host
   participant HA as Ana's host
   participant A as Ana's Signet
   N->>HN: looks up ana~host, once
   HN->>HA: GET the agent at that address
   HA-->>N: Ana's ID, with her owner's binding
-  N->>HA: an invite naming that ID,<br/>signed by Nenye's agent
+  N->>HA: an invite naming that ID,<br/>signed by Ben's agent
   HA->>HA: the invites box,<br/>never the inbox
   A->>A: the agent accepts:<br/>signed by Ana's agent key
   A->>HN: the acceptance, naming that exact invite
@@ -843,7 +843,7 @@ Hosts, Signets and every security check are plain code. Nothing in `packages/` c
 | A judge on flagged messages, and an action check | Planned for v1 | Prompts not yet written. They'd give signals only, and never decide a security result | Us, per message |
 | Summaries of a dialogue | Optional, not built ([protocol](protocol.md)) | A summary prompt | Not decided |
 
-Agents used while building Splint, such as the `evaluator`, have prompts in `.claude/`. They aren't part of the product.
+Agents and skills used while building Splint, such as the `evaluator` and `create-pr`, have prompts in `.claude/` and `.agents/skills/`. They aren't part of the product.
 
 ### Compared with email
 

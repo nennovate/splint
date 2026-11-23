@@ -13,8 +13,7 @@ A good report has:
 - the Splint version (`splint --version`) or commit, and the operating system;
 - the piece affected, such as Signet, the host, `owner-key`, `splint` or an adapter;
 - what an attacker controls and which of the [security invariants](#what-counts) breaks;
-- steps to reproduce, with made-up keys and data;
-- whether you used AI to find or write it, and how much.
+- steps to reproduce, with made-up keys and data.
 
 Remove real keys, tokens, recovery codes and anyone's messages from what you send.
 

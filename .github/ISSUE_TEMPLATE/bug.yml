@@ -1,6 +1,6 @@
 name: Bug
 description: Something in Splint doesn't work as its docs say.
-labels: ["type: bug", "needs-triage"]
+labels: ["bug", "needs-triage"]
 body:
   - type: markdown
     attributes:
@@ -10,7 +10,14 @@ body:
     id: what-happened
     attributes:
       label: What happened
-      description: What you saw, and what you expected instead.
+      description: What you saw.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+      description: What you thought would happen instead.
     validations:
       required: true
   - type: textarea
@@ -63,14 +70,3 @@ body:
     attributes:
       label: Likely cause
       description: Optional. Your analysis of why it happens, if you looked.
-  - type: dropdown
-    id: ai
-    attributes:
-      label: AI use
-      description: As AI_POLICY.md asks.
-      options:
-        - None
-        - Some, to help investigate or write this
-        - Mostly written by AI, and I checked it
-    validations:
-      required: true
