@@ -23,6 +23,8 @@
   /* Something you can press, and what's signed or live. */
   --action: #0f766e;
   --action-hover: #115e59;
+  /* The lit face of the band in the mark, and nothing else. */
+  --action-bright: #2dd4bf;
   --on-action: #ffffff;
   --action-ink: #0f766e;
   --action-soft: rgba(15, 118, 110, 0.12);
@@ -54,7 +56,7 @@
     --ink: #f2f2f4; --soft: #a1a1aa; --faint: #63636b;
     --line: #27272b; --line-strong: #35353b;
     --fill: rgba(255, 255, 255, 0.06); --fill-strong: rgba(255, 255, 255, 0.1);
-    --action: #2dd4bf; --action-hover: #5eead4; --on-action: #042f2e; --action-ink: #5eead4; --action-soft: rgba(45, 212, 191, 0.13);
+    --action: #2dd4bf; --action-hover: #5eead4; --action-bright: #5eead4; --on-action: #042f2e; --action-ink: #5eead4; --action-soft: rgba(45, 212, 191, 0.13);
     --waiting: #fbbf24; --waiting-ink: #fbbf24; --waiting-soft: rgba(251, 191, 36, 0.13);
     --stopped: #f87171; --stopped-ink: #fca5a5; --stopped-soft: rgba(248, 113, 113, 0.13);
     --shadow-card: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 1px 2px rgba(0, 0, 0, 0.3);
@@ -68,10 +70,23 @@
   --ink: #f2f2f4; --soft: #a1a1aa; --faint: #63636b;
   --line: #27272b; --line-strong: #35353b;
   --fill: rgba(255, 255, 255, 0.06); --fill-strong: rgba(255, 255, 255, 0.1);
-  --action: #2dd4bf; --action-hover: #5eead4; --on-action: #042f2e; --action-ink: #5eead4; --action-soft: rgba(45, 212, 191, 0.13);
+  --action: #2dd4bf; --action-hover: #5eead4; --action-bright: #5eead4; --on-action: #042f2e; --action-ink: #5eead4; --action-soft: rgba(45, 212, 191, 0.13);
   --waiting: #fbbf24; --waiting-ink: #fbbf24; --waiting-soft: rgba(251, 191, 36, 0.13);
   --stopped: #f87171; --stopped-ink: #fca5a5; --stopped-soft: rgba(248, 113, 113, 0.13);
   --shadow-card: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-pop: 0 16px 40px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.07);
   --scrim: rgba(0, 0, 0, 0.6);
 }
+
+/* The mark: two uprights passing through one teal band, seen at an angle, and "Splint" beside it. Each
+   face reads a token, and an even gap between the faces shows the ground, so the lighter faces are mixed
+   against it: a page sets --mark-ground where the mark sits on something other than --bg. Keep clear
+   space around it of at least the band's width, and never recolor or outline it. */
+.mark { flex: none; display: block; width: 20px; height: 30px; --mark-ground: var(--bg); }
+.mark .k1 { fill: var(--ink); }
+.mark .k2 { fill: color-mix(in srgb, var(--ink) 80%, var(--mark-ground)); }
+.mark .k3 { fill: color-mix(in srgb, var(--ink) 52%, var(--mark-ground)); }
+.mark .t1 { fill: var(--action); }
+.mark .t2 { fill: color-mix(in srgb, var(--action) 76%, #000); }
+.mark .t3 { fill: var(--action-bright); }
+.brand { display: inline-flex; align-items: center; gap: 9px; font-weight: 600; font-size: 16px; letter-spacing: -0.015em; color: var(--ink); }

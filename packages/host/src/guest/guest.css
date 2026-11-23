@@ -21,14 +21,15 @@ body {
 p { margin: 0; }
 button, input, select { font: inherit; color: inherit; }
 .eyebrow { color: var(--soft); font-size: 13px; font-weight: 600; }
-h1 { margin: 2px 0 6px; font-size: 22px; line-height: 1.2; font-weight: 600; letter-spacing: -0.02em; overflow-wrap: anywhere; }
+h1 { margin: 2px 0 6px; font-size: 26px; line-height: 1.15; font-weight: 600; letter-spacing: -0.02em; overflow-wrap: anywhere; }
 h2 { margin: 0 0 10px; font-size: 15px; font-weight: 600; letter-spacing: -0.012em; }
 .hint { color: var(--soft); font-size: 13px; }
+body > .brand, main > .brand { margin-bottom: 20px; }
 
 .card { margin: 12px 0; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); box-shadow: var(--shadow-card); }
 .card.offer { margin-top: 20px; }
 .card.offer h2 { display: inline-flex; align-items: center; height: 20px; margin-bottom: 10px; padding: 0 6px; border-radius: 5px; background: var(--fill); color: var(--soft); font-size: 10px; letter-spacing: 0.07em; font-variant-caps: all-small-caps; }
-.or { margin: 18px 2px 0; color: var(--faint); font-size: 11px; font-weight: 600; font-variant-caps: all-small-caps; letter-spacing: 0.06em; }
+.or { margin: 18px 2px 0; color: var(--soft); font-size: 11px; font-weight: 600; font-variant-caps: all-small-caps; letter-spacing: 0.06em; }
 
 dl { display: grid; grid-template-columns: minmax(90px, max-content) 1fr; margin: 0; }
 dt, dd { padding: 7px 0; overflow-wrap: anywhere; }
@@ -102,7 +103,7 @@ button:disabled { opacity: 0.45; cursor: default; transform: none; }
 .bad { margin-top: 12px; padding: 9px 12px; border-radius: var(--radius-md); background: var(--stopped-soft); color: var(--stopped-ink); font-weight: 500; font-size: 14px; }
 
 /* What this is, quietly, at the foot. */
-.about { margin-top: 32px; color: var(--faint); font-size: 12px; text-align: center; }
+.about { margin-top: 32px; color: var(--soft); font-size: 12px; text-align: center; }
 
 @media (max-width: 600px) {
   body { padding-block: 24px 48px; }
