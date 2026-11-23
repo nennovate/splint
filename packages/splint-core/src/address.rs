@@ -48,8 +48,9 @@ pub fn is_valid_name(name: &str) -> bool {
 /// signing up for nothing can't sweep them all up. Provisional.
 pub const MIN_HANDLE_CHARS_WITHOUT_CODE: usize = 3;
 /// Handles that would pass for whoever runs a host, or for Splint, so nobody takes one with no signup
-/// code. Whoever runs a host can still give one out with a code. Neither does any handle starting
-/// `splint`. Provisional.
+/// code, and nobody has one as their own name at all, alone or after an agent's handle. Whoever runs a
+/// host can still give one out as an agent's handle under an owner's name with a code, as
+/// `support.ana`. Neither goes for any handle starting `splint`. Provisional.
 const RESERVED_HANDLES: &[&str] = &[
     "abuse",
     "account",
