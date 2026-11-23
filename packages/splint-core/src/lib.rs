@@ -54,8 +54,8 @@ pub use address::{
     ADDRESS_SEPARATOR, LINK_SCHEME, MIN_HANDLE_CHARS_WITHOUT_CODE, OWNER_ID_FORM_CHARS,
     OWNER_SEPARATOR, TYPED_SEPARATOR, address_named, agent_word, canonical_address,
     canonical_domain, email_form, from_link, in_link, is_temporary_name, is_valid_handle,
-    is_valid_name, link_form, may_be_owner_name, may_take_without_code, name_parts, owner_id_form,
-    owner_id_start, parse_address, same_handle_and_host, same_host, temporary_name,
+    is_valid_name, link_form, may_be_owner_name, may_take_without_code, name_parts, named_under,
+    owner_id_form, owner_id_start, parse_address, same_handle_and_host, same_host, temporary_name,
     with_owner_part,
 };
 pub use binding::{

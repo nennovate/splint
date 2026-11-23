@@ -485,7 +485,12 @@ fn may_name_owner_part(
     changes: &[Change],
     owner_part: &str,
 ) -> Result<(), ApiError> {
-    if splint_core::with_owner_part(&signet.address(), owner_part).is_err() {
+    let fits = if splint_core::asks::adds_owner_part(changes).is_some() {
+        splint_core::with_owner_part(&signet.address(), owner_part)
+    } else {
+        splint_core::named_under(&signet.address(), owner_part)
+    };
+    if fits.is_err() {
         return Err(ApiError::BadRequest(
             "that name won't go after this agent's handle: it has an owner part already, or the two \
              wouldn't fit in an address",

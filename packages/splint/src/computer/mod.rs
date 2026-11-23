@@ -1249,7 +1249,7 @@ fn named_at(asked: &Asked) -> String {
     asked
         .owner_part
         .as_deref()
-        .and_then(|owner_part| splint_core::with_owner_part(&asked.address, owner_part).ok())
+        .and_then(|owner_part| splint_core::named_under(&asked.address, owner_part).ok())
         .unwrap_or_else(|| asked.address.clone())
 }
 

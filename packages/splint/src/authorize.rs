@@ -682,7 +682,7 @@ async fn owner_part(
         }
         return Ok(address.to_owned());
     };
-    splint_core::with_owner_part(address, word)
+    splint_core::named_under(address, word)
         .map_err(|_| Failure::refused("that name won't go in an address, so nothing was signed"))
 }
 

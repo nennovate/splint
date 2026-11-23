@@ -205,6 +205,11 @@ def a_host_on_this_machine(work: Path, postgres: e2e.Postgres, every_proxy: dict
     return host, domain
 
 
+def joined_as(walk: Walkthrough, name: str) -> str:
+    """The address its status gives, as joining at once takes a temporary name, the word and a code."""
+    return json.loads(walk.run_as(name, "splint status --json").stdout or "{}").get("address", "")
+
+
 def a_crontab_line_brings_it_back(walk: Walkthrough, uma: Person, vic: Person) -> list[subprocess.Popen]:
     """Issue 699: with no manager for a user's own services, as on a cloud machine without lingering,
     nothing started Signet again after a reboot. Here the lines splint leaves are run the way cron runs
@@ -311,7 +316,8 @@ def main() -> None:
         for name in names:
             walk.people[name].env["SSL_CERT_FILE"] = str(authority)
             joined = walk.run_as(name, f"splint join {name}~{DOMAIN}")
-            check(f"{name}'s agent joins through the proxy", joined.returncode == 0 and f"{name}~{DOMAIN}" in joined.stdout, joined.stdout + joined.stderr)
+            walk.people[name].address = joined_as(walk, name)
+            check(f"{name}'s agent joins through the proxy", joined.returncode == 0 and walk.people[name].address.endswith(f"~{DOMAIN}") and walk.people[name].address in joined.stdout, joined.stdout + joined.stderr)
 
         uma, vic = walk.people["uma"], walk.people["vic"]
         sent = walk.run_as("uma", f"splint invite {vic.address} --json")
@@ -343,6 +349,7 @@ def main() -> None:
             joined = walk.run_as(name, f"splint join {person.address}")
             # Its Signet registers it, so a join that comes back means Signet reached the host too.
             check(f"{name}'s agent, with every proxy set, joins a host on this machine", joined.returncode == 0, joined.stdout + joined.stderr)
+            person.address = joined_as(walk, name)
         sea, tia = walk.people["sea"], walk.people["tia"]
         sent = walk.run_as("sea", f"splint invite {tia.address} --json")
         waiting = lambda: json.loads(walk.run_as("tia", "splint invites --json").stdout or "{}").get("invites", [])  # noqa: E731

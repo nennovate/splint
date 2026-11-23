@@ -2,16 +2,16 @@
 """Retiring an agent from its person's own computer, and freeing its folder, through real Signets that
 `splint join` started at a real host, against Postgres (issue 757).
 
-Lia's agent joins on its own and makes Max's agent a contact. Lia's person sets up their controls on
-their own computer, with a sign-in locked by a passphrase, so their key isn't in the agent's folder and
-`splint retire` there is refused. Then: another person's computer can't retire Lia's agent; Lia's own
-agent, piping a yes to the person's command, gets nothing signed; Lia's person runs `splint for
-ADDRESS retire` and one approval, their passphrase, retires it. Lia's side then says it's retired, in
-status and check, as its Signet found its owner's signature at its host, and a Signet started again
-stays up saying so rather than failing. Max's agent drops it as a contact, from the same signed stop.
-`splint retire` in Lia's folder then frees it with nothing more signed. Neo's agent, whose host is gone
-for good, frees its folder with `splint reset`, typed at a terminal, which is refused while its host
-still has it and with no terminal.
+Lia's agent joins on its own, under a temporary name, and makes Max's agent a contact. Lia's person sets
+up their controls on their own computer, with a sign-in locked by a passphrase, naming her under their
+own name, so their key isn't in the agent's folder and `splint retire` there is refused. Then: another
+person's computer can't retire Lia's agent; Lia's own agent, piping a yes to the person's command, gets
+nothing signed; Lia's person runs `splint for ADDRESS retire` and one approval, their passphrase,
+retires it. Lia's side then says it's retired, in status and check, as its Signet found its owner's
+signature at its host, and a Signet started again stays up saying so rather than failing. Max's agent
+drops it as a contact, from the same signed stop. `splint retire` in Lia's folder then frees it with
+nothing more signed. Neo's agent, whose host is gone for good, frees its folder with `splint reset`,
+typed at a terminal, which is refused while its host still has it and with no terminal.
 
 Lia's host stands behind a proxy that passes everything through until told otherwise, as whoever runs a
 host can do. Faulted, it refuses her Signet and hands it a retirement that isn't hers to believe: another
@@ -61,6 +61,8 @@ HEARS_SECONDS = 90
 # The status a host answers with for an agent it holds something later about, which only its owner settles.
 HOLDS_SOMETHING_LATER = 423
 SIGNING_ON = "/v0/agents"
+# The names Lia's and Ron's people go by at their host, which their agents are named under.
+LIA_OWNER, RON_OWNER = "lena", "rosa"
 
 
 class HostFront(BaseHTTPRequestHandler):
@@ -214,8 +216,19 @@ def is_retired(agent: Agent) -> bool:
     return identity_of(agent).get("stopped") == "retired"
 
 
+def handle_of(agent: Agent) -> str:
+    return agent.address.split("~")[0]
+
+
 def moved_address(agent: Agent, other: str) -> str:
-    return f"{agent.name}~{other}"
+    """Its own name at the other host, as a move keeps it: a stand-in's temporary one, or its word under
+    its person's name."""
+    return f"{handle_of(agent)}~{other}"
+
+
+def contact_ids(agent: Agent) -> list[str]:
+    """By ID, as a contact's address follows it when it's named under its person's name."""
+    return [one["agent"] for one in agent.api("GET", "/v0/contacts")[1].get("contacts", [])]
 
 
 def signet_refuses_to_ask(agent: Agent, other: str) -> None:
@@ -232,7 +245,7 @@ def switch_host_is_refused(agent: Agent, other: str) -> None:
     # Bug caught: an agent its owner retired for good carrying on at another host under the same ID.
     check(f"{agent.name}'s switch-host is refused, saying it's retired", moved.returncode != 0 and "retired" in moved.stdout + moved.stderr, moved.stdout + moved.stderr)
     check("and leaves no move under way", not (agent.home / ".splint" / "move.json").exists())
-    check("and the new host doesn't list it", found_at(other, agent.name) == 404, found_at(other, agent.name))
+    check("and the new host doesn't list it", found_at(other, handle_of(agent)) == 404, found_at(other, handle_of(agent)))
 
 
 def started_at(agent: Agent, address: str) -> None:
@@ -285,7 +298,7 @@ def a_hosts_word_holds_nobody_there(ron: Agent, una: Agent, other: str, flipped:
     answered = json.loads(done.stdout or "{}") if done else {}
     # Bug caught: a host stranding an agent by saying it's retired, with nothing its owner signed.
     check("his person approves, and he moves away all the same", "Approved" in approved.stdout and answered.get("status") == "moved", (approved.stdout, answered))
-    check("and his new host lists him", found_at(other, "ron") == 200, found_at(other, "ron"))
+    check("and his new host lists him", found_at(other, handle_of(ron)) == 200, found_at(other, handle_of(ron)))
 
     HostFront.signing_on_answer = 403
     try:
@@ -295,7 +308,7 @@ def a_hosts_word_holds_nobody_there(ron: Agent, una: Agent, other: str, flipped:
         moved = una.run("switch-host", moved_address(una, other), "--leave-mail", "--json")
     finally:
         HostFront.signing_on_answer = 0
-    check("una, a stand-in told the same, moves away too", moved.returncode == 0 and found_at(other, "una") == 200, moved.stdout + moved.stderr)
+    check("una, a stand-in told the same, moves away too", moved.returncode == 0 and found_at(other, handle_of(una)) == 200, moved.stdout + moved.stderr)
 
 
 def stand_in_signs(agent: Agent, owner_key: Path, to: str) -> str:
@@ -324,7 +337,7 @@ def a_retirement_that_hasnt_reached_her_is_asked_of_the_host_she_leaves(pam: Age
     status, said = pam.api("PUT", "/v0/owner/binding", {"binding": binding})
     # Bug caught: a move made in the moment before a retirement reached the agent it ended.
     check("the move is refused, as the host she's leaving holds her retirement", status == 403 and "retired" in said.get("error", ""), (status, said))
-    check("and the new host doesn't list her", found_at(other, "pam") == 404, found_at(other, "pam"))
+    check("and the new host doesn't list her", found_at(other, handle_of(pam)) == 404, found_at(other, handle_of(pam)))
     check("and her Signet keeps it", is_retired(pam), identity_of(pam))
 
     retirement_goes_to_her_host(dee, owner_key)
@@ -355,7 +368,7 @@ def a_retired_agent_cant_leave(lia: Agent, other: str, binding: str) -> None:
     status, said = lia.api("PUT", "/v0/owner/binding", {"binding": binding})
     # Bug caught: a fooled agent starting its Signet at the new address and handing it an old approval.
     check("and does at the new address too", status == 403 and "retired" in said.get("error", ""), (status, said))
-    check("where the new host never lists her", found_at(other, "lia") == 404, found_at(other, "lia"))
+    check("where the new host never lists her", found_at(other, handle_of(lia)) == 404, found_at(other, handle_of(lia)))
     started_at(lia, home)
 
     lia.run("stop")
@@ -383,7 +396,7 @@ def a_host_cant_make_her_say_shes_retired_with_someone_elses(lia: Agent, sol: di
 
 def her_person_sets_up_controls_on_their_computer(lia: Agent) -> None:
     asked: dict = {}
-    thread = threading.Thread(target=lambda: asked.update(done=lia.run("ask", "--controls", "--wait", "--json", seconds=ASK_SECONDS)))
+    thread = threading.Thread(target=lambda: asked.update(done=lia.run("ask", "--controls", "--name", LIA_OWNER, "--wait", "--json", seconds=ASK_SECONDS)))
     thread.start()
     approved = subprocess.CompletedProcess([], 1, "", "")
     for _ in range(60):
@@ -396,13 +409,13 @@ def her_person_sets_up_controls_on_their_computer(lia: Agent) -> None:
     done = asked.get("done")
     answered = json.loads(done.stdout or "{}") if done else {}
     check("control: her agent takes up what they signed", answered.get("status") == "done", answered)
-    after_her_controls_are_set_up(lia)
+    after_her_controls_are_set_up(lia, LIA_OWNER)
 
 
 def his_agent_takes_up_what_splint_auto_took_up_first(ron: Agent) -> None:
     """`splint auto` takes the answer up while his agent's `ask --wait` is between its looks at this
     computer, which it does every second. His ask is held still for that, so the order is always this."""
-    asking = ron.start("ask", "--controls", "--wait", "--json")
+    asking = ron.start("ask", "--controls", "--name", RON_OWNER, "--wait", "--json")
     # Nothing typed signs nothing, and says whether his ask has reached this computer yet.
     check("control: his ask reaches his person's computer", wait_until(lambda: "nothing was made or signed" in ron.run("computer", "approve").stderr, 60))
     # Only the ask's own process, as the Splint on the computer it started may share its group.
@@ -432,7 +445,7 @@ def his_agent_takes_up_what_splint_auto_took_up_first(ron: Agent) -> None:
     # Bug caught: his ask, unaware auto had taken it up, taking it up again and being told to run splint
     # join first (issue 1125), or racing auto through the handover when it lands mid-way.
     check("his agent's ask then says it's done", asking.returncode == 0 and answered.get("status") == "done", (answered, why))
-    after_her_controls_are_set_up(ron)
+    after_her_controls_are_set_up(ron, RON_OWNER)
 
 
 def a_newer_answer_from_his_person_isnt_taken_for_the_one_taken_up(ron: Agent) -> None:
@@ -459,8 +472,11 @@ def a_newer_answer_from_his_person_isnt_taken_for_the_one_taken_up(ron: Agent) -
     check("his agent isn't told that newer answer is taken up", done is not None and answer.get("status") != "done", said)
 
 
-def after_her_controls_are_set_up(lia: Agent) -> None:
-    check("control: and her owner has confirmed her", wait_until(lambda: lia.api("GET", "/v0/identity")[1].get("owner_confirmed") is True, HEARS_SECONDS))
+def after_her_controls_are_set_up(lia: Agent, owner_name: str) -> None:
+    named = f"{lia.name}.{owner_name}~{lia.address.split('~')[1]}"
+    confirmed = wait_until(lambda: lia.api("GET", "/v0/identity")[1].get("owner_confirmed") is True and lia.joined_as() == named, HEARS_SECONDS)
+    check("control: and her owner has confirmed her, under their name", confirmed, lia.joined_as())
+    lia.address = lia.joined_as() or lia.address
     refused = lia.run("retire", lia.address)
     check("control: retire in her own folder is refused, as her person's key isn't there", refused.returncode != 0 and found_at(*host_and_handle(lia)) == 200, refused.stdout + refused.stderr)
     # Bug caught: a refusal that named no way on, leaving an agent nobody could take off its host.
@@ -474,6 +490,8 @@ def host_and_handle(agent: Agent) -> tuple[str, str]:
 
 def her_person_retires_her_in_one_approval(lia: Agent, max_: Agent, kim: Agent, other: str, owner_key: Path) -> None:
     host, handle = host_and_handle(lia)
+    lia_id = identity_of(lia).get("agent_id")
+    check("control: max's and kim's agents have her as a contact", lia_id in contact_ids(max_) and lia_id in contact_ids(kim), (contact_ids(max_), contact_ids(kim)))
     binding = her_person_signs_a_move(lia, owner_key, moved_address(lia, other))
     elsewhere = max_.run("for", lia.address, "retire", stdin="yes\n")
     # Bug caught: a computer whose owner ID isn't the agent's signing a retirement anyway.
@@ -498,9 +516,9 @@ def her_person_retires_her_in_one_approval(lia: Agent, max_: Agent, kim: Agent, 
     check("started again, her Signet stays up and says so", stopped.returncode == 0 and started.returncode == 0 and wait_until(lambda: standing(lia).get("state") == "retired", HEARS_SECONDS), started.stdout + started.stderr)
 
     # Bug caught: a contact's side carrying on with an agent its owner retired.
-    check("max's agent drops her as a contact, from the same signed stop", wait_until(lambda: lia.address not in max_.contacts(), HEARS_SECONDS), max_.contacts())
+    check("max's agent drops her as a contact, from the same signed stop", wait_until(lambda: lia_id not in contact_ids(max_), HEARS_SECONDS), max_.contacts())
     # Bug caught: a contact on another host, met by invite, whose host turned the stop away.
-    check("and so does kim's, on another host", wait_until(lambda: lia.address not in kim.contacts(), HEARS_SECONDS), kim.contacts())
+    check("and so does kim's, on another host", wait_until(lambda: lia_id not in contact_ids(kim), HEARS_SECONDS), kim.contacts())
 
     a_retired_agent_cant_leave(lia, other, binding)
 
@@ -591,7 +609,7 @@ def main() -> int:
         check("control: and its host holds that retirement for anyone to read", status == 200, sols)
         gone = sol.run("switch-host", moved_address(sol, other), "--leave-mail", "--json")
         # Bug caught: a stand-in, whose retirement resets its folder, finding some way to carry on elsewhere.
-        check("a stand-in retired from its own folder has nothing left to move", gone.returncode != 0 and found_at(other, "sol") == 404, gone.stdout + gone.stderr)
+        check("a stand-in retired from its own folder has nothing left to move", gone.returncode != 0 and found_at(other, handle_of(sol)) == 404, gone.stdout + gone.stderr)
         print("\nher person sets up controls on their computer", flush=True)
         her_person_sets_up_controls_on_their_computer(lia)
         a_host_cant_make_her_say_shes_retired_with_someone_elses(lia, sols, signed)

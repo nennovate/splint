@@ -19,7 +19,7 @@ use crate::asks::{self, LOOK_EVERY, Signed, WAIT_FOR_TOUCH};
 use crate::computer::{Asked, Client, Outcome, set_up_here};
 use crate::failure::Failure;
 use crate::home::{Home, Installed};
-use crate::host_calls::HostCalls;
+use crate::host_calls::{HostCalls, NameHere};
 use crate::owner_key::OwnerKey;
 use crate::secrets::write_private;
 use crate::services;
@@ -202,33 +202,57 @@ pub async fn run(home: &Home, words: &[&str]) -> Result<Moving, Failure> {
 }
 
 /// Whether this agent can have `to` there: free, or already this agent's, as when it comes back. Taken
-/// is by the handle before any owner part, as a host keeps one agent to each. Room and an owner part
-/// can only be known by registering, so those are said only after the approval.
+/// is by the whole name, as a host keeps one agent to each. Room can only be known by registering, so
+/// that's said only after the approval.
 async fn name_free(
     host: &HostCalls,
     to: &str,
     agent: &splint_core::SplintId,
 ) -> Result<(), Failure> {
     let (name, domain) = parse_address(to)?;
-    let (handle, _) = name_parts(name);
-    for asked in [name, handle] {
-        if !host.handle_taken(asked).await? {
-            continue;
-        }
-        // By the ID alone, which proves itself: the host this agent left still shows it, with a history
-        // that says it's elsewhere, and coming back is how that stops being true.
-        let ours = host
-            .agent_as_held(&format!("{asked}~{domain}"), Some(agent))
-            .await
-            .is_ok();
-        if !ours {
-            return Err(Failure::HandleTaken {
-                handle: handle.to_owned(),
-                domain: domain.to_owned(),
-            });
-        }
+    if !host.handle_taken(name).await? {
+        return Ok(());
     }
-    Ok(())
+    // By the ID alone, which proves itself: the host this agent left still shows it, with a history
+    // that says it's elsewhere, and coming back is how that stops being true.
+    let ours = host.agent_as_held(to, Some(agent)).await.is_ok();
+    if ours {
+        Ok(())
+    } else {
+        Err(Failure::HandleTaken {
+            handle: name.to_owned(),
+            domain: domain.to_owned(),
+        })
+    }
+}
+
+/// Whether an owner's agent can go under `to` there: their name there, or one that's free, as a host
+/// names an owner's agents under their own name and keeps it theirs. Asked before anyone signs, so a
+/// move its new host would refuse isn't approved for nothing. A host from before names were owners'
+/// says nothing, and registering settles it.
+async fn owners_name_there(
+    host: &HostCalls,
+    to: &str,
+    owner: &splint_core::SplintId,
+) -> Result<(), Failure> {
+    let (name, domain) = parse_address(to)?;
+    let (handle, part) = name_parts(name);
+    let wanted = part.unwrap_or(handle);
+    match host.owners_name(owner).await? {
+        Some(theirs) if theirs == wanted => Ok(()),
+        Some(theirs) => Err(Failure::refused(format!(
+            "your person's name at {domain} is {theirs}, so move to {}.{theirs}~{domain}",
+            splint_core::agent_word(name)
+        ))),
+        None => match host.name_holder(wanted).await? {
+            NameHere::Nobody => Ok(()),
+            NameHere::Owner(holder) if holder == owner.as_str() => Ok(()),
+            NameHere::Owner(_) | NameHere::Barred => Err(Failure::refused(format!(
+                "{wanted} is someone else's name at {domain}, or nobody can have it there, so move \
+                 under your person's own name there"
+            ))),
+        },
+    }
 }
 
 async fn start(
@@ -240,6 +264,16 @@ async fn start(
 ) -> Result<Moving, Failure> {
     let (installed, agent) = Installed::require(home)?;
     let to = canonical_address(to).map_err(Failure::not_an_address)?;
+    // An agent nobody has set up controls for has a temporary name at every host, so it moves under
+    // one made from the word in the name given, as a host refuses it any other.
+    let stand_in = installed.owner_elsewhere.is_none() && OwnerKey::new(home).is_stand_in();
+    let to = match parse_address(&to) {
+        Ok((name, domain)) if stand_in && !splint_core::is_temporary_name(name) => format!(
+            "{}~{domain}",
+            splint_core::temporary_name(splint_core::agent_word(name))?
+        ),
+        _ => to,
+    };
     let (_, to_domain) = parse_address(&to)?;
     if installed.host_domain()? == to_domain {
         return Err(Failure::refused(
@@ -262,6 +296,9 @@ async fn start(
     let host = HostCalls::new(to_domain)?;
     let open = host.says_open_to_a_move().await?;
     name_free(&host, &to, &agent).await?;
+    if !stand_in && let Some(owner) = who.owner_id.as_ref() {
+        owners_name_there(&host, &to, owner).await?;
+    }
     // Read now, before anyone is asked, so a host that needs one doesn't cost a second approval.
     let code = if with_code || !open {
         Some(setup::read_signup_code()?)

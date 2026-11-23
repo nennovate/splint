@@ -130,6 +130,22 @@ pub fn with_owner_part(address: &str, owner_part: &str) -> Result<String, Error>
     Ok(named)
 }
 
+/// The address an owner's binding names an agent at when they set up its controls or take it over: the
+/// word its name is made from, their name after it, at the same host, whatever it's called now, so
+/// `ana-7k3p2a`, `ana` and `ana.mal` all become `ana.jeff`.
+pub fn named_under(address: &str, owner_part: &str) -> Result<String, Error> {
+    let (name, domain) = parse_address(address)?;
+    if !is_valid_handle(owner_part) || looks_like_an_id(owner_part) {
+        return Err(Error::Malformed);
+    }
+    let named = format!(
+        "{}{OWNER_SEPARATOR}{owner_part}{ADDRESS_SEPARATOR}{domain}",
+        agent_word(name)
+    );
+    parse_address(&named)?;
+    Ok(named)
+}
+
 /// How many characters of code follow the word in a temporary name. At least one is a digit, so no
 /// word of letters alone, such as `london` in `anna-london`, reads as one.
 const TEMPORARY_CODE_CHARS: usize = 6;
@@ -687,6 +703,12 @@ mod tests {
             with_owner_part(&format!("{made}~host.example"), "jeff").as_deref(),
             Ok("muse.jeff~host.example")
         );
+        // Controls name it under its owner whatever it's called, and adding a name adds one only once.
+        assert_eq!(
+            named_under("muse.mal~host.example", "jeff").as_deref(),
+            Ok("muse.jeff~host.example")
+        );
+        assert!(with_owner_part("muse.mal~host.example", "jeff").is_err());
         let owner = crate::test_identity(&crate::SigningKey::generate().unwrap());
         let form = owner_id_form(owner.id()).unwrap();
         assert_eq!(form.len(), OWNER_ID_FORM_CHARS);

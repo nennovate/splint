@@ -340,7 +340,10 @@ fn bound_at(one: &One, ask: &VerifiedAsk) -> Result<String, Error> {
         _ => ask.owner_part(),
     };
     match owner_part {
-        Some(owner_part) => splint_core::with_owner_part(&one.address, owner_part),
+        Some(owner_part) if ask.adds_owner_part().is_some() => {
+            splint_core::with_owner_part(&one.address, owner_part)
+        }
+        Some(owner_part) => splint_core::named_under(&one.address, owner_part),
         None if ask.asks_for_controls()
             && parse_address(&one.address)
                 .is_ok_and(|(name, _)| splint_core::is_temporary_name(name)) =>

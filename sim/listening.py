@@ -2,18 +2,18 @@
 """Keeping watch for whatever runs an agent, with `splint listen` and `splint check`, through real
 Signets that `splint join` started at a real host, against Postgres.
 
-A runtime wakes an agent only when a process it watches says something changed. Two agents join an
-open host with no controls set up, as agents do, and one invites the other. Then: a listener started
-after the invite came still hears of it, two runtimes' own marks never take each other's changes, a
-note full of instructions changes nothing anyone is told or given, a command run on a change never
-sees the token, even one in the listener's own environment or through the HTTP adapter's watch.sh, a
-listener holding a change says it by its time even when Signet stops, a newer listener on a mark
-takes over from the older, Claude Code's after-turn hook wakes a session however its last
-message reads, a Signet that can't be reached is said by the hooks, once, naming the agent and its
-folder, a `splint` run on a change acts as the agent, poll-once.sh acks nothing and prints what an
-ack takes, a meeting that only an owner's confirm can move on counts as theirs, not the agent's, both
-sides are told no yes counts for a side whose person has no controls, a request an agent opened is
-said once when it ends, and a refusal on the request path says what to do.
+A runtime wakes an agent only when a process it watches says something changed. Two agents join an open
+host with no controls set up, as agents do, each under a temporary name, the word it asked for and a
+code, and one invites the other. Then: a listener started after the invite came still hears of it, two
+runtimes' own marks never take each other's changes, a note full of instructions changes nothing anyone
+is told or given, a command run on a change never sees the token, even one in the listener's own
+environment or through the HTTP adapter's watch.sh, a listener holding a change says it by its time even
+when Signet stops, a newer listener on a mark takes over from the older, Claude Code's after-turn hook
+wakes a session however its last message reads, a Signet that can't be reached is said by the hooks,
+once, naming the agent and its folder, a `splint` run on a change acts as the agent, poll-once.sh acks
+nothing and prints what an ack takes, a meeting that only an owner's confirm can move on counts as
+theirs, not the agent's, both sides are told no yes counts for a side whose person has no controls, a
+request an agent opened is said once when it ends, and a refusal on the request path says what to do.
 
     python3 sim/listening.py
 
@@ -113,17 +113,30 @@ class Agent:
             shutil.copy(schema, schemas)
         self.splint = str(bin_dir / "splint")
         self.env = {"HOME": str(self.home), "PATH": f"{stub_dir}:{bin_dir}:/usr/bin:/bin", "NO_COLOR": "1", "LANG": "C.UTF-8"}
+        # The name it asks for. Joining at once gives it a temporary name, the word and a code, so once a
+        # join takes, this is the address its status says.
         self.address = f"{name}~{host}"
 
     def run(self, *args: str, cwd: Path | None = None, stdin: str = "", seconds: float = COMMAND_SECONDS) -> subprocess.CompletedProcess:
         """A command that runs past its time comes back as failed, so the checks after it still run."""
         try:
-            return subprocess.run(
+            done = subprocess.run(
                 [self.splint, *args], cwd=cwd or self.project, env=self.env, input=stdin,
                 capture_output=True, text=True, timeout=seconds, check=False,
             )
         except subprocess.TimeoutExpired:
             return subprocess.CompletedProcess(args, returncode=-1, stdout="", stderr=f"still running after {seconds} s")
+        command = args[2:] if args[:1] == ("--as",) else args
+        if command[:1] == ("join",) and done.returncode == 0:
+            self.address = self.joined_as() or self.address
+        return done
+
+    def joined_as(self) -> str:
+        """The address this agent's status gives, as an agent reads it after joining or being named."""
+        try:
+            return json.loads(self.run("status", "--json").stdout).get("address") or ""
+        except (json.JSONDecodeError, AttributeError):
+            return ""
 
     def start(self, *args: str, env: dict[str, str] | None = None) -> subprocess.Popen:
         return subprocess.Popen(
@@ -869,7 +882,8 @@ def an_agent_retires_and_its_folder_joins_again(work: Path, bin_dir: Path, stub_
     """An agent that joined on its own is finished, and its person wants the folder for another."""
     rex = Agent(work, bin_dir, stub_dir, "rex", host)
     joined = rex.run("join", rex.address)
-    check("control: rex joins, and its host has it", joined.returncode == 0 and http("GET", f"http://{host}/.well-known/splint/agents/rex")[0] == 200, joined.stderr)
+    found = lambda: http("GET", f"http://{host}/.well-known/splint/agents/{rex.address.split('~')[0]}")[0]  # noqa: E731
+    check("control: rex joins, and its host has it", joined.returncode == 0 and found() == 200, joined.stderr)
 
     # What a join or setup that stopped between its host taking the agent and noting its ID leaves.
     setup_file = rex.home / ".splint" / "setup.json"
@@ -879,7 +893,7 @@ def an_agent_retires_and_its_folder_joins_again(work: Path, bin_dir: Path, stub_
     refused = rex.run("retire", rex.address)
     # Bug caught: retire took no ID here for no host having it, and deleted keys its host still had an
     # agent for, which nobody could then act for.
-    check("retire with no ID noted asks the host, and deletes nothing it has", refused.returncode != 0 and keys.exists() and http("GET", f"http://{host}/.well-known/splint/agents/rex")[0] == 200, refused.stdout + refused.stderr)
+    check("retire with no ID noted asks the host, and deletes nothing it has", refused.returncode != 0 and keys.exists() and found() == 200, refused.stdout + refused.stderr)
     setup_file.write_text(whole)
 
     # A join that waits for its owner's device first makes keys and takes nothing at the host.
@@ -889,10 +903,11 @@ def an_agent_retires_and_its_folder_joins_again(work: Path, bin_dir: Path, stub_
     check("control: a folder no host took is still reset", waiting.returncode == 0 and (ned.home / ".splint" / "signet").exists() is False and reset.returncode == 0, waiting.stderr + reset.stdout + reset.stderr)
 
     retired = rex.run("retire", rex.address)
+    gone = found()
     again = rex.run("join", f"rex-two~{host}")
     # Bug caught: nothing retired an agent, so its handle and its owner's place stayed taken, and its folder
     # said "already set up" until someone deleted files by hand.
-    check("retire takes the agent off its host, and its folder joins again", retired.returncode == 0 and http("GET", f"http://{host}/.well-known/splint/agents/rex")[0] != 200 and again.returncode == 0, retired.stdout + retired.stderr + again.stderr)
+    check("retire takes the agent off its host, and its folder joins again", retired.returncode == 0 and gone != 200 and again.returncode == 0, retired.stdout + retired.stderr + again.stderr)
     return rex
 
 
