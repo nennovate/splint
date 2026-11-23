@@ -97,10 +97,10 @@ What they are, so you can explain them in your own words:
   and opens their controls, `install_on_windows`, the same in PowerShell, `open` and
   `open_on_windows`, the commands for when Splint is there already, and `page`, where they open, all
   still there once controls are set.
-  The first time, they become a Splint owner there: it makes their owner ID, who they are to every
-  agent, and sets up that computer's sign-in, a key in a Mac's security chip that signs only with
-  Touch ID or their login password, or elsewhere a key file locked with a passphrase they choose
-  there. Then they open `computer_link` in that browser, and one approval there sets you up.
+  The first time, they set up Splint there: it makes their Splint ID, who they are to every agent,
+  and their key on that computer, in a Mac's security chip that signs only with Touch ID or their
+  login password, or elsewhere a key locked with a passphrase they choose there. Then they open
+  `computer_link` and click Open request, and one approval sets you up.
 - **If they have no computer,** only a phone, you stay as you are, under the tighter limits, until
   they can use one. A phone app comes later.
 - **An owner whose sign-in is a passkey,** made on a host's page before hosts stopped serving one:

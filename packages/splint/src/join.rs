@@ -161,7 +161,7 @@ On your own device, not the machine I run on, in a terminal on a Mac or Linux:
 3. It ends with a line starting `splint finish`. Send me that line as it is.
 {code}
 What you're agreeing to: that whoever holds this key acts for you at this address, under rules you
-sign, until you change them. Say yes only if you asked me to join and this came from me. You can
+sign, until you change them. Say yes only if this came from me, in our chat. You can
 change the rules or stop me at any time from your device, without my help.
 
 Where your keys live: in ~/.splint/owner on your device. owner.key signs for you. backup.key, and one
@@ -674,9 +674,9 @@ You sign on your own computer, not the machine I run on, with Splint there and n
 
      {open_on_windows}
 
-2. The first time, become a Splint owner there: it makes your owner ID and sets up that computer's
-   sign-in. Then open the link I'm sending that starts http://localhost:7480/ in that same browser,
-   and one approval there sets me up.
+2. The first time, set up Splint there: it makes your Splint ID and your key on that computer. Then
+   open the link I'm sending, which starts http://localhost:7480/, click Open request, and one
+   approval there sets me up.
 
 Approve me only if this came from me. Never send me your recovery code or any key.
 

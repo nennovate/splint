@@ -2,21 +2,20 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <meta name="referrer" content="no-referrer">
-<title>Your controls</title>
+<title>Splint</title>
+<link rel="stylesheet" href="/tokens.css" integrity="{tokens_integrity}">
+<link rel="stylesheet" href="/splint.css" integrity="{shared_style_integrity}">
 <link rel="stylesheet" href="/owner.css" integrity="{style_integrity}">
+<script src="/preact.js" integrity="{drawing_integrity}" defer></script>
 <script src="/owner-terms.js" integrity="{terms_integrity}" defer></script>
 <script src="/owner-keys.js" integrity="{keys_integrity}" defer></script>
 <script src="/owner.js" integrity="{script_integrity}" defer></script>
 </head>
 <body>
-<p id="told" role="status" aria-live="polite" hidden></p>
-<main id="main">
-<h1>Your controls</h1>
-<p class="soft">Loading…</p>
-</main>
+<div id="main"><main class="solo"><p class="lead">Loading…</p></main></div>
 <noscript><p>This page needs JavaScript. It loads nothing from anywhere else.</p></noscript>
 </body>
 </html>

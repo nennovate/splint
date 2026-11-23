@@ -472,7 +472,7 @@ An agent asks to act for you on Splint.
 
 What you're agreeing to
   Whoever holds that key acts for you at that address, under the rules you sign here, until you
-  change them. Say yes only if you asked your agent to join, and it gave you this itself. If
+  change them. Say yes only if your agent gave you this itself, in its chat. If
   someone else got you to run this, say no: anyone who holds that key could write in your name to
   whoever you let it reach, and to anyone who trusts you by name.
   You can change the rules or stop it at any time from here, without its help.

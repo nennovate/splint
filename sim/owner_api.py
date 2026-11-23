@@ -351,8 +351,8 @@ def any_page_may_call_and_no_host_serves_an_owner_page(signup: Signup, agent: st
     check("the host names no owner page, and no name a passkey would be for", status == 200 and "owner_page" not in said and "owner_page_rp_id" not in said, said)
     status, page, headers = request("GET", f"http://{host}/owner")
     words = page.get("raw", "")
-    check("where its page was, it says in plain text that the controls are on the person's own computer", status == 200 and headers.get("content-type", "").startswith("text/plain") and "own computer" in words, (status, headers, words))
-    check("with nothing to run, and nothing it may ask the browser for", "<script" not in words and headers.get("content-security-policy") == "default-src 'none'; frame-ancestors 'none'" and headers.get("x-content-type-options") == "nosniff", headers)
+    check("where its page was, a page says the controls are on the person's own computer", status == 200 and headers.get("content-type", "").startswith("text/html") and "own computer" in words, (status, headers, words))
+    check("with nothing to run, and nothing it may ask the browser for but its own stylesheets", "<script" not in words and headers.get("content-security-policy") == "default-src 'none'; style-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'" and headers.get("x-content-type-options") == "nosniff", headers)
     for name in ("owner.js", "owner-keys.js", "owner-terms.js", "owner.css"):
         status, _, _ = request("GET", f"http://{host}/{name}")
         check(f"and it serves no /{name}", status == 404, status)

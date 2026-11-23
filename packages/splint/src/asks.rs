@@ -103,8 +103,12 @@ fn waiting_words(
     controls: Option<u64>,
     waits: Waits,
     waited: Option<Duration>,
+    address: &str,
 ) -> String {
     let splint = home.command();
+    let host = splint_core::parse_address(address)
+        .map(|(_, domain)| domain)
+        .unwrap_or_default();
     let unanswered = match waited {
         Some(waited) => format!(" Nobody answered in {} seconds.", waited.as_secs()),
         None => String::new(),
@@ -112,10 +116,11 @@ fn waiting_words(
     let here = match waits {
         Waits::ByLinkOnly => "Asked.".to_owned(),
         Waits::Here => format!(
-            "Asked. Where your person uses this computer, it waits for them here: they approve it \
-             with splint computer approve in a terminal, or at http://localhost:{}/ask in the \
-             browser their splint controls opened.{unanswered}",
-            computer::port()
+            "Asked. Where your person uses this computer, open it for them: run {splint} controls \
+             {host}, which opens their controls in their browser with this waiting at the top, \
+             ready to approve. Never hand them a bare localhost address instead: a page Splint \
+             didn't open can't approve until they unlock it. In a terminal, splint computer approve \
+             approves it too.{unanswered}"
         ),
         Waits::AtAPrompt => format!(
             "Asked. This Mac asks whoever is at it for Touch ID or their password, and that one \
@@ -127,8 +132,9 @@ fn waiting_words(
     } else {
         "If they aren't at this computer, give them"
     };
-    let on_their_computer = "they approve it in the browser their splint controls opened since \
-                             Splint there last started, or with splint computer approve in a terminal";
+    let on_their_computer = "they approve it in the browser their Splint controls open in, \
+                             unlocking with their passphrase if it asks, or with splint computer \
+                             approve in a terminal";
     let by_link = format!(
         "{give} computer_link: it opens on Splint on their own computer, where {on_their_computer}. \
          If Splint isn't there yet, controls.install in {splint} status --json is the line that \
@@ -148,7 +154,17 @@ fn waiting_words(
              {id} says where it stands."
         )
     };
-    format!("{here} {by_link} {then}")
+    // Agents can join on their own, so a person is told to check their agent's chat shows it joining
+    // at the address their controls name, rather than whether they asked: it has to be said there.
+    let say = if controls.is_some() {
+        format!(
+            " Tell your person in your chat that you joined Splint as {address}: their controls ask \
+             them to check that before they approve."
+        )
+    } else {
+        String::new()
+    };
+    format!("{here} {by_link} {then}{say}")
 }
 
 /// The changes the flags name, each with its value, in the protocol's own words.
@@ -500,7 +516,7 @@ pub async fn ask(home: &Home, flags: &[&str]) -> Result<Asking, Failure> {
     }
     let controls = hours.filter(|_| controls);
     Ok(Asking {
-        said: waiting_words(home, &signed.id, controls, waits, waited),
+        said: waiting_words(home, &signed.id, controls, waits, waited, &asked.address),
         id: signed.id,
         // What Signet said of one only it holds, and waiting for one Splint here just took.
         status: if here {
@@ -733,9 +749,19 @@ fn one_approval_in_words(asks: &[computer::Shown]) -> String {
         }
         if shown.from_link {
             lines.push(format!(
-                "  That came by a link, which any website can open: approve it only if you asked {}.",
+                "  That came by a link, which any website can open: approve it only if {} is your agent \
+                 and gave it to you in its chat.",
                 shown.address
             ));
+        } else if shown
+            .changes
+            .iter()
+            .any(|change| matches!(change, splint_core::asks::Change::Controls { .. }))
+        {
+            lines.push(
+                "  Approve this only if it's your agent and its chat shows it joining Splint."
+                    .to_owned(),
+            );
         }
     }
     let written: Vec<&str> = asks

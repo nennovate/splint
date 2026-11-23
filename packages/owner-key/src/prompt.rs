@@ -21,6 +21,10 @@ pub const MOST_NAMED: usize = splint_core::asks::MOST_IN_ONE_APPROVAL;
 /// What every prompt says, in the same fixed words as the page and the terminal, when something it
 /// approves lets more in than before.
 const LETS_MORE_IN: &str = "This lets more in than before";
+/// Said once in a prompt setting up an agent among other asks. Agents can join on their own, so
+/// whether the person asked isn't the test: whether it's theirs is, which its chat shows.
+const CHECK_CHAT: &str =
+    "Only set up an agent if it's your agent and its chat shows it joining Splint";
 
 /// The most characters of one value an agent wrote that a prompt shows, and of all of them in one
 /// prompt, so they can't push what's in fixed words out of sight.
@@ -263,9 +267,7 @@ fn change_described(
                 .map(|terms| format!(": {}", terms.fixed.join(", ")))
                 .unwrap_or_default()
         ),
-        Change::Controls { .. } => {
-            format!("let {agent} act for you, if you asked it to join")
-        }
+        Change::Controls { .. } => format!("let {agent} act for you"),
         // The new host is the one thing approved, and a lookalike domain is the risk, so it's named
         // whole with what that host then holds.
         Change::Host { to } => format!(
@@ -424,15 +426,35 @@ pub fn for_asks(
         .and_then(spoken_name)
         .map(|name| format!(" for {name}"))
         .unwrap_or_default();
-    // An agent asking only to be set up reads as just that, with the address that says which agent.
+    // An agent asking only to be set up reads as just that, with the address that says which agent
+    // and how to tell it's theirs: agents can join on their own, so whether the person asked isn't
+    // the test, and its chat showing it joining at that address is.
     let opening = match asks {
         [(ask, agent, ..)] if matches!(ask.changes(), [Change::Controls { .. }]) => {
-            spoken_name(agent).map(|name| format!("set up {name} ({agent}) as your agent"))
+            spoken_name(agent).map(|name| {
+                format!(
+                    "set up {name} ({agent}) as your agent, if its chat shows it joining Splint"
+                )
+            })
         }
         _ => None,
     }
     .unwrap_or_else(|| format!("get your approval{asking}: {}", named.join("; ")));
-    Prompt::new(format!("{opening}{also}{warning}{written}"), Some(code))
+    // Alone, the opening says it; among other asks, it's said once after them all.
+    let check = if !opening.starts_with("set up ")
+        && asks.iter().any(|(ask, ..)| {
+            ask.changes()
+                .iter()
+                .any(|change| matches!(change, Change::Controls { .. }))
+        }) {
+        format!(". {CHECK_CHAT}")
+    } else {
+        String::new()
+    };
+    Prompt::new(
+        format!("{opening}{also}{check}{warning}{written}"),
+        Some(code),
+    )
 }
 
 /// An agent's name as a person says it: "rae" for `rae.ana~host.example`, with a capital. It only
@@ -676,7 +698,8 @@ mod tests {
         ];
         let prompt = for_asks(&asks, None).words;
         for named in [
-            "let muse~host.example act for you, if you asked it to join",
+            "let muse~host.example act for you",
+            CHECK_CHAT,
             "turn muse~host.example back on",
             "from muse~host.example's contacts",
             "set muse~host.example to Full auto: it acts by itself on anything without an amount",

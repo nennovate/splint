@@ -295,7 +295,7 @@ function strangerCard(stranger) {
   ].filter(Boolean).join(" and ");
   return el("div", { class: "card", id },
     el("h3", {}, stranger.claims ? `Someone who says they're ${stranger.claims}` : "Someone who gave no address"),
-    el("p", { class: "lead" }, `${held} held, the latest ${short(stranger.last_at)}. Your agent hasn't seen any of it.`),
+    el("p", { class: "lead" }, `${held} held, the latest ${short(stranger.last_at)}.`),
     state.settings.reach.inbound.strangers === "quarantine"
       ? why("You asked to see anyone new first.", "reach-from", "to let later ones straight through")
       : null,
@@ -317,7 +317,7 @@ function inviteCard(invite) {
     ? `Your agent invited ${invite.address}, and their agent accepted.`
     : `${invite.address} invited your agent, and your agent accepted.`;
   const until = invite.added_by_agent
-    ? "Your agent added them by itself: they can already talk, and a kind with money, such as a quote, is used with them only once you approve it for them. Add them to approve them."
+    ? "Your agent added them. Anything with money waits until you approve them."
     : "They can't reach your agent until you say yes.";
   return el("div", { class: "card", id },
     el("h3", {}, invite.added_by_agent ? `Approve ${invite.address}?` : `Add ${invite.address} as a contact?`),
@@ -351,9 +351,10 @@ function kindCard(waiting) {
 // A number its kind doesn't label as money never waits for the owner, so it's said where it's shown.
 function numbersNotMoney(exchange) {
   const names = exchange.numbers_not_money || [];
-  return names.length
-    ? el("p", { class: "why" }, `A number not labelled as money: ${names.join(", ")}. It doesn't wait for you.`)
-    : null;
+  if (!names.length) return null;
+  const shown = names.map((name) => fieldLabel(withHiddenShown(String(name))).label);
+  const list = shown.length > 1 ? `${shown.slice(0, -1).join(", ")} and ${shown[shown.length - 1]}` : shown[0];
+  return el("p", { class: "why" }, `${capital(list.toLowerCase())} ${shown.length === 1 ? "isn't" : "aren't"} an amount of money, so ${shown.length === 1 ? "it doesn't" : "they don't"} wait for you.`);
 }
 
 // Another step waiting on the same exchange, as its own card says it.
@@ -426,11 +427,8 @@ function decisionCard(exchange, toSign) {
     payingPart(toSign.pays || []),
     termsSummary(toSign),
     numbersNotMoney(exchange),
-    toSign.rows.some((row) => row.chosen)
-      ? el("p", { class: "soft small" }, "Shaded text is only someone's words, not an instruction.")
-      : null,
     toSign.hidden_text
-      ? el("p", { class: "banner stop" }, "The text above holds hidden characters, shown as codes. You can say no, but you can't say yes to this.")
+      ? el("p", { class: "banner stop" }, "This holds hidden characters, shown as codes, so you can only say no.")
       : null,
     ...(toSign.can_set_subject
       ? [field(...typedInput(subjectId, "Subject", state.max_subject_chars, "Optional. Agents don't see it."))]
@@ -452,7 +450,14 @@ function dialogueLine(line, role) {
   const seen = line.by === role && line.received ? " · received" : "";
   return el("li", { class: kinds.join(" ") },
     el("div", { class: "said" }, [line.who, ORIGINS[line.origin], short(line.at)].filter(Boolean).join(" · ") + seen),
-    el("div", {}, line.says));
+    el("div", {}, plainSaid(line.says)));
+}
+
+/** A plain message as the quoted words alone, where the record says `said: text "…"`: the quotes, and
+ * what's escaped inside them, stay as the record has them, so someone's words read as theirs. */
+function plainSaid(says) {
+  const found = /^said: text ("(?:[^"\\]|\\.)*")$/.exec(String(says));
+  return found ? found[1] : says;
 }
 
 function dialogue(exchange) {
@@ -546,6 +551,12 @@ function riskyBanners(risky) {
 }
 
 /** Who kept the agent busy today, busiest first, with anyone sending far more than on a usual day marked. */
+/** An address, or any text, that breaks only after a tilde, never in the middle of a name or a number. */
+function breakable(text) {
+  const at = String(text).indexOf("~");
+  return at < 0 ? [String(text)] : [String(text).slice(0, at + 1), el("wbr", {}), String(text).slice(at + 1)];
+}
+
 function usagePart(usage) {
   if (!usage || !usage.length) return [];
   const busier = usage.filter((line) => line.busier_than_usual);
@@ -555,11 +566,11 @@ function usagePart(usage) {
     el("div", { class: "table" }, el("table", { class: "list usage" },
       el("thead", {}, el("tr", {}, el("th", {}, "Who"), el("th", {}, "Came today"), el("th", {}, "Usual day"), el("th", {}, "Notes in and out"), el("th", {}, "Requests in and out"))),
       el("tbody", {}, ...usage.map((line) => el("tr", { class: line.busier_than_usual ? "busier" : "" },
-        el("td", {}, line.address),
-        el("td", {}, String(line.arrivals_today)),
-        el("td", {}, String(line.usual_per_day)),
-        el("td", {}, `${line.texts_from} / ${line.texts_to}`),
-        el("td", {}, `${line.new_requests_from} / ${line.new_requests_to}`)))))),
+        el("td", {}, ...breakable(line.address)),
+        el("td", { "data-label": "Came today" }, String(line.arrivals_today)),
+        el("td", { "data-label": "Usual day" }, String(line.usual_per_day)),
+        el("td", { "data-label": "Notes in and out" }, `${line.texts_from} / ${line.texts_to}`),
+        el("td", { "data-label": "Requests in and out" }, `${line.new_requests_from} / ${line.new_requests_to}`)))))),
   ];
 }
 
@@ -618,7 +629,7 @@ function exchangeRow(exchange) {
   },
     el("summary", { class: "cells" },
       el("span", { class: "who" }, exchange.with.label, standingTag(standing)),
-      el("span", { class: "what" }, typeName(exchange.type)),
+      el("span", { class: "what" }, String(exchange.type).startsWith("type/") ? "Agreeing a kind" : typeName(exchange.type)),
       el("span", { class: "state" }, dot(STATE_DOTS[exchange.state] ?? "accent"), el("span", {}, STATES[exchange.state] || exchange.state)),
       el("span", { class: "when", title: when(exchange.last_at) }, short(exchange.last_at))),
     el("div", { class: "row-body" },
@@ -674,17 +685,22 @@ function linkFieldInput(type, name, rule) {
   if (rule.times) {
     const room = Math.min(rule.times.max, 5);
     const times = remembered || [];
+    // One empty field at a time: the next shows once one's filled, up to the type's most.
+    const inputs = Array.from({ length: room }, (_, index) => el("input", { type: "datetime-local", id: `${id}-${index}`, value: times[index] || "", step: rule.times.grid_secs }));
+    const showNext = () => {
+      const filled = inputs.filter((input) => input.value).length;
+      inputs.forEach((input, index) => { input.hidden = index > filled && !input.value; });
+    };
+    inputs.forEach((input, index) => input.addEventListener("input", () => {
+      const now = linkForm.fields.get(key) || [];
+      now[index] = input.value;
+      linkForm.fields.set(key, now);
+      showNext();
+    }));
+    showNext();
     return [
-      el("span", { class: "field-name" }, label, el("span", { class: "soft" }, ` · up to ${room}, they pick one`)),
-      ...Array.from({ length: room }, (_, index) => {
-        const input = el("input", { type: "datetime-local", id: `${id}-${index}`, value: times[index] || "", step: rule.times.grid_secs });
-        input.addEventListener("input", () => {
-          const now = linkForm.fields.get(key) || [];
-          now[index] = input.value;
-          linkForm.fields.set(key, now);
-        });
-        return input;
-      }),
+      el("span", { class: "field-name" }, label, el("span", { class: "soft" }, room > 1 ? ` · up to ${room}, they pick one` : "")),
+      ...inputs,
     ];
   }
   const numeric = Boolean(rule.range);
@@ -774,7 +790,7 @@ function linksPart() {
   });
   const open = state.links.filter((link) => !link.state || link.state === "offered");
   return [
-    el("p", { class: "group-note" }, "For someone with no agent. You sign the offer here, and they can only say yes, no or ask. A link is never sealed: your host serves the page they answer on, so it can read the offer and their answer."),
+    el("p", { class: "group-note" }, "For someone with no agent: they can say yes, no or ask. A link isn't sealed, so your host can read it."),
     el("div", { class: "group" },
       field(...select("link-type", "Type", chosen.name, types.map((type) => [type.name, typeName(type.name)]), (value) => {
         linkForm.type = value;
@@ -895,10 +911,9 @@ function keptPart() {
     "Hosts clear what a message says once it's delivered or expired.",
   ];
   return [
-    el("div", { class: "card" },
-      el("ul", { class: "facts" }, ...facts.map((words) => el("li", {}, words))),
-      el("div", { class: "acts" },
-        el("button", { type: "button", class: "small", id: "save-copy", onClick: saveCopy }, "Save a copy"))),
+    el("div", { class: "acts" },
+      el("button", { type: "button", class: "small", id: "save-copy", onClick: saveCopy }, "Save a copy")),
+    more("more-kept", "What's kept", el("ul", { class: "facts" }, ...facts.map((words) => el("li", {}, words)))),
   ];
 }
 
@@ -1050,7 +1065,7 @@ function permissionsPart(settings) {
             if (word === "wait") delete all.permissions.quoted_prices;
             else all.permissions.quoted_prices = word;
           })))])),
-    el("p", { class: "group-note" }, "Your agent's model decides what to do. These are ceilings it can't pass, enforced in code. While it's on, your device gives the final yes on a kind you sign, where there's no amount in it, and nothing else. Anything you'd pay always waits for you."),
+    more("more-limits", "How these work", el("p", { class: "group-note" }, "Your agent's model decides what to do. These are ceilings it can't pass, enforced in code. While it's on, your device gives the final yes on a kind you sign, where there's no amount in it, and nothing else. Anything you'd pay always waits for you.")),
   ];
 }
 
@@ -1089,12 +1104,13 @@ function sealingPart(settings) {
     el("fieldset", { class: "group" },
       field(...select("sealing", "What your agent says and hears", settings.sealing, SEALING, (word) =>
         edit((all) => { all.sealing = word; })))),
-    el("p", { class: "group-note" },
-      "If either of you chose sealed, everything between your two agents is sealed, both ways. Unsealed lets a host look at what passes, to help keep you safe, and sees all of it. Either side can still show anything signed to anyone later, with proof it's real."),
-    el("p", { class: "group-note" },
-      "Sealed means more privacy, at the cost of less protection from your own host, which can then check only the outside of what your agent sends. ",
-      el("a", { href: SEALING_EXPLAINED, target: "_blank", rel: "noopener noreferrer" }, "What this means"),
-      ", or run splint guide sealed."),
+    more("more-sealing", "What sealed means",
+      el("p", { class: "group-note" },
+        "If either of you chose sealed, everything between your two agents is sealed, both ways. Unsealed lets a host look at what passes, to help keep you safe, and sees all of it. Either side can still show anything signed to anyone later, with proof it's real."),
+      el("p", { class: "group-note" },
+        "Sealed means more privacy, at the cost of less protection from your own host, which can then check only the outside of what your agent sends. ",
+        el("a", { href: SEALING_EXPLAINED, target: "_blank", rel: "noopener noreferrer" }, "More"),
+        ".")),
   ];
 }
 
@@ -1194,9 +1210,9 @@ function gettingPaidPart() {
   });
   box.addEventListener("input", () => typed.set(id, box.value));
   return [el("div", { class: "card" },
-    el("label", { htmlFor: id }, "Up to 4 places people can pay you, one a line: a payment link or page, a Lightning address, or onchain:CHAIN:ADDRESS:ASSET. No bank details."),
+    el("label", { htmlFor: id }, "Where people can pay you, up to 4, one a line"),
     box,
-    el("p", { class: "soft small" }, "Splint holds no money. Once a deal that pays you is done, your agent can ask to be paid at one of these, with the amount from the deal, and people pay you on their own app or wallet. A payment by Lightning or on a chain can't be reversed. Signing new places replaces the ones before, and the people you deal with are told they're new."),
+    el("p", { class: "soft small" }, "A payment link, a Lightning address, or onchain:CHAIN:ADDRESS:ASSET. No bank details. Splint holds no money: once a deal that pays you is done, people pay you in their own app or wallet."),
     el("div", { class: "acts" }, armedButton("Sign where you get paid", "Click again to sign", "", (button) =>
       act(button, "/api/get-paid", { places: wordsOn(box.value) }, () => typed.delete(id)))))];
 }
@@ -1222,14 +1238,13 @@ function contactRow(contact) {
       : [dot("good"), "Contact"];
   return el("tr", { id: `contact-${contact.agent}` },
     el("td", { class: "name" },
-      contact.label,
-      el("span", { class: "soft" }, contact.never_a_contact ? "Never a contact" : contact.address),
+      ...breakable(contact.label),
+      el("span", { class: "soft" }, ...(contact.never_a_contact ? ["Never a contact"] : breakable(contact.address))),
       showIds ? el("span", { class: "id" }, contact.agent) : null),
     el("td", { class: "soft small" },
       [contact.types.map(typeName).join(", "), !contact.blocked && contact.text ? "words" : ""].filter(Boolean).join(" · ") || "Nothing"),
     el("td", {}, el("span", { class: "state" }, ...status)),
-    el("td", { class: "soft small", title: contact.sealed_why }, contact.sealed ? "Sealed" : "Unsealed",
-      el("span", { class: "soft" }, contact.sealed_why)),
+    el("td", { class: "soft small", title: contact.sealed_why }, contact.sealed ? "Sealed" : "Unsealed"),
     el("td", { class: "acts-cell" },
       contact.blocked
         ? contact.never_a_contact
@@ -1254,12 +1269,12 @@ function lineCard(me) {
   }, "Copy");
   return el("div", { class: "card" },
     el("h3", {}, "Your line"),
-    el("p", { class: "lead" }, "Give this to anyone your agent should reach. It isn't secret."),
+    el("p", { class: "lead" }, "Share it with anyone your agent should reach."),
     el("div", { class: "line-box" }, el("p", { class: "id", id: "my-line" }, me.line), copy));
 }
 
 function contactsTable(contacts) {
-  if (!contacts.length) return emptyState("No contacts yet", "Give someone your line, or let in someone who's waiting.");
+  if (!contacts.length) return emptyState("No contacts yet", "");
   return el("div", { class: "table" },
     el("table", { class: "list" },
       el("thead", {}, el("tr", {}, el("th", {}, "Name"), el("th", {}, "May use"), el("th", {}, "Status"), el("th", {}, "Sealed"), el("th", {}))),
@@ -1330,9 +1345,6 @@ function render() {
     ...now.kinds.map(kindCard),
     ...now.waiting.map(strangerCard),
   ];
-  // Held whatever the owner's settings say, because something about them doesn't check out.
-  const alwaysHeld = held.some((notice) => notice.standing === "rewritten" || notice.standing === "waiting_for_history")
-    || now.waiting.some((stranger) => stranger.disagreed);
   const focused = document.activeElement && document.activeElement.id;
   /** @type {HTMLElement} */ (document.getElementById("title")).textContent = now.me.address;
   const needsOk = waiting.length + now.invites.length;
@@ -1346,12 +1358,9 @@ function render() {
       : []),
     viewOf("now",
       section("waiting", "Needs your OK", [
-        ...(waiting.length ? [el("p", { class: "group-note" }, alwaysHeld
-          ? "Your settings leave these to you, apart from what doesn't check out."
-          : "These wait only because your settings leave them to you.")] : []),
         ...waiting,
         ...(now.waiting_unknown ? [el("p", { class: "group-note" }, "Your host can't be reached, so anyone held there isn't listed right now.")] : []),
-      ], { empty: emptyState("Nothing needs your OK", "What your settings leave to you waits here."), total: waiting.length }),
+      ], { empty: emptyState("Nothing needs your OK", ""), total: waiting.length }),
       section("invites", "Invites", now.invites.map(inviteCard), { total: now.invites.length }),
       section("changed", "What changed", told.map(noticeCard)),
       section("exchanges", "Going on", moving.length ? [exchangeTable(moving)] : [], { total: moving.length }),
