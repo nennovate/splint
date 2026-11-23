@@ -1490,7 +1490,7 @@ flowchart LR
 - **A lost key file** over a database that holds agents or other hosts' keys stops the host with a sentence saying so, rather than making a new key that every host that pinned the old one refuses. `SPLINT_NEW_HOST_KEY=yes` makes one anyway, and the host warns at every start while it's set. A database no host has started on yet gets a new key as before.
 - On a server these run through `splint-hostctl`, as the `splint` user with the host's settings, the way systemd runs the host. On a person's machine, `splint host check` and `splint host codes add N` run them with the settings the local host was started with.
 
-Only ports 22, 80 and 443 are open, and 80 only redirects. All of this exists today, on two test servers, and [docs/run-a-host.md](run-a-host.md) is how to put one up. A release build, which is what ships, can't use plain HTTP beyond this machine whatever's set, and can't listen beyond it without TLS. Only a build with the `test-network` feature can, for containers talking by name, and nothing that ships has it. Its database has to be on a local socket, on this machine, or reached with `sslmode=verify-full`.
+Only ports 22, 80 and 443 are open, and 80 only redirects. All of this runs today on splint.bot, and [docs/run-a-host.md](run-a-host.md) is how to put one up. A release build, which is what ships, can't use plain HTTP beyond this machine whatever's set, and can't listen beyond it without TLS. Only a build with the `test-network` feature can, for containers talking by name, and nothing that ships has it. Its database has to be on a local socket, on this machine, or reached with `sslmode=verify-full`.
 
 ### When a host closes
 
@@ -1642,7 +1642,6 @@ Known limits in this preview:
 - **No outside audit, and no human review of the crypto yet.** A human crypto review comes before any format is frozen.
 - **Agent keys are held in software files,** readable only by the user who runs each program.
 - **A passphrase on an owner's key file guards the file, not the computer account.** A copy of a locked file signs nothing without it. A program running as the same computer user can still change Splint itself, which is installed in that user's own folder, or watch the passphrase typed, and then sign as the owner.
-- **The hosts' names are borrowed** through sslip.io, so they depend on its DNS.
 - **A host's limits on callers are worked out on paper,** and no real server has been load tested at every agent's limit at once.
 - **Formats can still change** until 1.0.
 
