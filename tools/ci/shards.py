@@ -11,9 +11,11 @@ tools/checks/check_ci_shards.py fails `make rules` if the shards ever stop addin
 
 Which sims a change needs: every one, for a change to product code, to what builds or installs it, or
 to this. For a change to files in sim/ alone, only the sims that could run that file: the sim itself,
-and every sim that imports it or names it. Nothing else can reach it, so nothing else is run. The same
-goes for what a runtime reads to connect, in adapters/ outside the two adapters that ship: no program
-here runs those files, so only a sim that names one is run for it.
+and every sim that imports it or names it. Nothing else can reach it, so nothing else is run. A guide,
+which is what a runtime reads to connect, in adapters/ outside the two adapters that ship, or one of
+the two docs the sims follow, runs only the sims that read it: a sim that names it, and every sim
+using a helper in sim/ that names it. A sim importing another sim that names it isn't run, as sims
+import each other for their helpers and never follow the other's guide.
 
 A shard runs several sims at once, one for each core up to three. Two thirds of a sim's time is spent waiting on
 real timers, a retry or a poll, so run one at a time a machine sits idle. Each sim makes its own ports,
@@ -52,16 +54,21 @@ SIM = re.compile(r"python3 sim/(\w+)\.py")
 MENTIONS_SIM = re.compile(r"\bsim/\w+\.py\b")
 
 # A change to any of these runs every sim: product code, the two adapters an install and a release
-# copy, what builds or installs them, the two docs the sims follow or ship, the folders under sim/,
-# and the workflow and this, so a change to CI is always tested by the CI it makes. A moved file
-# counts where it was and where it went.
+# copy, what builds or installs them, the folders under sim/, and the workflow and this, so a change
+# to CI is always tested by the CI it makes. A moved file counts where it was and where it went.
 EVERY_SIM = re.compile(
-    r"^(packages|adapters/(mcp|http)|deploy|make|spec|tools/ci|sim/[^/]+)/|^docs/(agents|getting-started)\.md$"
+    r"^(packages|adapters/(mcp|http)|deploy|make|spec|tools/ci|sim/[^/]+)/"
     r"|^Makefile$|^\.github/workflows/check\.yml$"
 )
-# What only a sim that names it could run or read: a file in sim/, and the rest of adapters/, which is
-# what a runtime reads to connect and no program here runs.
-NAMED_BY_A_SIM = re.compile(r"^(sim/[^/]+|adapters/.+)$")
+# A file in sim/, which only a sim that imports it or names it could run or read, directly or through
+# other files in sim/.
+NAMED_BY_A_SIM = re.compile(r"^sim/[^/]+$")
+# A guide no program here runs, which only the sims that read it test: the rest of adapters/, which is
+# what a runtime reads to connect, and the two docs the sims follow. install.py runs the commands in
+# getting-started.md as written, agent_signup.py runs those in agents.md, and agent_join.py runs each
+# connector guide's install block. A sim importing one of those isn't run for the guide, as 18 sims
+# import install.py for its helpers and none of them follows the doc. Other docs run no sims.
+READ_BY_A_SIM = re.compile(r"^(adapters/.+|docs/(agents|getting-started)\.md)$")
 # What Windows builds: its four crates, the workspace's own files, the schemas built into them and how
 # git writes their files out. The host runs on Linux and nothing depends on it, so it isn't one.
 WINDOWS = re.compile(
@@ -195,11 +202,11 @@ def seconds_of(sim: str) -> int:
     return SECONDS.get(name_of(sim), DEFAULT_SECONDS)
 
 
-def reaches(named: set[str], folder: Path = SIMS) -> dict[str, set[str]]:
-    """For each Python file in sim/, which of the files in sim/ and of those `named` it could run or
-    read: those it imports, and those it names in a string, as one sim starts another as a program or
-    reads a script or a guide. Then theirs, and so on. A file named only in a comment or a docstring
-    isn't run, so it doesn't count. A name is a file's last part, so two files of one name count as one."""
+def names(named: set[str], folder: Path = SIMS) -> dict[str, set[str]]:
+    """For each Python file in sim/, which of the files in sim/ and of those `named` it uses itself:
+    those it imports, and those it names in a string, as one sim starts another as a program or reads a
+    script or a guide. A file named only in a comment or a docstring isn't run, so it doesn't count. A
+    name is a file's last part, so two files of one name count as one."""
     files = sorted(path.name for path in folder.iterdir() if path.is_file())
     known = set(files) | named
     direct: dict[str, set[str]] = {}
@@ -219,6 +226,11 @@ def reaches(named: set[str], folder: Path = SIMS) -> dict[str, set[str]]:
             if isinstance(node, ast.Constant) and isinstance(node.value, str) and id(node) not in docstrings:
                 found |= {word.rsplit("/", 1)[-1] for word in node.value.split()} & known
         direct[name] = found - {name}
+    return direct
+
+
+def reaches(direct: dict[str, set[str]]) -> dict[str, set[str]]:
+    """What each file could run or read: what it names, then what those name, and so on."""
     reached: dict[str, set[str]] = {}
     for name in direct:
         seen, queue = set(), [name]
@@ -236,11 +248,17 @@ def sims_for(changed: list[str], sims: tuple[str, ...], folder: Path = SIMS) -> 
     if any(EVERY_SIM.search(path) for path in changed):
         return sims
     touched = {path.rsplit("/", 1)[-1] for path in changed if NAMED_BY_A_SIM.match(path)}
-    if not touched:
+    guides = {path.rsplit("/", 1)[-1] for path in changed if READ_BY_A_SIM.match(path)}
+    if not touched and not guides:
         return ()
-    reached = reaches(touched, folder)
+    direct = names(touched | guides, folder)
+    reached = reaches(direct)
+    # A sim that names a guide reads it. A helper that names one reads it for every sim that uses it.
+    readers = {file for file, named in direct.items() if named & guides}
+    helpers = readers - {f"{name_of(sim)}.py" for sim in sims}
     return tuple(sim for sim in sims
-                 if (file := f"{name_of(sim)}.py") in touched or reached.get(file, set()) & touched)
+                 if (file := f"{name_of(sim)}.py") in touched or reached.get(file, set()) & touched
+                 or file in readers or reached.get(file, set()) & helpers)
 
 
 def at_once() -> int:
