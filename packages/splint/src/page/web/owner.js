@@ -1924,6 +1924,28 @@ function linesBeyondJoining(ask) {
   return [...kept, ...(ask.kinds || []).flatMap((kind) => (kind.lines || [])).map(String)];
 }
 
+/**
+ * How an approval reads. It names an agent only when every ask in it is that agent's, and leaves out the
+ * line setting that agent up only then, as the title says it. Asks from more than one agent, which
+ * Splint here can group into one approval, name no one in the title and list every line, each with its
+ * agent's address, so one Approve never sets up an agent the screen doesn't show.
+ */
+function approvalShown(asks) {
+  const addresses = [...new Set(asks.map((ask) => String(ask.address)))];
+  const one = addresses.length === 1;
+  const known = one ? agentsShown().find((agent) => agent.address === addresses[0]) : null;
+  const name = !one ? "" : known ? known.label : capital(addressParts(addresses[0]).name);
+  const joining = controlsAsk(asks);
+  return {
+    one,
+    name,
+    address: one ? addresses[0] : "",
+    joining,
+    title: !one ? `${addresses.length} agents ask for your approval` : joining ? `${name} wants to act for you` : `${name} asks you for ${nounFor(asks)}`,
+    lines: one ? asks.flatMap(linesBeyondJoining) : asks.flatMap(askLines),
+  };
+}
+
 /** Rows for lines, or nothing where there are none. */
 function linesView(lines) {
   return lines.length ? html`<div class="surface list">${lines.map((line) => html`<div class="row"><div class="grow"><span class="t">${line}</span></div></div>`)}</div>` : null;
@@ -1936,9 +1958,9 @@ function linesView(lines) {
  */
 function checkFirst(name, joining, fromLink) {
   const words = joining
-    ? `Approve only if ${name}'s chat shows it joining Splint as this address.`
+    ? (name ? `Approve only if ${name}'s chat shows it joining Splint as this address.` : "Approve only if each agent's chat shows it joining Splint at the address shown.")
     : fromLink
-      ? `Approve only if ${name} sent you this link in its chat.`
+      ? (name ? `Approve only if ${name} sent you this link in its chat.` : "Approve only if each agent sent you its link in its chat.")
       : "";
   return words ? html`<p class="banner waiting">${icon.warn()}<span>${words}</span></p>` : null;
 }
@@ -1949,16 +1971,13 @@ function checkFirst(name, joining, fromLink) {
  */
 function askCard(approval, standalone) {
   const asks = approval.asks;
-  const address = asks[0].address;
-  const agent = agentsShown().find((one) => one.address === address);
-  const name = agent ? agent.label : capital(addressParts(address).name);
+  const shown = approvalShown(asks);
   const written = asks.flatMap((ask) => (Array.isArray(ask.written) ? ask.written : []));
-  const title = controlsAsk(asks) ? `${name} wants to act for you` : `${name} asks you for ${nounFor(asks)}`;
   return html`<article class="surface req" id=${`ask-${asks[0].id}`}>
-    <div class="req-id"><div class="l"><span class="type">Request</span><h3>${title}</h3></div>${standalone ? null : null}</div>
-    <p class="from"><span class="mono">${address}</span></p>
-    ${asks.flatMap(linesBeyondJoining).length ? html`<ul class="changes">${asks.flatMap(linesBeyondJoining).map((line) => html`<li class="row" style="padding:4px 0;min-height:0">${line}</li>`)}</ul>` : null}
-    ${checkFirst(name, controlsAsk(asks), asks.some((ask) => ask.from_link))}
+    <div class="req-id"><div class="l"><span class="type">Request</span><h3>${shown.title}</h3></div>${standalone ? null : null}</div>
+    ${shown.one ? html`<p class="from"><span class="mono">${shown.address}</span></p>` : null}
+    ${shown.lines.length ? html`<ul class="changes">${shown.lines.map((line) => html`<li class="row" style="padding:4px 0;min-height:0">${line}</li>`)}</ul>` : null}
+    ${checkFirst(shown.name, shown.joining, asks.some((ask) => ask.from_link))}
     ${written.length ? html`<p class="words">${written.join(", ")} <span class="soft">· the agent's words, not Splint's</span></p>` : null}
     ${asks.some((ask) => ask.lets_more_in) ? html`<p class="banner waiting">${icon.warn()}<span>This lets more in than before. Approve only if you want that.</span></p>` : null}
     <div class="req-foot"><span class="by">${asks.length > 1 ? `${asks.length} asks, one approval` : ""}</span>
@@ -1971,9 +1990,9 @@ function askCard(approval, standalone) {
 async function approveAsks(approval) {
   const asks = approval.asks;
   const typed = await confirmSheet({
-    title: controlsAsk(asks) ? "Let this agent act for you?" : `Approve ${nounFor(asks)}?`,
+    title: approvalShown(asks).one && controlsAsk(asks) ? "Let this agent act for you?" : `Approve ${nounFor(asks)}?`,
     lead: "Approving signs exactly what's listed, with your key on this computer. It doesn't log you in to any website.",
-    rows: asks.flatMap(askLines).slice(0, 8).map((line) => [line, ""]),
+    rows: asks.flatMap(askLines).map((line) => [line, ""]),
     label: "Approve",
   });
   const done = await computerCall("/local/approve", { passphrase: typed, ids: asks.map((ask) => ask.id), code: approval.code });
@@ -2003,7 +2022,7 @@ function requestsView() {
   return html`
     <div class="head"><h1>Requests</h1><p>Each has its own page, so a link always opens the one it names.</p></div>
     <div class="section">${ui.approvals.length ? html`<div class="surface list">${ui.approvals.map((approval) => html`<a class="row" href=${`/requests/${approval.asks[0].id}`} onClick=${(/** @type {any} */ event) => { event.preventDefault(); go("request", { request: approval.asks[0].id }); }}>
-      <div class="grow"><span class="t">${controlsAsk(approval.asks) ? `${capital(addressParts(approval.asks[0].address).name)} wants to act for you` : `${capital(addressParts(approval.asks[0].address).name)} asks you for ${nounFor(approval.asks)}`}</span><span class="d mono">${approval.asks[0].address}</span></div>${icon.chev()}</a>`)}</div>` : emptyBox("Nothing waiting", "When an agent asks you for something, it shows here.")}</div>`;
+      <div class="grow"><span class="t">${approvalShown(approval.asks).title}</span><span class="d mono">${approvalShown(approval.asks).address}</span></div>${icon.chev()}</a>`)}</div>` : emptyBox("Nothing waiting", "When an agent asks you for something, it shows here.")}</div>`;
 }
 
 function requestView() {
@@ -2418,13 +2437,12 @@ function setupView() {
     say(waiting ? "Approved. Your agent picks up its controls in a few seconds." : "You're set up. Tell your agent to join Splint, and it asks you here.", false);
   };
   if (waiting) {
-    const ask = waiting.asks[0];
-    const name = capital(addressParts(ask.address).name);
+    const shown = approvalShown(waiting.asks);
     return html`<main class="solo" id="welcome">
       ${brand()}
-      <div style="display:grid;gap:6px"><h1>${name} wants to act for you</h1><p class="lead mono">${ask.address}</p></div>
-      ${linesView(waiting.asks.flatMap(linesBeyondJoining))}
-      ${checkFirst(name, true, waiting.asks.some((one) => one.from_link))}
+      <div style="display:grid;gap:6px"><h1>${shown.title}</h1>${shown.one ? html`<p class="lead mono">${shown.address}</p>` : null}</div>
+      ${linesView(shown.lines)}
+      ${checkFirst(shown.name, true, waiting.asks.some((one) => one.from_link))}
       ${nameField()}
       ${chip ? null : passphraseFields()}
       ${btn("make", html`${icon.lock()}${chip ? "Approve with Touch ID" : "Approve"}`, "primary block", make, { id: "approve-first" })}
@@ -2528,13 +2546,15 @@ function linkSays(offered) {
   try {
     if (!AN_ADDRESS.test(offered.address)) return null;
     const payload = JSON.parse(DECODER.decode(fromB64url(String(offered.ask).split(".")[1] || "")));
-    const changes = Array.isArray(payload.changes) ? payload.changes.slice(0, 8) : [];
+    const changes = (Array.isArray(payload.changes) ? payload.changes.slice(0, 8) : []).filter((change) => change && typeof change === "object" && !Array.isArray(change));
     if (!changes.length) return null;
     const lines = [...new Set(changes.map((change) => {
       const kind = change && typeof change.change === "string" && Object.hasOwn(LINKED_KINDS, change.change) ? LINKED_KINDS[change.change] : null;
       return kind ? kind(change) : "A change this page doesn't know";
     }))];
-    return { name: capital(addressParts(offered.address).name), address: offered.address, controls: changes.some((change) => change && change.change === "controls"), changes, lines };
+    const controls = changes.some((change) => change.change === "controls");
+    const title = controls ? `${capital(addressParts(offered.address).name)} wants to act for you` : `${capital(addressParts(offered.address).name)} asks you for ${nounFor([{ changes }])}`;
+    return { name: capital(addressParts(offered.address).name), address: offered.address, controls, title, lines };
   } catch {
     return null;
   }
@@ -2548,7 +2568,7 @@ function linkView() {
   return html`<main class="solo" id="offered">
     ${brand()}
     ${says ? html`
-      <div style="display:grid;gap:6px"><h1>${says.controls ? `${says.name} wants to act for you` : `${says.name} asks you for ${nounFor([{ changes: says.changes }])}`}</h1><p class="lead mono">${says.address}</p></div>
+      <div style="display:grid;gap:6px"><h1>${says.title}</h1><p class="lead mono">${says.address}</p></div>
       ${linesView(says.controls ? says.lines.filter((line) => line !== LINKED_KINDS.controls()) : says.lines)}
       <p class="hint" id="link-unchecked">Opening it checks that ${says.name} sent it.</p>`
     : html`<div style="display:grid;gap:6px"><h1>An agent sent you a request</h1><p class="lead">Open it to see which agent it is and what it asks.</p></div>`}

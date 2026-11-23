@@ -480,13 +480,15 @@ def the_off_switch_stops_the_agent(controls: Controls, agent: str) -> None:
 def a_reminder_sets_the_recovery_code_and_shows_it_once(controls: Controls) -> None:
     """Bugs caught: an owner ID made with no recovery code never offered one, a code shown again, and a
     code set with no passphrase, by the unlocked session alone."""
-    controls.browser.eval("go('home'); true")
+    check("control: she clicks Needs you", controls.browser.eval("(() => { const link = document.querySelector('.rail a.nav-item[href=\"/owner\"]'); if (!link) return false; link.click(); return true; })()"), controls.text())
     check("home reminds her to set her recovery code", controls.browser.wait_for("document.getElementById('recovery-reminder') !== null", SEEN_SECONDS), controls.text())
     check("control: Set up", controls.approve("Set up", "#recovery-reminder", "/local/recovery"))
     shown = controls.browser.wait_for("document.getElementById('recovery-code') !== null", SEEN_SECONDS)
     # Bug caught: the page's next refresh, every 5 seconds, drawing home over the code before she'd
-    # written it down. One runs now, as it would.
-    controls.browser.eval("refresh().then(() => true)")
+    # written it down. The run waits for that refresh's reads rather than for a time.
+    controls.browser.eval("""window.__reads = 0; (() => { const fetched = window.fetch; window.fetch = (url, options) => {
+      if (String(url) === '/local/read') window.__reads += 1; return fetched(url, options); }; })(); true""")
+    check("control: the page refreshes", controls.browser.wait_for("window.__reads > 0", 15))
     check("the code is shown once, and stays through a refresh until she says she's written it down, with the warning never to give it to anyone", shown and controls.browser.eval("document.getElementById('recovery-code') !== null") and "Never give this code to anyone" in controls.text(), controls.text())
     code = controls.text("#recovery-code")
     check("as 26 characters in groups of 4", len(code.replace("-", "").replace(" ", "")) == 26, code)
