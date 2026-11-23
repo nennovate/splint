@@ -589,7 +589,7 @@ mod tests {
     use crate::sign_in::Holding;
     use splint_core::asks::{Change, sign_ask};
     use splint_core::rules::{Level, VerifiedRules};
-    use splint_core::{RecoveryRule, SealingKey, SplintId};
+    use splint_core::{JoinReply, RecoveryRule, SealingKey, SplintId, VerifiedBinding};
 
     fn scratch(name: &str) -> std::path::PathBuf {
         let dir = std::env::temp_dir().join(format!("owner-key-{name}-{}", std::process::id()));
@@ -1434,6 +1434,92 @@ mod tests {
         for line in on_settings.said.iter().chain(&on_step.said) {
             assert!(prompt.words().contains(line.as_str()), "{line}");
         }
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    /// Bug caught: a person's name after the agent's handle signed at the address the agent has now,
+    /// with nothing said of it, or shown for a name that has an owner part already, so one owner could
+    /// change theirs.
+    #[test]
+    fn a_name_after_the_handle_is_signed_only_as_its_prompt_names_it() {
+        let dir = scratch("owner-part");
+        let (owner, muse_key, muse) = with_muse_set_up(&dir);
+        let rename = asked(
+            &muse_key,
+            &muse,
+            &owner.identity,
+            vec![Change::OwnerPart {
+                to: "jeff".to_owned(),
+            }],
+        );
+        let verified = VerifiedAsk::verify(&rename, &muse, unix_now()).unwrap();
+        let prompt = prompt::for_asks(&[(&verified, "muse~host.example", None, &[])], None);
+        assert!(
+            prompt.words().contains(
+                "rename muse~host.example to muse.jeff~host.example, with jeff as your name at \
+                 host.example for good"
+            ),
+            "{}",
+            prompt.words()
+        );
+        // Signing it takes the agent's ID as its handover left it, which sim/agent_asks.py runs.
+        let named_already = One {
+            address: "muse.jeff~host.example".to_owned(),
+            ..one(rename, &muse, None)
+        };
+        let answered = approve(
+            &dir,
+            &Schemas::default(),
+            Given {
+                asks: vec![named_already],
+                list: None,
+            },
+        )
+        .unwrap();
+        assert!(answered.approved.is_empty(), "nothing signed");
+        assert_eq!(
+            answered.refused.first().map(|refused| refused.reason),
+            Some("not an ask this computer can sign")
+        );
+
+        // With controls, the binding names the agent with that part, and so do the words shown.
+        let (lia_key, lia) = agent();
+        let controls = sign_ask(
+            &lia_key,
+            lia.id(),
+            agent().1.id(),
+            vec![Change::Controls {
+                delegate: SigningKey::generate().unwrap().public_key().encoded(),
+                owner_part: Some("jeff".to_owned()),
+            }],
+            unix_now(),
+            3600,
+        )
+        .unwrap();
+        let lia_at = |ask: &str| One {
+            address: "lia~host.example".to_owned(),
+            ..one(ask.to_owned(), &lia, Some(first_rules()))
+        };
+        let shown = describe(
+            &dir,
+            Given {
+                asks: vec![lia_at(&controls)],
+                list: None,
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            shown.asks[0].said,
+            ["let lia~host.example act for you as lia.jeff~host.example, with jeff as your name at \
+              host.example for good"]
+        );
+        let answered = approved(&dir, vec![lia_at(&controls)]);
+        let reply = JoinReply::decode(answered.approved[0].answer.as_deref().unwrap()).unwrap();
+        assert_eq!(
+            VerifiedBinding::check_ahead(&reply.binding, &owner.identity, &lia, &reply.commitment)
+                .unwrap(),
+            "lia.jeff~host.example"
+        );
         std::fs::remove_dir_all(&dir).unwrap();
     }
 
