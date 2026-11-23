@@ -2542,6 +2542,23 @@ def registration_cant_take_over_a_handle(net: Network) -> None:
     check("and the host says so when asked", http("GET", f"http://{net.domain['a']}/.well-known/splint/names/acme")[0] == 403)
     check("control: it can still be a handle under an owner's own name", net.register_on_a(kept_key, newcomer, "acme.newcomer", kept, kept_id) == 200)
 
+    # An agent set up before names were owners', as `claude~splint.bot` was: a plain name, and no name of
+    # its owner's on file. Its owner adds theirs, once.
+    veteran = new_owner(net.work / "veteran-owner")
+    old_key = net.work / "oldie.key"
+    old, old_id = new_identity(old_key)
+    check("control: an agent under a plain name", net.register_on_a(old_key, veteran, "oldie", old, old_id) == 200)
+    net.postgres.sql("host_a", f"DELETE FROM owner_names WHERE owner_id = '{veteran.id}'")
+    check("its owner adds their name to it", net.register_on_a(old_key, veteran, "oldie.olga", old, old_id) == 200)
+    status, found = http("GET", f"{resolve}/oldie")
+    check("and the old name answers with where it went", status == 200 and found.get("moved_to") == f"oldie.olga~{net.domain['a']}" and found.get("agent_id") == old_id, (status, found))
+    check("and the name is theirs now", http("GET", f"http://{net.domain['a']}/.well-known/splint/names/olga")[1].get("owner") == veteran.id)
+    # Bug caught: an owner renaming their agent at will, so a name a contact pinned stops meaning it.
+    check("but a name once added doesn't change", net.register_on_a(old_key, veteran, "oldie.oleg", old, old_id) == 403)
+    taker_key = net.work / "oldie-taker.key"
+    taker, taker_id = new_identity(taker_key)
+    check("nor does anyone else get the old name", net.register_on_a(taker_key, newcomer, "oldie", taker, taker_id) == 409)
+
     # An agent that joined on its own, calling its host itself rather than through `splint join`.
     stand_in = new_owner(net.work / "stand-in-owner", unconfirmed=True)
     alone_key = net.work / "joined-alone.key"
