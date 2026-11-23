@@ -23,7 +23,7 @@ Closes #
 
 ## How it was tested
 
-<!-- What you ran and what you saw, with one or two real examples, and anything you couldn't check. -->
+<!-- What you ran and what you saw, with one or two real examples, and anything you couldn't check. Add a screenshot for a change to a page. -->
 
 ## Key decisions
 

@@ -16,7 +16,7 @@ You can build any of these in your own repository, without asking us or opening 
 
 Show it in [Discussions](https://github.com/nennovate/splint/discussions/categories/show-and-tell), so other people can find it.
 
-## Report what you find
+## Reporting issues
 
 - For a bug, open an issue with the bug form. Steps to reproduce, logs and your own analysis of the cause help most.
 - For a question or an idea, start in [Discussions](https://github.com/nennovate/splint/discussions). An idea becomes an issue once it's clear enough to build.
@@ -58,13 +58,13 @@ A change usually goes like this:
 2. Have your agent read `AGENTS.md` and the part of `docs/how-it-works.md` that covers what you're changing.
 3. Ask for a test that fails on `main` and passes with the change, and run the tests described below.
 4. Get a second opinion from a session that didn't write the change. In Claude Code, the `evaluator` agent does this.
-5. Read the diff yourself, then write the pull request with the `create-pr` skill. The [humanizer](https://github.com/blader/humanizer) skill helps make the description easy to read.
+5. Read the diff yourself, then write the pull request with the `create-pr` skill. Give it a title in everyday words that says what's true after the change. We squash-merge, so the title becomes the commit. The [humanizer](https://github.com/blader/humanizer) skill helps make the description easy to read.
 
 What we ask of you is the same however the change was made. Understand it well enough to say what it does and why it's the right fix, because we may ask during review. Show that it works, with a test that fails without it or steps someone else can repeat, and tell us if there was something you couldn't check. Tick the licence box in the pull request template yourself, because an agent can't accept those terms for you.
 
 A pull request that arrives without these is usually closed with a link to this page. You're welcome to add what's missing and open it again.
 
-## Setting up
+## Development setup
 
 The repository holds two things, and you set them up differently.
 

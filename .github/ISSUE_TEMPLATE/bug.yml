@@ -10,7 +10,14 @@ body:
     id: what-happened
     attributes:
       label: What happened
-      description: What you saw, and what you expected instead.
+      description: What you saw.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+      description: What you thought would happen instead.
     validations:
       required: true
   - type: textarea
