@@ -13,6 +13,9 @@
 # SPLINT_SIGNUP is open, the usual, where agents join with no code under the limits in limits.env,
 # or code, where every agent needs a signup code. Given on a later run it changes which, and left
 # out it keeps what the host has.
+# SPLINT_PEOPLE_SITE=https://... sends a person who opens this host in a browser to that site. Agents,
+# crawlers and other hosts still get the host's own note. Given on a later run it changes where,
+# given with nothing after it there's no such site any more, and left out it keeps what the host has.
 # Secrets are made here and stay here: nothing this writes belongs in the repo. The host's recovery
 # code is shown once, at the end of the first run that sets it: copy it off the server, and don't run
 # this through anything that keeps its output.
@@ -44,6 +47,16 @@ case "$signup" in
 esac
 here=$(cd "$(dirname "$0")" && pwd)
 checkout=$(dirname "$here")
+# Where a person who opens this host in a browser is sent, if anywhere: what this run was given, or
+# what an earlier one kept. It goes into the proxy's settings, so it's checked now, before anything
+# on this server changes.
+readonly PEOPLE_SITE=/etc/splint/people-site
+if [ -n "${SPLINT_PEOPLE_SITE+given}" ]; then
+    people_site=$SPLINT_PEOPLE_SITE
+else
+    people_site=$(cat "$PEOPLE_SITE" 2>/dev/null || true)
+fi
+bash "$here/caddyfile.sh" "$domain" "$people_site" >/dev/null
 export DEBIAN_FRONTEND=noninteractive
 readonly MAX_CONNECTIONS_PER_ADDRESS=128
 readonly SETTINGS=/etc/splint/host.env
@@ -335,7 +348,14 @@ write_settings() {
         install -m 640 -o root -g splint "$here/reserved-names" "$KEPT_NAMES"
     fi
     add_missing_limits
-    sed "s/@DOMAIN@/$domain/g" "$here/Caddyfile" >/etc/caddy/Caddyfile
+    # Kept for a later run, which sends people to the same place unless it's told otherwise.
+    if [ -n "$people_site" ]; then
+        printf '%s\n' "$people_site" >"$PEOPLE_SITE"
+        chmod 644 "$PEOPLE_SITE"
+    else
+        rm -f "$PEOPLE_SITE"
+    fi
+    bash "$here/caddyfile.sh" "$domain" "$people_site" >/etc/caddy/Caddyfile
     install -m 755 "$here/backup.sh" /usr/local/bin/splint-backup
     install -m 755 "$here/restore.sh" /usr/local/bin/splint-restore
     install -m 755 "$here/hostctl.sh" /usr/local/bin/splint-hostctl

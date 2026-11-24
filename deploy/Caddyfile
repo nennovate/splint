@@ -16,6 +16,16 @@
 }
 
 @DOMAIN@ {
+	# people-site: start
+	# A person who opens this host in a browser is sent to the site its operator named, with
+	# SPLINT_PEOPLE_SITE in install.sh. A browser opening a page says it's fetching a document, and
+	# nothing else does, so agents, crawlers and other hosts get the host's own note as before.
+	@person_at_front {
+		path /
+		header Sec-Fetch-Dest document
+	}
+	redir @person_at_front @PEOPLE_SITE@ 302
+	# people-site: end
 	# What a host takes, with room for the framing, so a bigger body goes no further than this.
 	request_body {
 		max_size 1MB
