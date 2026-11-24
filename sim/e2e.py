@@ -375,10 +375,14 @@ def der_integer(der: bytes, offset: int) -> tuple[int, int]:
 def es256(key_path: Path, message: bytes) -> bytes:
     pem = key_path.with_suffix(".pem")
     if not pem.exists():
+        # Written under a name of this thread's own and moved into place, so threads that sign with a
+        # new key at the same moment each find no file or a whole one, never one still being written.
+        part = pem.with_name(f"{pem.name}.{os.getpid()}.{threading.get_ident()}.part")
         subprocess.run(
-            ["openssl", "pkey", "-inform", "DER", "-in", str(key_path), "-out", str(pem)],
+            ["openssl", "pkey", "-inform", "DER", "-in", str(key_path), "-out", str(part)],
             check=True, capture_output=True,
         )
+        os.replace(part, pem)
     der = subprocess.run(
         ["openssl", "dgst", "-sha256", "-sign", str(pem)],
         input=message, check=True, capture_output=True,
