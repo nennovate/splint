@@ -11,6 +11,7 @@ host takes a page's room before it reads the page and not after: a caller is ref
 way, and the difference is only what the host held meanwhile.
 """
 
+import contextlib
 import http.client
 import json
 import re
@@ -21,6 +22,7 @@ import sys
 import tempfile
 import threading
 import time
+from collections.abc import Iterator
 from pathlib import Path
 
 import agent_signup
@@ -83,6 +85,11 @@ SENDS_AT_ONCE = 8
 AGENTS_PER_OWNER = 2
 OPEN_AGENTS_PER_HOUR = 2
 CADDY_IMAGE = "caddy:2.8-alpine"
+# Where the proxy listens inside its container in a check here, with no name, so it needs no certificate.
+PROXY_PORT = 8089
+PEOPLE_SITE = "https://people.example/start"
+# What a browser sends when a person opens an address, and nothing else sends.
+A_BROWSER_OPENING_A_PAGE = {"Sec-Fetch-Dest": "document", "Sec-Fetch-Mode": "navigate", "Accept": "text/html,application/xhtml+xml"}
 
 
 class GuardedNetwork(e2e.Network):
@@ -858,20 +865,85 @@ def a_mistaken_setting_stops_the_host() -> None:
         check("and each at the number a host really uses", code is None and "WARN" not in output, output[-300:])
 
 
-def the_server_setup_is_at_least_well_formed() -> None:
-    """Not run for real here, which needs a server: sim/live_hosts.py does that."""
-    syntax = subprocess.run(["bash", "-n", str(DEPLOY / "install.sh")], capture_output=True, text=True)
-    check("the install script parses", syntax.returncode == 0, syntax.stderr)
+def proxy_settings(domain: str, people_site: str = "") -> subprocess.CompletedProcess:
+    """What deploy/install.sh writes for the proxy, made by the script it makes them with."""
+    return subprocess.run(["bash", str(DEPLOY / "caddyfile.sh"), domain, people_site], capture_output=True, text=True)
+
+
+@contextlib.contextmanager
+def a_proxy_with(settings: str) -> Iterator[int]:
+    """The proxy alone, with those settings, on a port of this machine. Nothing runs behind it, so
+    whatever it passes on comes back as a 502, which is how to tell that from what it answers itself."""
     with tempfile.TemporaryDirectory() as directory:
         config = Path(directory) / "Caddyfile"
-        config.write_text((DEPLOY / "Caddyfile").read_text().replace("@DOMAIN@", "host.example"))
+        config.write_text(settings)
         config.chmod(0o644)
         Path(directory).chmod(0o755)
-        validated = subprocess.run(
-            ["docker", "run", "--rm", "-v", f"{directory}:/config:ro", CADDY_IMAGE, "caddy", "validate", "--adapter", "caddyfile", "--config", "/config/Caddyfile"],
+        port = e2e.free_port()
+        started = subprocess.run(
+            ["docker", "run", "--rm", "-d", "-p", f"127.0.0.1:{port}:{PROXY_PORT}", "-v", f"{directory}:/config:ro", CADDY_IMAGE,
+             "caddy", "run", "--adapter", "caddyfile", "--config", "/config/Caddyfile"],
             capture_output=True, text=True,
         )
-        check("the proxy takes its settings", validated.returncode == 0, validated.stderr[-500:])
+        try:
+            check("the proxy starts with them", started.returncode == 0 and wait_until(lambda: asked_of_the_proxy(port, "/")[0] != 0), started.stderr[-500:])
+            yield port
+        finally:
+            subprocess.run(["docker", "rm", "-f", started.stdout.strip()], capture_output=True)
+
+
+def asked_of_the_proxy(port: int, path: str, **headers: str) -> tuple[int, str | None]:
+    """A status and where it sends the caller, or 0 while nothing answers."""
+    connection = http.client.HTTPConnection("127.0.0.1", port, timeout=10)
+    try:
+        connection.request("GET", path, headers=headers)
+        answer = connection.getresponse()
+        answer.read()
+        return answer.status, answer.getheader("Location")
+    except (OSError, http.client.HTTPException):
+        return 0, None
+    finally:
+        connection.close()
+
+
+def a_person_in_a_browser_goes_to_the_operators_site() -> None:
+    """Bugs caught: a rule that also sends agents away, so they never read the host's own note; and a
+    site an operator typed that adds settings of its own to the proxy."""
+    with a_proxy_with(proxy_settings(f":{PROXY_PORT}", PEOPLE_SITE).stdout) as port:
+        check("a browser opening the host is sent to the site", asked_of_the_proxy(port, "/", **A_BROWSER_OPENING_A_PAGE) == (302, PEOPLE_SITE), asked_of_the_proxy(port, "/", **A_BROWSER_OPENING_A_PAGE))
+        for who, headers in (
+            ("an agent asking for the host's note", {"Accept": "text/markdown, text/html, */*", "User-Agent": "an-agent/1.0"}),
+            ("a crawler that says it's a browser but isn't opening a page", {"Accept": "text/html", "User-Agent": "Mozilla/5.0 (compatible; a-crawler/1.0)"}),
+            ("a page's own script fetching it", {"Sec-Fetch-Dest": "empty", "Sec-Fetch-Mode": "cors"}),
+        ):
+            check(f"{who} goes through to the host", asked_of_the_proxy(port, "/", **headers) == (502, None), asked_of_the_proxy(port, "/", **headers))
+        elsewhere = asked_of_the_proxy(port, "/.well-known/splint/agents.md", **A_BROWSER_OPENING_A_PAGE)
+        check("and so does a browser opening anything but the front", elsewhere == (502, None), elsewhere)
+    with a_proxy_with(proxy_settings(f":{PROXY_PORT}").stdout) as port:
+        unsent = asked_of_the_proxy(port, "/", **A_BROWSER_OPENING_A_PAGE)
+        check("control: with no site named, a browser goes through too", unsent == (502, None), unsent)
+    for mistaken in ("http://people.example", "people.example", "https://people.example { respond gotcha }", "https://people.example\nrespond gotcha"):
+        refused = proxy_settings("host.example", mistaken)
+        check(f"a site written as {mistaken!r} is refused", refused.returncode != 0 and "SPLINT_PEOPLE_SITE" in refused.stderr and not refused.stdout, refused.stderr[-200:])
+
+
+def the_server_setup_is_at_least_well_formed() -> None:
+    """Not run for real here, which needs a server: sim/live_hosts.py does that."""
+    for script in ("install.sh", "caddyfile.sh"):
+        syntax = subprocess.run(["bash", "-n", str(DEPLOY / script)], capture_output=True, text=True)
+        check(f"{script} parses", syntax.returncode == 0, syntax.stderr)
+    for which, settings in (("its settings", proxy_settings("host.example")), ("them with a site for people", proxy_settings("host.example", PEOPLE_SITE))):
+        with tempfile.TemporaryDirectory() as directory:
+            config = Path(directory) / "Caddyfile"
+            config.write_text(settings.stdout)
+            config.chmod(0o644)
+            Path(directory).chmod(0o755)
+            validated = subprocess.run(
+                ["docker", "run", "--rm", "-v", f"{directory}:/config:ro", CADDY_IMAGE, "caddy", "validate", "--adapter", "caddyfile", "--config", "/config/Caddyfile"],
+                capture_output=True, text=True,
+            )
+            check(f"the proxy takes {which}", settings.returncode == 0 and validated.returncode == 0, (settings.stderr + validated.stderr)[-500:])
+    a_person_in_a_browser_goes_to_the_operators_site()
 
 
 def main() -> int:
