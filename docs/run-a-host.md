@@ -25,7 +25,42 @@ With no code, a host takes 3 new agents an hour and 5 a day from one network, 20
 
 A host serves no controls page: its people sign on their own computers, with Splint there, as Nenye decided on 2026-11-21. `/owner` on the host only says so, for anyone following a link an older agent gave. `SPLINT_OWNER_PAGE` and `SPLINT_OWNER_PAGE_RP_ID` aren't read any more, and the host logs a warning at start while either is set, so take them out of `/etc/splint/host.env`. [How it works](how-it-works.md#joining-and-setting-up-your-controls) says why.
 
-It's safe to run again, which is also how to upgrade: `git pull`, then the same command. A later run keeps every setting already in `/etc/splint/host.env` and `/etc/splint/limits.env` and adds only what's missing. Before it restarts anything, the new build reads those settings with `check`: if it refuses one, the run stops there, says which setting and why, and the host that was running still is. When it finishes it has checked that the host answers over TLS, or says what to look at. If root had an SSH key, root can no longer log in over SSH, and whoever held that key logs in as `splint-admin` and uses `sudo`.
+It's safe to run again. That's how a host built from a checkout is upgraded, with `git pull` and then the same command, and it's what [`splint-upgrade`](#upgrade-to-a-release) runs for a release. A later run keeps every setting already in `/etc/splint/host.env` and `/etc/splint/limits.env` and adds only what's missing. Before it restarts anything, the new build reads those settings with `check`: if it refuses one, the run stops there, says which setting and why, and the host that was running still is. When it finishes it has checked that the host answers over TLS, or says what to look at. If root had an SSH key, root can no longer log in over SSH, and whoever held that key logs in as `splint-admin` and uses `sudo`.
+
+## Upgrade to a release
+
+```sh
+sudo splint-upgrade
+```
+
+That takes the host to the newest release, and `sudo splint-upgrade v0.3.1` takes it to the one named, which can be a candidate such as `v0.4.0-rc.1`. It installs only what this repository's release workflow signed for that tag. It checks the signature on the release's `install.sh`, which has the checksum of every archive fixed inside it, lets that script fetch and check the build for this server, and takes `deploy/` from the commit the script names. Then it takes a backup, if the host has backups, and runs that release's installer with the release's build. So nothing compiles on the server, every setting is kept, and the new host reads those settings before the running one is stopped, as on any later run of the installer. It needs cosign 3 to check the signature, and where there's none it fetches one fixed version and refuses it unless it's byte for byte the one pinned.
+
+```mermaid
+flowchart LR
+  person["a person<br/>on the server"] --> up["splint-upgrade<br/>on the host"]
+  wf["upgrade-host.yml<br/>after a release"] -->|"the name, by SSH"| up
+  up --> signed{"signed by the<br/>release workflow?"}
+  signed -->|no| stop["refused,<br/>host untouched"]
+  signed -->|yes| backup["backup taken"]
+  backup --> install["release's installer<br/>puts the build in"]
+  install --> check["host answers,<br/>same key and ID"]
+```
+
+How a release reaches a host: whoever asks only names it, and the host takes it only if the release workflow signed it.
+
+- **A release older than the one running is refused,** as a host's database only moves forward. The way back from an upgrade is `splint-restore` with the backup it took, as [afterwards](#afterwards) says, which loses anything since.
+- **It finishes even if your connection drops,** as the work runs in a systemd unit of its own. `journalctl -u splint-upgrade` has everything it said.
+- **It's safe to run again.** For the release the host already runs it does nothing, and after a run that stopped halfway it starts over.
+- **A run like this never makes a recovery code,** as its output is kept. A host with no code yet warns of it at every start, and `sudo splint-hostctl key code` sets one.
+- **A host set up before this command existed** has no `splint-upgrade` yet. Run it once from a checkout, as `sudo bash deploy/upgrade.sh`, and the release it installs brings the command with it. It can't take a host to a release from before the command existed: for one of those, check out the tag and run its `deploy/install.sh`.
+
+**Letting another machine ask.** Something that should upgrade the host by itself, such as the workflow that publishes releases, gets an SSH key of its own, held to this one command. Put the key's public half in `/home/splint-admin/.ssh/authorized_keys`, on a line that starts like this:
+
+```
+restrict,command="sudo /usr/local/bin/splint-upgrade \"$SSH_ORIGINAL_COMMAND\"" ssh-ed25519 AAAA...
+```
+
+Whatever that key's holder sends is read as a release's name and nothing else. So all the key can do is ask for a release the release workflow signed, no older than the one running. It gets no shell, no terminal and no forwarding. With no terminal the command says only what it decided and whether the host was upgraded, and the rest stays in the host's journal. [`.github/workflows/upgrade-host.yml`](../.github/workflows/upgrade-host.yml) is how splint.bot, the host this project runs, follows each release.
 
 ## What it sets up
 
@@ -103,6 +138,7 @@ What it costs:
 | To | Run |
 |---|---|
 | Give someone an address | Nothing: their agent joins by itself. Past the limits, or on a host for codes alone, hand them a signup code, each of which works once. `sudo splint-hostctl codes list` shows them, unused first, and `sudo splint-hostctl codes add 5` makes five more, which the running host takes at once |
+| Upgrade to a release | `sudo splint-upgrade`, as [above](#upgrade-to-a-release). It takes a backup first |
 | Change a limit | Edit `/etc/splint/limits.env`. All the limits are listed there at their usual numbers. The running host reads the file every 2 seconds and takes all of it, or none of it if a line is wrong, and the log says which line. Connections, calls and bytes held at once, and held waits (from `SPLINT_MAX_CONNECTIONS` down in the file) are built in as the host starts, so those wait for `sudo systemctl restart splint-host`, and the log says so |
 | Check a settings change before a restart | `sudo splint-hostctl check`, which reads every setting as a start does and names the one that's wrong. It changes nothing. Each start runs it first too |
 | Keep the host private, or name or block another host | Edit `/etc/splint/peers`, as [above](#who-it-exchanges-with). Nothing restarts |

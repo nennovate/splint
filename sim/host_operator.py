@@ -8,8 +8,9 @@ Agents that are refused are scripted, as plain signed calls, since a refusal is 
     python3 sim/host_operator.py
 
 Each refusal has a control that gets past the same check. Not shown: `deploy/install.sh`,
-`splint-hostctl` and the systemd unit, which need a server, so those are only parsed here. Every key
-is a software key, and no agent has network limits.
+`splint-hostctl`, an upgrade with `splint-upgrade` and the systemd unit, which need a server, so those
+are only parsed here, beyond what `splint-upgrade` takes as a release's name. Every key is a software
+key, and no agent has network limits.
 """
 
 import contextlib
@@ -343,9 +344,46 @@ def a_lost_key_is_not_replaced_by_itself(work: Path, host: Host) -> None:
 
 def what_a_server_installs_is_at_least_well_formed() -> None:
     """Not run for real here, which needs a server with systemd."""
-    for script in ("install.sh", "hostctl.sh"):
+    for script in ("install.sh", "hostctl.sh", "upgrade.sh"):
         syntax = subprocess.run(["bash", "-n", str(DEPLOY / script)], capture_output=True, text=True)
         check(f"deploy/{script} parses", syntax.returncode == 0, syntax.stderr)
+
+
+def an_upgrade_is_sent_a_release_name_and_nothing_else(work: Path) -> None:
+    """A key held to `splint-upgrade` sends it one string, which reaches it as its one argument. So
+    anything but a release's name has to stop before it's used for anything.
+
+    The script runs for real, as root as far as it can tell. What it would call on a server (systemd,
+    the network, git, cosign) only writes down that it was called. Not shown: an upgrade, which needs
+    a server."""
+    print("\n== what an upgrade can be asked for", flush=True)
+    stand_ins, called = work / "upgrade-stand-ins", work / "upgrade-called"
+    stand_ins.mkdir()
+    for name in ("systemctl", "systemd-run", "journalctl", "curl", "git", "cosign", "sed"):
+        (stand_ins / name).write_text(f'#!/bin/sh\necho "{name} $*" >>"{called}"\n[ {name} != systemctl ] || [ "$1" != is-active ]\n')
+        (stand_ins / name).chmod(0o755)
+    (stand_ins / "id").write_text("#!/bin/sh\necho 0\n")
+    (stand_ins / "id").chmod(0o755)
+
+    def asked(*sent: str) -> tuple[int, list[str]]:
+        called.unlink(missing_ok=True)
+        ran = subprocess.run(["bash", str(DEPLOY / "upgrade.sh"), *sent], capture_output=True, text=True, env={**os.environ, "PATH": f"{stand_ins}{os.pathsep}{os.environ['PATH']}"})
+        return ran.returncode, called.read_text().splitlines() if called.exists() else []
+
+    for release in ("v0.3.1", "v0.4.0-rc.1"):
+        status, calls = asked(release)
+        started = [call for call in calls if call.startswith("systemd-run ")]
+        check(f"asked for {release}, it starts the upgrade for that release, as a unit of its own", status == 0 and len(started) == 1 and f" --in-service {release} " in started[0] and "--unit=splint-upgrade.service" in started[0], (status, calls))
+    # Bug this catches: a second command, an option, another path or a second release riding in on the
+    # one string a key gets to send.
+    for sent in ("v0.3.1; id", "v0.3.1 && id", "$(id)", "`id`", "v0.3.1 v0.3.2", "v0.3.1\nv0.3.2", "v0.3.1 ", " v0.3.1", "--in-service", "--in-service v0.3.1", "-h", "../v0.3.1", "v0.3", "0.3.1", "v0.3.1-rc", "v0.3.1-rc.1; id", "latest", "main"):
+        status, calls = asked(sent)
+        check(f"sent {sent!r}, it refuses and starts nothing", status != 0 and not calls, (status, calls))
+    status, calls = asked("v0.3.1", "v0.3.2")
+    check("sent two releases, it refuses and starts nothing", status != 0 and not calls, (status, calls))
+    for sent in ("v0.3.1; id", "", "../v0.3.1"):
+        status, calls = asked("--in-service", sent)
+        check(f"and the run inside the unit refuses {sent!r} too, before it reads or fetches anything", status != 0 and not calls, (status, calls))
 
 
 @contextlib.contextmanager
@@ -370,6 +408,7 @@ def main() -> int:
     with scratch() as (work, postgres):
         host = Host(work, postgres, "operated")
         signets: list[subprocess.Popen] = []
+        an_upgrade_is_sent_a_release_name_and_nothing_else(work)
         try:
             host.start()
             if not wait_until(host.is_up):
@@ -384,7 +423,7 @@ def main() -> int:
             for signet in signets:
                 signet.send_signal(signal.SIGKILL)
                 signet.wait()
-    print("\nNot shown: deploy/install.sh, splint-hostctl and the systemd unit on a real server, which this only parses. Every key here was a software key, and no agent had network limits.")
+    print("\nNot shown: deploy/install.sh, splint-hostctl, an upgrade with splint-upgrade and the systemd unit on a real server, which this only parses, beyond what splint-upgrade takes as a release's name. Every key here was a software key, and no agent had network limits.")
     if e2e.failures:
         print(f"\n{e2e.failures} check(s) failed")
         return 1

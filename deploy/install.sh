@@ -16,6 +16,9 @@
 # SPLINT_PEOPLE_SITE=https://... sends a person who opens this host in a browser to that site. Agents,
 # crawlers and other hosts still get the host's own note. Given on a later run it changes where,
 # given with nothing after it there's no such site any more, and left out it keeps what the host has.
+# SPLINT_RELEASE=v0.3.1 is how splint-upgrade runs this, naming the release these binaries are. Its
+# output is kept in the journal, so such a run never makes a recovery code. A run without it forgets
+# which release the host ran, in /etc/splint/release, as a checkout could be any commit.
 # Secrets are made here and stay here: nothing this writes belongs in the repo. The host's recovery
 # code is shown once, at the end of the first run that sets it: copy it off the server, and don't run
 # this through anything that keeps its output.
@@ -94,7 +97,7 @@ secure_the_server() {
     limit_connections_per_address
     ufw --force enable >/dev/null
     apt-get update -qq
-    apt-get install -y -qq unattended-upgrades postgresql curl gnupg age \
+    apt-get install -y -qq unattended-upgrades postgresql curl gnupg age git \
         debian-keyring debian-archive-keyring apt-transport-https ca-certificates >/dev/null
     printf 'APT::Periodic::Update-Package-Lists "1";\nAPT::Periodic::Unattended-Upgrade "1";\n' \
         >/etc/apt/apt.conf.d/20auto-upgrades
@@ -359,6 +362,7 @@ write_settings() {
     install -m 755 "$here/backup.sh" /usr/local/bin/splint-backup
     install -m 755 "$here/restore.sh" /usr/local/bin/splint-restore
     install -m 755 "$here/hostctl.sh" /usr/local/bin/splint-hostctl
+    install -m 755 "$here/upgrade.sh" /usr/local/bin/splint-upgrade
     if [ -n "${SPLINT_BACKUP_RECIPIENT:-}" ]; then
         printf '%s\n' "$SPLINT_BACKUP_RECIPIENT" >/etc/splint/backup-recipient.new
         age -R /etc/splint/backup-recipient.new -o /dev/null /dev/null
@@ -412,6 +416,9 @@ check_before_restarting
 # so an update it refuses leaves the running host its peers at its next restart.
 sed -i '/^SPLINT_PEERS=/d' "$SETTINGS"
 install_binaries
+# splint-upgrade writes which release a host runs once it has checked what this put in place, and
+# reads it to refuse an older one. These binaries aren't a release's unless it says so.
+[ -n "${SPLINT_RELEASE:-}" ] || rm -f /etc/splint/release
 install -m 644 "$here"/splint-*.service "$here"/splint-*.timer /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable --now splint-host.service
@@ -435,7 +442,10 @@ done
 # The host made its ID at start. A recovery code is set once, on the first run with none, and shown
 # here once: it's what replaces a lost or stolen key with every other host following. It goes nowhere
 # else, so it's only in this output.
-if [ -f /var/lib/splint/host.key.identity ]; then
+if [ -n "${SPLINT_RELEASE:-}" ]; then
+    # Run by splint-upgrade, whose output is kept. A host with no code yet warns of it at every start.
+    :
+elif [ -f /var/lib/splint/host.key.identity ]; then
     code=$(/usr/local/bin/splint-hostctl key code --if-unset)
     if [ -n "$code" ]; then
         printf '\n%s\n\n' "$code"
