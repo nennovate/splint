@@ -162,6 +162,16 @@ fn reason(error: &Error) -> &'static str {
 const MOST_WORD_CHARS: usize = 32;
 /// An ask with more changes than one prompt names, which no prompt could show whole.
 const TOO_MANY: &str = "too many changes to show in one prompt";
+/// A rename or a move for an agent whose ID commits to a backup this device doesn't hold, and whose
+/// vouch kept here is for another.
+const NOTHING_VOUCHES: &str = "this computer holds no backup for this agent's ID as it is now, so \
+     it can't sign its new name or host: its person signs it where that backup is";
+
+/// Whether an ask's answer is a binding signed from what this device kept for its agent, as a rename
+/// or a move is, with no backup handed to it.
+fn signs_from_memory(ask: &VerifiedAsk) -> bool {
+    ask.adds_owner_part().is_some() || ask.host().is_some()
+}
 
 /// One ask that checked out, with what the prompt says of its held step.
 struct Checked {
@@ -212,6 +222,15 @@ pub fn approve(dir: &Path, schemas: &Schemas, given: Given) -> Result<Answered, 
             refused.push(Refused {
                 id,
                 reason: TOO_MANY,
+            });
+            continue;
+        }
+        // A rename or a move is signed from what this device kept for the agent, so one it can't sign
+        // is refused here, before the prompt, and never after the person approved it.
+        if signs_from_memory(&ask) && signing::binds_with(dir, owner.id(), &identity).is_err() {
+            refused.push(Refused {
+                id,
+                reason: NOTHING_VOUCHES,
             });
             continue;
         }
@@ -1568,6 +1587,86 @@ mod tests {
                 .unwrap(),
             "lia.jeff~host.example"
         );
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    /// An agent this device set up, whose ID commits to a backup kept here, after the device signed
+    /// another binding for it that the agent never took up, so the vouch kept is for a backup its ID
+    /// doesn't commit to, as for the first agent set up by one touch, on 2026-11-22. Bug caught: its rename
+    /// refused as "not your agent" after the person had approved it, as the vouch was checked only
+    /// once the owner's key had signed.
+    #[test]
+    fn a_rename_signs_with_the_backup_its_id_commits_to_when_the_vouch_kept_is_for_another() {
+        let dir = scratch("stale-vouch");
+        let owner = Device::init_signed_in(&dir, Holding::PlainFile).unwrap();
+        let set_up_with = |backup: &SigningKey| {
+            let key = SigningKey::generate().unwrap();
+            let identity = Identity::create(
+                &key,
+                &SealingKey::generate().unwrap().public_key(),
+                RecoveryRule::backup_key(&backup.public_key()),
+            )
+            .unwrap();
+            owner
+                .remember_rules(identity.id(), &first_rules(), 1)
+                .unwrap();
+            // The vouch kept is for a backup its ID never took.
+            let other = SigningKey::load(&owner.new_agent_backup().unwrap().file).unwrap();
+            signing::binding_ahead(&owner, &identity, "muse~host.example", &other).unwrap();
+            (key, identity)
+        };
+        let renamed = |key: &SigningKey, identity: &Identity| {
+            let rename = asked(
+                key,
+                identity,
+                &owner.identity,
+                vec![Change::OwnerPart {
+                    to: "jeff".to_owned(),
+                }],
+            );
+            approved(
+                &dir,
+                vec![One {
+                    owner_part: Some("jeff".to_owned()),
+                    ..one(rename, identity, None)
+                }],
+            )
+        };
+
+        let held = SigningKey::load(&owner.new_agent_backup().unwrap().file).unwrap();
+        let (muse_key, muse) = set_up_with(&held);
+        let answered = renamed(&muse_key, &muse);
+        let reasons: Vec<&str> = answered
+            .refused
+            .iter()
+            .map(|refused| refused.reason)
+            .collect();
+        assert!(reasons.is_empty(), "{reasons:?}");
+        let binding = answered.approved[0].answer.as_deref().unwrap();
+        // As its agent's Signet checks it before taking it up, and every reader once the agent adds its half.
+        assert_eq!(
+            VerifiedBinding::check_from_owner(binding, &owner.identity, &muse).unwrap(),
+            "muse.jeff~host.example"
+        );
+        let accepted =
+            VerifiedBinding::accept(&muse_key, binding, None, &owner.identity, &muse).unwrap();
+        assert_eq!(accepted.address(), "muse.jeff~host.example");
+        // And what it vouched with is kept, for the next one, and noted as its backup, which the
+        // owner's list carries.
+        assert!(matches!(
+            signing::binds_with(&dir, owner.identity.id(), &muse),
+            Ok(signing::BindsWith::Vouch(_))
+        ));
+        assert_eq!(
+            device::agent_backup_in(&dir, muse.id()).map(|backup| backup.public_key()),
+            Some(held.public_key())
+        );
+
+        // One whose backup this device doesn't hold is refused before anyone is asked, with why.
+        let (lia_key, lia) = set_up_with(&SigningKey::generate().unwrap());
+        let answered = renamed(&lia_key, &lia);
+        assert!(answered.approved.is_empty());
+        assert_eq!(answered.refused[0].reason, NOTHING_VOUCHES);
         std::fs::remove_dir_all(&dir).unwrap();
     }
 
