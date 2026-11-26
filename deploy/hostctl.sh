@@ -6,6 +6,8 @@
 #   sudo splint-hostctl check           Says which setting a start would refuse, and why.
 #   sudo splint-hostctl codes add 5     Makes five signup codes, which the host takes at once.
 #   sudo splint-hostctl codes list      Every signup code, unused first, then those spent.
+#   sudo splint-hostctl counts          How many agents, owners and other hosts use this host, as
+#                                       numbers under fixed labels. It only reads, and prints no names.
 #   sudo splint-hostctl key code        Sets the host's recovery code, once, and prints it.
 #   sudo splint-hostctl key rotate      Gives the host a new key, which other hosts follow.
 #   sudo splint-hostctl key recover     Replaces a lost or stolen key with the code, read from stdin.

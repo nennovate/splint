@@ -10,6 +10,7 @@ mod clock;
 mod closing;
 mod connections;
 mod contact_holds;
+mod counts;
 mod database;
 mod delivery;
 mod destinations;

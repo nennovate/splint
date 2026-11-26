@@ -7,6 +7,10 @@ Agents that are refused are scripted, as plain signed calls, since a refusal is 
 
     python3 sim/host_operator.py
 
+Then `splint host counts`, on two hosts run as `splint host` runs one on a person's machine: each number
+moves with what real agents do, a stand-in joining, its owner claiming it, a text here and one from the
+other host, and what it prints is labels and numbers alone, with nothing in the database changed.
+
 Each refusal has a control that gets past the same check. Not shown: `deploy/install.sh`,
 `splint-hostctl` and the systemd unit, which need a server, so those are only parsed here. Every key
 is a software key, and no agent has network limits.
@@ -26,7 +30,9 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import e2e
+from agent_signup import FINISH_LINE, Signup, address_now, handle_of, registered
 from e2e import check, http, wait_until
+from install import ARRIVE_SECONDS, Person
 
 HOST = str(e2e.TARGET_DIR / "debug" / "host")
 DEPLOY = Path(__file__).resolve().parent.parent / "deploy"
@@ -38,6 +44,10 @@ A_PASSWORD = "a-password-nobody-should-read"
 TOKEN = "token-for-the-operator-sim"
 NEW_KEY = "SPLINT_NEW_HOST_KEY"
 KEY_FILE = "SPLINT_HOST_KEY_FILE"
+COUNT_LABELS = (
+    "agents", "stand_ins", "revoked", "open_signup", "owners", "new_agents_1d", "new_agents_7d", "new_agents_30d",
+    "texts_24h", "requests_24h", "sent_out_7d", "sent_out_30d", "other_hosts", "remote_agents", "remote_owners",
+)
 
 
 class Host:
@@ -210,6 +220,8 @@ def check_refuses_a_bad_setting_and_touches_nothing(work: Path, postgres: e2e.Po
     check("and makes no key and no table there", not fresh.key_file.exists() and fresh.tables() == "0", fresh.tables())
     never = fresh.one_shot("codes", "add", "1")
     check("codes can't be made for a host that has never started, and nothing is made instead", never.returncode != 0 and not never.stdout.strip() and fresh.tables() == "0", (never.returncode, never.stdout, never.stderr[-300:]))
+    uncounted = fresh.one_shot("counts")
+    check("nor counted, and counting makes no table there either", uncounted.returncode != 0 and not uncounted.stdout.strip() and fresh.tables() == "0", (uncounted.returncode, uncounted.stdout, uncounted.stderr[-300:]))
 
 
 def codes_added_while_it_runs_let_an_agent_join(work: Path, host: Host, signets: list[subprocess.Popen]) -> list[str]:
@@ -341,6 +353,113 @@ def a_lost_key_is_not_replaced_by_itself(work: Path, host: Host) -> None:
     host.stop()
 
 
+def counted(signup: Signup, runner: str) -> tuple[dict[str, int], str]:
+    """What `splint host counts` prints for the host this person runs, read by its fixed labels."""
+    done = signup.walk.run_as(runner, "splint host counts")
+    figures = {}
+    for line in done.stdout.splitlines():
+        label, _, number = line.partition(" ")
+        if number.strip().isdigit():
+            figures[label] = int(number)
+    return figures, done.stdout
+
+
+def every_row(signup: Signup, runner: str) -> str:
+    """A digest of each of the host's tables, all of its rows, so a write anywhere shows."""
+    tables = signup.sql(runner, "SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY 1").split()
+    each = [f"SELECT '{table}', md5(coalesce(string_agg(r::text, '|' ORDER BY r::text), '')) FROM \"{table}\" r" for table in tables]
+    return signup.sql(runner, " UNION ALL ".join(each))
+
+
+def a_quiet_database(signup: Signup, runner: str) -> str:
+    """Every row, once two readings in a row agree, as agents and the host's own cleanup can be mid-write."""
+    readings = [every_row(signup, runner)]
+
+    def settled() -> bool:
+        readings.append(every_row(signup, runner))
+        return readings[-1] == readings[-2]
+
+    if not wait_until(settled, 60):
+        raise RuntimeError("the host's database never went quiet")
+    return readings[-1]
+
+
+def contacts(signup: Signup, inviter: Person, invited: Person) -> None:
+    """One agent invites the other by address and the other accepts, as `sim/agent_join.py` shows."""
+    invite = signup.walk.run_as(inviter.name, f"splint invite {invited.address}")
+    arrived = wait_until(lambda: inviter.address in signup.walk.run_as(invited.name, "splint invites").stdout, ARRIVE_SECONDS)
+    accepted = arrived and signup.walk.run_as(invited.name, f"splint accept {inviter.address}").returncode == 0
+    known = lambda: invited.address in [contact["address"] for contact in inviter.api("GET", "/v0/contacts")[1].get("contacts", [])]  # noqa: E731
+    check(f"control: {inviter.name} and {invited.name} become contacts", invite.returncode == 0 and accepted and wait_until(known, ARRIVE_SECONDS), invite.stderr)
+
+
+def writes(sender: Person, recipient: Person, words: str) -> bool:
+    status, _ = sender.api("POST", "/v0/send", {"to": recipient.address, "body": words})
+    return status == 200 and wait_until(lambda: words in [message["untrusted"]["body"] for message in recipient.inbox()], ARRIVE_SECONDS)
+
+
+def counts_follow_what_agents_do_and_name_nobody() -> None:
+    """Issue 43: whoever runs a host couldn't see how many agents, owners and other hosts use it. Bugs
+    this catches: a stand-in counted as an owner, a text counted once for each agent it touches, a host
+    or agent elsewhere left out or one here counted as elsewhere, and a count that names or writes
+    anything."""
+    work = e2e.short_scratch("splint-counts-")
+    signup = Signup(work)
+    try:
+        here, elsewhere = signup.open_host, signup.start_host("hal")
+        # Each host on a person's machine is private, so each names the other.
+        for runner, other in (("hana", elsewhere), ("hal", here)):
+            (signup.walk.people[runner].dot / "host" / "peers").write_text(f"private\npeer {other}\n")
+
+        ivy = signup.device("ivy")
+        joined = signup.walk.run_as("ivy", f"splint join ivy~{here}")
+        ivy.address = address_now(signup.walk, "ivy")
+        check("control: an agent joins before its owner has set up controls", joined.returncode == 0 and registered(here, handle_of(ivy.address)) is not None, joined.stderr)
+        figures, _ = counted(signup, "hana")
+        check("counts has one agent, a stand-in, and no owner yet", (figures.get("agents"), figures.get("stand_ins"), figures.get("owners")) == (1, 1, 0), figures)
+
+        ivo = signup.device("ivo")
+        signup.walk.run_as("ivy", "splint ask-owner to set up my controls")
+        key = ivy.api("GET", "/v0/identity")[1]["key"]
+        signed = signup.authorize(ivo, f"splint authorize {ivy.address} {key} --name ivo")
+        answer = FINISH_LINE.search(signed.stdout)
+        done = signup.finish(ivy, answer.group(0)) if answer else signed
+        ivy.address = address_now(signup.walk, "ivy")
+        check("control: its owner claims it", done.returncode == 0 and handle_of(ivy.address) == "ivy.ivo", (signed.stderr[-300:], done.stderr[-300:]))
+        figures, _ = counted(signup, "hana")
+        check("then counts has one owner, and no stand-in", (figures.get("agents"), figures.get("stand_ins"), figures.get("owners")) == (1, 0, 1), figures)
+
+        bo = signup.device("bo")
+        check("control: a second agent joins the same host", signup.walk.run_as("bo", f"splint join bo~{here}").returncode == 0)
+        bo.address = address_now(signup.walk, "bo")
+        contacts(signup, ivy, bo)
+        before, _ = counted(signup, "hana")
+        check("control: one agent here texts the other", writes(ivy, bo, "lunch at noon?"))
+        after, _ = counted(signup, "hana")
+        check("texts_24h goes up by exactly one, though the text is a row for each of them", after.get("texts_24h") == before.get("texts_24h", -1) + 1, (before.get("texts_24h"), after.get("texts_24h")))
+        check("and with only this host's agents, nothing elsewhere is counted", (after.get("other_hosts"), after.get("remote_agents"), after.get("remote_owners")) == (0, 0, 0), after)
+
+        rae = signup.device("rae")
+        check("control: an agent joins the other host", signup.walk.run_as("rae", f"splint join rae~{elsewhere}").returncode == 0)
+        rae.address = address_now(signup.walk, "rae")
+        contacts(signup, rae, ivy)
+        check("control: and writes to the agent here", writes(rae, ivy, "hello from the other host"))
+        figures, _ = counted(signup, "hana")
+        check("other_hosts and remote_agents each go to 1", (figures.get("other_hosts"), figures.get("remote_agents")) == (1, 1), figures)
+        check("and this host still has 2 agents, one of them a stand-in", (figures.get("agents"), figures.get("stand_ins")) == (2, 1), figures)
+
+        rows = a_quiet_database(signup, "hana")
+        _, printed = counted(signup, "hana")
+        lines = [line.split() for line in printed.splitlines()]
+        check("what it prints is the fixed labels, in order, each with a number and nothing else", [line[:1] for line in lines] == [[label] for label in COUNT_LABELS] and all(len(line) == 2 and line[1].isdigit() for line in lines), printed)
+        named = [ivy.address, bo.address, rae.address, handle_of(ivy.address), handle_of(bo.address), handle_of(rae.address), here, elsewhere, "splint1"]
+        check("and holds none of the run's addresses, handles, domains or IDs", not [name for name in named if name in printed], printed)
+        check("and nothing in the database changed", every_row(signup, "hana") == rows)
+    finally:
+        signup.walk.stop_everything()
+        shutil.rmtree(work, ignore_errors=True)
+
+
 def what_a_server_installs_is_at_least_well_formed() -> None:
     """Not run for real here, which needs a server with systemd."""
     for script in ("install.sh", "hostctl.sh"):
@@ -384,6 +503,7 @@ def main() -> int:
             for signet in signets:
                 signet.send_signal(signal.SIGKILL)
                 signet.wait()
+    counts_follow_what_agents_do_and_name_nobody()
     print("\nNot shown: deploy/install.sh, splint-hostctl and the systemd unit on a real server, which this only parses. Every key here was a software key, and no agent had network limits.")
     if e2e.failures:
         print(f"\n{e2e.failures} check(s) failed")
