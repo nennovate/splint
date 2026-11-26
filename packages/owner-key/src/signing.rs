@@ -106,7 +106,17 @@ pub fn binding_from_memory(
             next_seq(),
             unix_now(),
         ),
-        BindsWith::Backup(backup) => binding(device, agent, address, &backup),
+        BindsWith::Backup(backup) => {
+            let signed = binding(device, agent, address, &backup)?;
+            // The backup that vouched is this agent's, so the owner's list carries it from now on,
+            // and not the one the note named for a binding the agent never took up.
+            if let RecoveryRule::BackupKey { commitment } =
+                RecoveryRule::backup_key(&backup.public_key())
+            {
+                device.remember_backup_of(agent.id(), &commitment)?;
+            }
+            Ok(signed)
+        }
     }
 }
 

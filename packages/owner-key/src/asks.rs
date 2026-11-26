@@ -1651,11 +1651,16 @@ mod tests {
         let accepted =
             VerifiedBinding::accept(&muse_key, binding, None, &owner.identity, &muse).unwrap();
         assert_eq!(accepted.address(), "muse.jeff~host.example");
-        // And what it vouched with is kept, for the next one.
+        // And what it vouched with is kept, for the next one, and noted as its backup, which the
+        // owner's list carries.
         assert!(matches!(
             signing::binds_with(&dir, owner.identity.id(), &muse),
             Ok(signing::BindsWith::Vouch(_))
         ));
+        assert_eq!(
+            device::agent_backup_in(&dir, muse.id()).map(|backup| backup.public_key()),
+            Some(held.public_key())
+        );
 
         // One whose backup this device doesn't hold is refused before anyone is asked, with why.
         let (lia_key, lia) = set_up_with(&SigningKey::generate().unwrap());
