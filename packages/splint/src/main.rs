@@ -170,7 +170,8 @@ splint: gives your agent an address, and keeps it to the rules you sign.
   splint start, splint stop   Starts or stops Signet, and what signs by your rules on this device.
                               Where the system can, both come back by themselves after a crash or a
                               reboot until splint stop. start --if-running starts again only what
-                              runs now, as an upgrade does, so it runs the build just installed.
+                              runs now, Splint on this computer included, as an upgrade does, so it
+                              runs the build just installed.
   splint retire HANDLE~HOST   Retires this agent at its host, for good, signed by the key that signs
                               for it here, and resets its folder so an agent can join from it again.
                               Its handle stays its own. Where its person's key is on another device,
@@ -312,7 +313,8 @@ said in its own note, with splint send.
 Splint on your own computer, which keeps your sign-in and takes your agents' asks:
 
   splint computer start       Keeps it running and brings it back as Signet comes back. Your agent
-                              starts it when it asks you for something.
+                              starts it when it asks you for something. After an upgrade, it starts
+                              this build in place of the one running, as the installer does.
   splint computer approve     Shows what your agents ask, in Splint's words, one approval at a time,
                               and signs each: with your Mac's Touch ID, or your key file's
                               passphrase. A held step, a new place to be paid and a link's ask each
@@ -661,13 +663,18 @@ async fn run(chosen: Option<&str>, words: &[&str]) -> Result<String, Failure> {
         ["ask", flags @ ..] => Ok(asks::ask(&home, flags).await?.in_words()),
         ["switch-host", rest @ ..] => Ok(switch_host::run(&home, rest).await?.in_words()),
         ["computer", "run"] => computer::run(&home).await,
-        ["computer", "start"] => match computer::start(&home)? {
-            services::Started::Running => Ok("Splint on this computer is running.".to_owned()),
-            services::Started::LeftStopped => Ok(
-                "Splint here is stopped, as you ran splint stop, so run splint start first."
-                    .to_owned(),
-            ),
-        },
+        ["computer", "start"] => {
+            if computer::start_again_if_older(&home).await? {
+                return Ok("Splint on this computer is running this build now.".to_owned());
+            }
+            match computer::start(&home)? {
+                services::Started::Running => Ok("Splint on this computer is running.".to_owned()),
+                services::Started::LeftStopped => Ok(
+                    "Splint here is stopped, as you ran splint stop, so run splint start first."
+                        .to_owned(),
+                ),
+            }
+        }
         ["computer", "approve"] => asks::approve_here(&home, false).await,
         ["computer", "approve", computer::PLAIN_KEY_FILE] => asks::approve_here(&home, true).await,
         ["computer", "lock"] => computer::lock_sign_in(&home),

@@ -8,8 +8,9 @@ code, and one invites the other. Then: a listener started after the invite came 
 runtimes' own marks never take each other's changes, a note full of instructions changes nothing anyone
 is told or given, a command run on a change never sees the token, even one in the listener's own
 environment or through the HTTP adapter's watch.sh, a listener holding a change says it by its time even
-when Signet stops, a newer listener on a mark takes over from the older, Claude Code's after-turn hook
-wakes a session however its last message reads, a Signet that can't be reached is said by the hooks,
+when Signet stops, a newer listener on a mark takes over from the older, an upgrade starts Splint on the
+computer again on the new build unless its person stopped it, Claude Code's after-turn hook wakes a
+session however its last message reads, a Signet that can't be reached is said by the hooks,
 once, naming the agent and its folder, a `splint` run on a change acts as the agent, poll-once.sh acks
 nothing and prints what an ack takes, a meeting that only an owner's confirm can move on counts as
 theirs, not the agent's, both sides are told no yes counts for a side whose person has no controls, a
@@ -32,6 +33,7 @@ import sys
 import threading
 import queue
 import time
+import urllib.request
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -810,6 +812,64 @@ def an_upgrade_runs_the_new_build_in_place_of_the_old(work: Path, kai: Agent, bi
     check("control: kai's Signet starts again after that", started.returncode == 0, started.stderr)
 
 
+def page_answers(port: int) -> bool:
+    """By the name a browser uses, as the page answers no other."""
+    try:
+        with urllib.request.urlopen(f"http://localhost:{port}/owner", timeout=5) as answer:
+            return b"<html" in answer.read()
+    except OSError:
+        return False
+
+
+def install_splint_anew(bin_dir: Path) -> None:
+    """Writes splint anew while the old one runs, as installing does."""
+    fresh = bin_dir / ".splint.new"
+    shutil.copy(bin_dir / "splint", fresh)
+    os.replace(fresh, bin_dir / "splint")
+
+
+def an_upgrade_runs_the_new_build_of_splint_on_the_computer(work: Path, kai: Agent, bin_dir: Path, stub_dir: Path, host: str) -> Agent:
+    """Splint on the computer serves a person's controls from their default folder, with an agent there
+    (kai) or none (pat), on a port, with a key file and a proxy setting they chose. Installing writes
+    splint anew, then starts again what runs, as install.sh does, from a shell that names none of them."""
+    pat = Agent(work, bin_dir, stub_dir, "pat", host)
+    ports = {person.name: e2e.free_port() for person in (kai, pat)}
+    for person in (kai, pat):
+        chosen = {**person.env, "SPLINT_COMPUTER_PORT": str(ports[person.name]), "SPLINT_COMPUTER_SIGN_IN": "file", "NO_PROXY": "splint.example"}
+        started = subprocess.run([person.splint, "computer", "start"], env=chosen, cwd=person.project, capture_output=True, text=True, timeout=COMMAND_SECONDS, check=False)
+        check(f"control: Splint on {person.name}'s computer starts on a port of its own", started.returncode == 0 and wait_until(lambda port=ports[person.name]: page_answers(port), 20), started.stdout + started.stderr)
+    before = {person.name: held_by(person, "splint-computer") for person in (kai, pat)}
+    install_splint_anew(bin_dir)
+    said = kai.run("status").stdout
+    # Bug caught: after an upgrade the person saw the old controls page, and nothing said why.
+    check("status says Splint on the computer runs an older build, and what runs this one", "Splint on this computer is running an older build" in said and "computer start" in said, said)
+    for person in (kai, pat):
+        again = person.run("start", "--if-running")
+        launch = person.home / ".splint" / "run" / "splint-computer.json"
+        settings = dict(json.loads(launch.read_text())["env"]) if launch.exists() else {}
+        now = held_by(person, "splint-computer")
+        # Bug caught: an upgrade started Signet again but left Splint on the computer running the old
+        # build, so the person's controls page stayed the old one until they restarted it by hand.
+        check(f"an upgrade starts Splint on {person.name}'s computer again on the new build, with the port, key file and proxy setting it had", again.returncode == 0 and "Splint on this computer" in again.stdout and now not in ("", before[person.name]) and wait_until(lambda port=ports[person.name]: page_answers(port), 20) and settings.get("SPLINT_COMPUTER_PORT") == str(ports[person.name]) and settings.get("SPLINT_COMPUTER_SIGN_IN") == "file" and settings.get("NO_PROXY") == "splint.example", (again.stdout, again.stderr, before[person.name], now, settings))
+    said = kai.run("status").stdout
+    check("and status stops saying it's older", "older build" not in said, said)
+
+    # What status names, run after an install from before this change left the old build serving.
+    before = held_by(kai, "splint-computer")
+    install_splint_anew(bin_dir)
+    named = kai.run("computer", "start")
+    # Bug caught: splint computer start found it running and said so, leaving the old build serving.
+    check("splint computer start runs the new build in place of an older one, on the same port", named.returncode == 0 and "this build" in named.stdout and held_by(kai, "splint-computer") not in ("", before) and wait_until(lambda: page_answers(ports["kai"]), 20), (named.stdout, named.stderr))
+
+    stopped = pat.run("stop")
+    install_splint_anew(bin_dir)
+    again = pat.run("start", "--if-running")
+    # Bug caught: a restart that went by the lock file alone, which a stopped copy leaves behind, would
+    # start Splint on the computer again though its person stopped it.
+    check("an upgrade leaves Splint on the computer stopped once its person stopped it", stopped.returncode == 0 and again.returncode == 0 and again.stdout.strip() == "" and not held_by_a_running_copy(pat, "splint-computer") and not page_answers(ports["pat"]), (stopped.stdout, again.stdout, again.stderr))
+    return pat
+
+
 def status_tells_a_persons_stop_from_a_crash(kai: Agent, bin_dir: Path) -> None:
     """Kai's person stops it, and later its Signet is killed, as a crash does, with nothing here to bring
     it back. A runtime's monitor reads status to decide whether to start it."""
@@ -1085,6 +1145,7 @@ def main() -> int:
         status_tells_a_persons_stop_from_a_crash(kai, bin_dir)
         print("\nan upgrade over a running install", flush=True)
         an_upgrade_runs_the_new_build_in_place_of_the_old(work, kai, bin_dir)
+        agents.append(an_upgrade_runs_the_new_build_of_splint_on_the_computer(work, kai, bin_dir, stub_dir, domain))
         old_mcp_settings_never_send_the_token_to_a_port(kai)
 
         print("\na listener started after an invite came", flush=True)

@@ -154,7 +154,8 @@ main() {
     done
 
     # What was running keeps running the build this replaced until it's started again, still signing.
-    # So each agent here that's running now is started again, which runs this build in its place.
+    # So each agent here that's running now is started again, which runs this build in its place, and
+    # so is Splint on this computer, which serves its person's controls, with the default folder.
     # splint decides that by the lock a running copy holds, and says nothing for one stopped with
     # splint stop, one that crashed, or one never started, which are left as they were: only its person
     # starts it. A running splint host isn't started again here, and runs the build it started with

@@ -1607,15 +1607,74 @@ pub async fn open_controls(home: &Home, host: &str, open: bool) -> Result<String
 /// Keeps Splint on this computer running and brings it back as Signet comes back. Starting it twice
 /// does nothing.
 pub fn start(home: &Home) -> Result<Started, Failure> {
+    start_with(&home.the_default(), &[])
+}
+
+/// Where Splint on this computer runs a build this install has replaced, as it does after an upgrade
+/// until it's started again, stops it and starts this one, so the page its person opens is this
+/// build's. It keeps the port, sign-in choice and proxy it ran with, which the shell starting it again,
+/// such as the installer's, may not have. What isn't running, as after its person's `splint stop`, is
+/// left as it is. Says whether this build runs in its place now.
+pub async fn start_again_if_older(home: &Home) -> Result<bool, Failure> {
     let home = home.the_default();
+    if !runs_older(&home)? {
+        return Ok(false);
+    }
+    // Read before the stop, which deletes them.
+    let kept = services::settings_of(&home, SERVICE)?.unwrap_or_default();
+    services::stop(&home, SERVICE, THIS_PROGRAM).await?;
+    Ok(matches!(start_with(&home, &kept)?, Started::Running))
+}
+
+/// Whether Splint on this computer is running a build this install has replaced, as after an upgrade.
+pub fn runs_older(home: &Home) -> Result<bool, Failure> {
+    services::runs_older(&home.the_default(), SERVICE, THIS_PROGRAM)
+}
+
+/// Said by `splint status` and `splint verify` while it does.
+pub fn runs_older_said(home: &Home) -> String {
+    format!(
+        "Splint on this computer is running an older build than this one, so your controls page is \
+         still the old one: {} computer start runs this one in its place",
+        home.the_default().command()
+    )
+}
+
+/// Starts it with the port, sign-in choice and proxy this shell names, or else the ones in `kept`. The
+/// proxy and certificate settings go as one, from the shell where it names any, so two setups never mix.
+fn start_with(home: &Home, kept: &[(String, String)]) -> Result<Started, Failure> {
+    let reaching_out = &services::HOW_THIS_COMPUTER_REACHES_OUT;
+    let kept_reach: Vec<(&str, &str)> = if reaching_out
+        .iter()
+        .any(|name| std::env::var_os(name).is_some())
+    {
+        Vec::new()
+    } else {
+        kept.iter()
+            .filter_map(|(setting, value)| {
+                reaching_out
+                    .iter()
+                    .find(|name| **name == setting.as_str())
+                    .map(|name| (*name, value.as_str()))
+            })
+            .collect()
+    };
+    let chosen = |name: &str| {
+        std::env::var(name).ok().or_else(|| {
+            kept.iter()
+                .find(|(setting, _)| setting == name)
+                .map(|(_, value)| value.clone())
+        })
+    };
     let home_dir = std::env::var(HOME_SETTING)
         .map_err(|_| Failure::refused(format!("{HOME_SETTING} isn't set")))?;
-    let port = port().to_string();
-    let file_chosen = std::env::var(SIGN_IN_SETTING)
-        .ok()
-        .filter(|chosen| chosen == "file");
+    let port = chosen(PORT_SETTING)
+        .and_then(|port| port.parse::<u16>().ok())
+        .unwrap_or(PORT)
+        .to_string();
+    let file_chosen = chosen(SIGN_IN_SETTING).filter(|chosen| chosen == "file");
     services::start(
-        &home,
+        home,
         &Service {
             name: SERVICE,
             binary: THIS_PROGRAM,
@@ -1626,6 +1685,7 @@ pub fn start(home: &Home) -> Result<Started, Failure> {
             ]
             .into_iter()
             .chain(file_chosen.as_deref().map(|file| (SIGN_IN_SETTING, file)))
+            .chain(kept_reach)
             .collect(),
             keep: Keep::AcrossRestarts,
         },

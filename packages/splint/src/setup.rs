@@ -450,7 +450,31 @@ pub async fn start(home: &Home) -> Result<String, Failure> {
     // Before anything's checked, so a stop made before joining, or while waiting on the owner, never
     // leaves join, finish and start each saying to run another.
     services::clear_stopped(home)?;
-    start_unless_stopped(home).await
+    let started = start_unless_stopped(home).await;
+    with_computer_again(home, started).await
+}
+
+/// What `started` said, and Splint on this computer started again on this build where it ran an older
+/// one, whether or not the agent's own services started. It's the person's, kept with their default
+/// folder, so a profile's start leaves it alone.
+async fn with_computer_again(
+    home: &Home,
+    started: Result<String, Failure>,
+) -> Result<String, Failure> {
+    let computer = if home.profile().is_none() {
+        crate::computer::start_again_if_older(home).await
+    } else {
+        Ok(false)
+    };
+    let said = started?;
+    if !computer? {
+        return Ok(said);
+    }
+    Ok(
+        format!("{said} Running Splint on this computer on this build.")
+            .trim_start()
+            .to_owned(),
+    )
 }
 
 /// What `start` starts, leaving a person's stop where it is: what's kept across restarts finds their
@@ -500,11 +524,18 @@ async fn start_unless_stopped(home: &Home) -> Result<String, Failure> {
 /// What an upgrade runs for each folder: starts again only what's running now, which runs the build
 /// just installed in place of the old. What its person stopped, what crashed and what never started
 /// are left as they are, as only a person starts those, and nothing is said of them, as an upgrade
-/// runs this for every folder. Running is by the lock a running copy holds, which a crash lets go.
+/// runs this for every folder. Running is by the lock a running copy holds, which a crash lets go. In
+/// the default folder that includes Splint on this computer, which serves the person's controls, with
+/// or without an agent there.
 pub async fn start_if_running(home: &Home) -> Result<String, Failure> {
     if services::stopped_by_person(home) {
         return Ok(String::new());
     }
+    let started = agent_again_if_running(home).await;
+    with_computer_again(home, started).await
+}
+
+async fn agent_again_if_running(home: &Home) -> Result<String, Failure> {
     if services::is_running(home, SIGNET)? {
         return start_unless_stopped(home).await;
     }
