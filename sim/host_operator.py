@@ -428,9 +428,14 @@ def counts_follow_what_agents_do_and_name_nobody() -> None:
         key = ivy.api("GET", "/v0/identity")[1]["key"]
         signed = signup.authorize(ivo, f"splint authorize {ivy.address} {key} --name ivo")
         answer = FINISH_LINE.search(signed.stdout)
-        done = signup.finish(ivy, answer.group(0)) if answer else signed
+        # Its own `splint auto` takes up what the owner signed where one runs, as the owner is told, so
+        # `splint finish` is only for when nothing does. Run beside one, it can find the Signet mid-restart.
+        claimed = lambda: registered(here, "ivy.ivo") is not None  # noqa: E731
+        finished = ""
+        if answer and not wait_until(claimed, ARRIVE_SECONDS):
+            finished = signup.finish(ivy, answer.group(0)).stderr
         ivy.address = address_now(signup.walk, "ivy")
-        check("control: its owner claims it", done.returncode == 0 and handle_of(ivy.address) == "ivy.ivo", (signed.stderr[-300:], done.stderr[-300:]))
+        check("control: its owner claims it", answer is not None and wait_until(claimed, ARRIVE_SECONDS) and ivy.address == f"ivy.ivo~{here}", (signed.stderr[-300:], finished[-300:], ivy.address))
         figures, _ = counted(signup, "hana")
         check("then counts has one owner, and no stand-in", (figures.get("agents"), figures.get("stand_ins"), figures.get("owners")) == (1, 0, 1), figures)
 
@@ -453,13 +458,21 @@ def counts_follow_what_agents_do_and_name_nobody() -> None:
         check("other_hosts and remote_agents each go to 1", (figures.get("other_hosts"), figures.get("remote_agents")) == (1, 1), (figures, hosts_met(signup, "hana")))
         check("and this host still has 2 agents, one of them a stand-in", (figures.get("agents"), figures.get("stand_ins")) == (2, 1), figures)
 
-        rows = a_quiet_database(signup, "hana")
-        _, printed = counted(signup, "hana")
+        # Signets ask their host after their contacts now and then, which it notes in lookups, so the
+        # agents stop first. The host's own cleanup still lets old rows go on a timer, so a reading taken
+        # across one is taken again. A write of counts' own would show on every try.
+        for person in (ivy, bea, rae):
+            signup.walk.run_as(person.name, "splint stop")
+        for _ in range(3):
+            rows = a_quiet_database(signup, "hana")
+            _, printed = counted(signup, "hana")
+            changed = set(every_row(signup, "hana").splitlines()) ^ set(rows.splitlines())
+            if not changed:
+                break
         lines = [line.split() for line in printed.splitlines()]
         check("what it prints is the fixed labels, in order, each with a number and nothing else", [line[:1] for line in lines] == [[label] for label in COUNT_LABELS] and all(len(line) == 2 and line[1].isdigit() for line in lines), printed)
         named = [ivy.address, bea.address, rae.address, handle_of(ivy.address), handle_of(bea.address), handle_of(rae.address), here, elsewhere, "splint1"]
         check("and holds none of the run's addresses, handles, domains or IDs", all(named) and not [name for name in named if name in printed], (named, printed))
-        changed = set(every_row(signup, "hana").splitlines()) ^ set(rows.splitlines())
         check("and nothing in the database changed", not changed, sorted(line.split("|")[0] for line in changed))
     finally:
         signup.walk.stop_everything()
