@@ -28,7 +28,8 @@ const LABELS: [&str; 15] = [
 
 // `texts` and `new_requests` keep unix seconds, and each message is a row for each local agent it
 // touches, so one text between two agents here is two rows of one message. A peer is remote when no
-// agent here has its ID, retired ones included, as they keep their rows.
+// agent here has its ID, retired ones included, as they keep their rows. A host pins its own key
+// under its own name once its agents write to each other, so `$1`, its name, isn't another host.
 const COUNTS: &str = "
     WITH now_secs AS (SELECT extract(epoch FROM now())::bigint AS at),
     peers AS (
@@ -58,19 +59,22 @@ const COUNTS: &str = "
         (SELECT count(DISTINCT agent) FROM hosts_sent_to WHERE at > now() - interval '30 days')
             AS sent_out_30d,
         (SELECT count(*) FROM (SELECT domain FROM peer_keys UNION SELECT host FROM hosts_sent_to)
-            AS hosts) AS other_hosts,
+            AS hosts (domain) WHERE domain <> $1) AS other_hosts,
         (SELECT count(*) FROM peers WHERE peer NOT IN (SELECT id FROM agents)) AS remote_agents,
         (SELECT count(DISTINCT owner) FROM reached WHERE peer NOT IN (SELECT id FROM agents))
             AS remote_owners
 ";
 
-/// Each label and its count, one a line, from one snapshot of the database.
-pub async fn lines(db: &PgPool) -> Result<String, sqlx::Error> {
+/// Each label and its count, one a line, from one snapshot of the database of the host at `domain`.
+pub async fn lines(db: &PgPool, domain: &str) -> Result<String, sqlx::Error> {
     let mut reading = crate::database::begin(db).await?;
     sqlx::query("SET TRANSACTION READ ONLY")
         .execute(&mut *reading)
         .await?;
-    let row = sqlx::query(COUNTS).fetch_one(&mut *reading).await?;
+    let row = sqlx::query(COUNTS)
+        .bind(domain)
+        .fetch_one(&mut *reading)
+        .await?;
     reading.commit().await?;
     let mut lines = Vec::with_capacity(LABELS.len());
     for label in LABELS {

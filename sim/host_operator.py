@@ -364,6 +364,11 @@ def counted(signup: Signup, runner: str) -> tuple[dict[str, int], str]:
     return figures, done.stdout
 
 
+def hosts_met(signup: Signup, runner: str) -> str:
+    """Which hosts it holds, read as its operator, to say why other_hosts is wrong when it is."""
+    return signup.sql(runner, "SELECT 'pinned ' || domain FROM peer_keys UNION ALL SELECT DISTINCT 'sent to ' || host FROM hosts_sent_to")
+
+
 def every_row(signup: Signup, runner: str) -> str:
     """A digest of each of the host's tables, all of its rows, so a write anywhere shows."""
     tables = signup.sql(runner, "SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY 1").split()
@@ -429,15 +434,15 @@ def counts_follow_what_agents_do_and_name_nobody() -> None:
         figures, _ = counted(signup, "hana")
         check("then counts has one owner, and no stand-in", (figures.get("agents"), figures.get("stand_ins"), figures.get("owners")) == (1, 0, 1), figures)
 
-        bo = signup.device("bo")
-        check("control: a second agent joins the same host", signup.walk.run_as("bo", f"splint join bo~{here}").returncode == 0)
-        bo.address = address_now(signup.walk, "bo")
-        contacts(signup, ivy, bo)
+        bea = signup.device("bea")
+        check("control: a second agent joins the same host", signup.walk.run_as("bea", f"splint join bea~{here}").returncode == 0)
+        bea.address = address_now(signup.walk, "bea")
+        contacts(signup, ivy, bea)
         before, _ = counted(signup, "hana")
-        check("control: one agent here texts the other", writes(ivy, bo, "lunch at noon?"))
+        check("control: one agent here texts the other", writes(ivy, bea, "lunch at noon?"))
         after, _ = counted(signup, "hana")
         check("texts_24h goes up by exactly one, though the text is a row for each of them", after.get("texts_24h") == before.get("texts_24h", -1) + 1, (before.get("texts_24h"), after.get("texts_24h")))
-        check("and with only this host's agents, nothing elsewhere is counted", (after.get("other_hosts"), after.get("remote_agents"), after.get("remote_owners")) == (0, 0, 0), after)
+        check("and with only this host's agents, nothing elsewhere is counted", (after.get("other_hosts"), after.get("remote_agents"), after.get("remote_owners")) == (0, 0, 0), (after, hosts_met(signup, "hana")))
 
         rae = signup.device("rae")
         check("control: an agent joins the other host", signup.walk.run_as("rae", f"splint join rae~{elsewhere}").returncode == 0)
@@ -445,16 +450,17 @@ def counts_follow_what_agents_do_and_name_nobody() -> None:
         contacts(signup, rae, ivy)
         check("control: and writes to the agent here", writes(rae, ivy, "hello from the other host"))
         figures, _ = counted(signup, "hana")
-        check("other_hosts and remote_agents each go to 1", (figures.get("other_hosts"), figures.get("remote_agents")) == (1, 1), figures)
+        check("other_hosts and remote_agents each go to 1", (figures.get("other_hosts"), figures.get("remote_agents")) == (1, 1), (figures, hosts_met(signup, "hana")))
         check("and this host still has 2 agents, one of them a stand-in", (figures.get("agents"), figures.get("stand_ins")) == (2, 1), figures)
 
         rows = a_quiet_database(signup, "hana")
         _, printed = counted(signup, "hana")
         lines = [line.split() for line in printed.splitlines()]
         check("what it prints is the fixed labels, in order, each with a number and nothing else", [line[:1] for line in lines] == [[label] for label in COUNT_LABELS] and all(len(line) == 2 and line[1].isdigit() for line in lines), printed)
-        named = [ivy.address, bo.address, rae.address, handle_of(ivy.address), handle_of(bo.address), handle_of(rae.address), here, elsewhere, "splint1"]
-        check("and holds none of the run's addresses, handles, domains or IDs", not [name for name in named if name in printed], printed)
-        check("and nothing in the database changed", every_row(signup, "hana") == rows)
+        named = [ivy.address, bea.address, rae.address, handle_of(ivy.address), handle_of(bea.address), handle_of(rae.address), here, elsewhere, "splint1"]
+        check("and holds none of the run's addresses, handles, domains or IDs", all(named) and not [name for name in named if name in printed], (named, printed))
+        changed = set(every_row(signup, "hana").splitlines()) ^ set(rows.splitlines())
+        check("and nothing in the database changed", not changed, sorted(line.split("|")[0] for line in changed))
     finally:
         signup.walk.stop_everything()
         shutil.rmtree(work, ignore_errors=True)

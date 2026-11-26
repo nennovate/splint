@@ -13,8 +13,8 @@ use std::fmt;
 use std::io::{self, Write};
 
 use aws_lc_rs::rand::{SecureRandom, SystemRandom};
-use splint_core::signup_id;
 use splint_core::transport::Scheme;
+use splint_core::{canonical_domain, signup_id};
 use sqlx::PgPool;
 
 use crate::closing::USAGE as CLOSE_USAGE;
@@ -127,9 +127,15 @@ pub async fn run(command: &[&str]) -> Result<(), Stopped> {
             Ok(add_codes(&started_database().await?, count).await?)
         }
         ["codes", "list"] => Ok(list_codes(&started_database().await?).await?),
-        ["counts"] => Ok(say(&counts::lines(&started_database().await?)
-            .await
-            .map_err(CommandError::Database)?)?),
+        ["counts"] => {
+            // In the one spelling the host keeps it in, as a start reads it.
+            let domain = canonical_domain(&required("SPLINT_DOMAIN")?)
+                .map_err(|_| SettingError::NotAHostName("SPLINT_DOMAIN"))?;
+            let lines = counts::lines(&started_database().await?, &domain)
+                .await
+                .map_err(CommandError::Database)?;
+            Ok(say(&lines)?)
+        }
         ["key", ..] => Ok(own_id::commands::run(command)?),
         ["close", ..] => Ok(closing::run(command).await?),
         ["help" | "--help" | "-h"] => Ok(say(&format!("{USAGE}\n{KEY_USAGE}\n{CLOSE_USAGE}"))?),
