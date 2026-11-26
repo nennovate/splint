@@ -21,7 +21,7 @@ use splint_core::{
 
 use serde::Serialize;
 
-use crate::device::Device;
+use crate::device::{self, Device};
 
 pub const DAY_SECS: u64 = 24 * 60 * 60;
 /// 2001, well past any quantity an owner would misread as a date.
@@ -89,22 +89,52 @@ pub fn binding_ahead(
 /// The same with no backup to hand, from what it signed for this owner the last time. A vouch names an
 /// owner, an agent and the agent's keys when its ID committed to that backup, which a recovery since
 /// doesn't change, so it still counts, and a backup moved off this device stays out of reach of
-/// whoever takes it.
+/// whoever takes it. Where the vouch kept is for a backup the ID never took, the backup kept here that
+/// it does commit to signs instead, as [`binds_with`] finds.
 pub fn binding_from_memory(
     device: &Device,
     agent: &Identity,
     address: &str,
 ) -> Result<String, Error> {
-    let vouch = device.vouch_for(agent.id()).ok_or(Error::KeyStorage)?;
-    VerifiedBinding::sign_with_vouch(
-        &device.key,
-        &vouch,
-        device.identity.id(),
-        agent,
-        address,
-        next_seq(),
-        unix_now(),
-    )
+    match binds_with(device.dir(), device.identity.id(), agent)? {
+        BindsWith::Vouch(vouch) => VerifiedBinding::sign_with_vouch(
+            &device.key,
+            &vouch,
+            device.identity.id(),
+            agent,
+            address,
+            next_seq(),
+            unix_now(),
+        ),
+        BindsWith::Backup(backup) => binding(device, agent, address, &backup),
+    }
+}
+
+/// What this device signs an agent's binding with when no backup is handed to it.
+pub enum BindsWith {
+    /// The vouch it kept, which counts for this copy of the agent's ID.
+    Vouch(String),
+    /// A backup kept here that the ID commits to now, which vouches again, and is kept as the vouch.
+    Backup(SigningKey),
+}
+
+/// Which of the two this device has for an agent, read without opening the sign-in, so an ask it
+/// can't sign is refused before anyone is asked. The vouch kept is the one from the last binding
+/// signed here, and one signed for an ask its agent never took up names a backup the ID never
+/// committed to, which no reader takes. Neither is `WrongSigner`.
+pub fn binds_with(
+    dir: &std::path::Path,
+    owner: &SplintId,
+    agent: &Identity,
+) -> Result<BindsWith, Error> {
+    if let Some(vouch) = device::vouch_in(dir, agent.id())
+        && VerifiedBinding::vouch_counts(&vouch, owner, agent)
+    {
+        return Ok(BindsWith::Vouch(vouch));
+    }
+    device::agent_backup_committed_to(dir, agent)
+        .map(BindsWith::Backup)
+        .ok_or(Error::WrongSigner)
 }
 
 /// This agent acts for nobody until this owner signs for it again.

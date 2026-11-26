@@ -472,10 +472,20 @@ impl Device {
         fs::write(self.agent_file(VOUCH, agent), vouch).map_err(|_| Error::KeyStorage)
     }
 
-    pub fn vouch_for(&self, agent: &SplintId) -> Option<String> {
-        fs::read_to_string(self.agent_file(VOUCH, agent)).ok()
+    /// Where this device keeps what it knows about its agents.
+    pub fn dir(&self) -> &Path {
+        &self.dir
     }
+}
 
+/// What this agent's backup last signed for this owner here, read without opening the sign-in. It's
+/// kept from every binding signed here, so one signed for an ask the agent never took up can name a
+/// backup its ID doesn't commit to.
+pub fn vouch_in(dir: &Path, agent: &SplintId) -> Option<String> {
+    fs::read_to_string(agent_file_in(dir, VOUCH, agent)).ok()
+}
+
+impl Device {
     /// Kept so an approval can name who it's with, and so the device knows the level it signed.
     fn rules_path(&self, agent: &SplintId) -> PathBuf {
         self.agent_file("rules", agent)

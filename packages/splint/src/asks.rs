@@ -66,6 +66,16 @@ impl Asking {
     }
 }
 
+/// What an agent is told of an ask Splint on its person's computer didn't approve: why, in the words
+/// it gave, so the agent can say so or ask again in a way that can be signed.
+fn not_approved_words(reason: &str) -> String {
+    match reason.trim().trim_end_matches('.') {
+        "turned down" => "Not approved: your person turned it down, so nothing changed.".to_owned(),
+        "" => "Not approved, so nothing changed.".to_owned(),
+        why => format!("Not approved, so nothing changed: {why}."),
+    }
+}
+
 /// The link that opens an ask on Splint on the person's own computer, at the address it always has.
 /// What follows the `#` never leaves their browser.
 pub(crate) fn link_for(ask: &str, address: &str) -> String {
@@ -576,12 +586,12 @@ pub async fn ask(home: &Home, flags: &[&str]) -> Result<Asking, Failure> {
                     computer_link: None,
                 });
             }
-            Some(Outcome::NotApproved { .. }) => {
+            Some(Outcome::NotApproved { reason }) => {
                 return Ok(Asking {
                     id: signed.id,
                     status: "not_approved".to_owned(),
                     approve_at,
-                    said: "Not approved, so nothing changed.".to_owned(),
+                    said: not_approved_words(&reason),
                     computer_link: None,
                 });
             }
@@ -627,6 +637,24 @@ pub async fn status(home: &Home, id: &str) -> Result<Asking, Failure> {
             .map_err(|_| Failure::refused("Signet's answer can't be read"))?;
     let mut status = shown.status;
     let controls = splint_core::asks::controls_delegate(&shown.changes).is_some();
+    let adds_name = splint_core::asks::adds_owner_part(&shown.changes).is_some();
+    // Signet holds these until their time is up, so what Splint on this computer made of one is
+    // what says it wasn't approved, and why.
+    if status == "waiting" && (controls || adds_name) {
+        let here = match Client::new(home) {
+            Ok(client) => client.outcome(id).await.ok().flatten(),
+            Err(_) => None,
+        };
+        if let Some(Outcome::NotApproved { reason }) = here {
+            return Ok(Asking {
+                id: id.to_owned(),
+                status: "not_approved".to_owned(),
+                approve_at: Waits::Here.approve_at(),
+                said: not_approved_words(&reason),
+                computer_link: None,
+            });
+        }
+    }
     // An ask for controls is answered at the agent's host, by whichever owner approved it, where the
     // agent takes it up itself, as it may not know its owner's ID until then. One approved on this
     // computer is handed back here too, which is all there is where its host didn't keep it.
@@ -637,7 +665,7 @@ pub async fn status(home: &Home, id: &str) -> Result<Asking, Failure> {
             })) => Some(taking_up::take_up(home, &answer).await?),
             _ => taking_up::take_up_kept_if_asked(home).await?,
         }
-    } else if status == "waiting" && splint_core::asks::adds_owner_part(&shown.changes).is_some() {
+    } else if status == "waiting" && adds_name {
         // Only this agent takes up the binding that renames it, as its Signet has to register it.
         taking_up::take_up_owner_part_if_answered(home, id).await?
     } else {

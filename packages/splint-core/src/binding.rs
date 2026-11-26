@@ -131,7 +131,9 @@ impl VerifiedBinding {
     }
 
     /// The same with a vouch the agent's backup has already signed for this owner, so the backup can
-    /// be somewhere safer than where the owner's key is. It's checked the way a reader will check it.
+    /// be somewhere safer than where the owner's key is. It's checked the way a reader will check it,
+    /// before the owner's key signs anything, so a key that asks for its person never asks for a
+    /// binding that can't be used.
     pub fn sign_with_vouch(
         key: &SigningKey,
         vouch: &str,
@@ -141,9 +143,16 @@ impl VerifiedBinding {
         seq: u64,
         now: u64,
     ) -> Result<String, Error> {
-        let signed_by_owner = Self::sign_owner_half(key, owner, agent.id(), address, seq, now)?;
         check_vouch(vouch, owner, agent)?;
+        let signed_by_owner = Self::sign_owner_half(key, owner, agent.id(), address, seq, now)?;
         Ok(format!("{signed_by_owner}{PART_SEPARATOR}{vouch}"))
+    }
+
+    /// Whether a vouch kept from before counts for this owner and this copy of the agent's ID, as
+    /// [`Self::sign_with_vouch`] and every reader check it. One for a backup the ID never committed
+    /// to doesn't.
+    pub fn vouch_counts(vouch: &str, owner: &SplintId, agent: &Identity) -> bool {
+        check_vouch(vouch, owner, agent).is_ok()
     }
 
     /// The owner's half and a vouch for an agent whose ID doesn't commit to this backup yet: one that
