@@ -117,7 +117,7 @@ SECONDS = {
     "host_gone": 633,
     "host_id": 23,
     "host_limits": 137,
-    "host_operator": 18,
+    "host_operator": 85,
     "hostile_home_host": 35,
     "identity_recovery": 48,
     "install": 100,

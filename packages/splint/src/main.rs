@@ -390,6 +390,8 @@ On the owner's device, for an agent that asked:
   splint host codes add N     Makes N more codes and prints them. The running host takes them at
                               once, with no restart.
   splint host check           Says which of the host's settings a start would refuse, and why.
+  splint host counts          How many agents, owners and other hosts use it, as numbers under fixed
+                              labels. It only reads its database, and never prints an ID or a name.
   splint host stop            Stops it, and keeps its data.
   splint host remove [--force]
                               Stops it, and deletes its data. Where agents on this machine use it,
@@ -755,6 +757,7 @@ async fn run(chosen: Option<&str>, words: &[&str]) -> Result<String, Failure> {
             host::one_shot(&home.the_default(), &["codes", "add", count])
         }
         ["host", "check"] => host::one_shot(&home.the_default(), &["check"]),
+        ["host", "counts"] => host::one_shot(&home.the_default(), &["counts"]),
         ["host", "stop"] => host::stop(&home.the_default()).await,
         ["host", "remove"] => host::remove(&home.the_default(), false).await,
         ["host", "remove", "--force"] => host::remove(&home.the_default(), true).await,

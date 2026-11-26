@@ -251,13 +251,14 @@ Addresses here look like you~{domain}. {signups}:
 }
 
 /// Runs one of the host's own commands beside the running host, with the settings it was started
-/// with and nothing else from this shell. `check` reads them as a start does, and `codes` reads and
-/// writes what the running host reads at each join, so neither restarts it.
+/// with and nothing else from this shell. `check` reads them as a start does, `codes` reads and
+/// writes what the running host reads at each join, and `counts` only reads, so none restarts it.
 pub fn one_shot(home: &Home, command: &[&str]) -> Result<String, Failure> {
     let not_running = || Failure::refused("no host is running here: run splint host start");
     let settings = services::settings_of(home, HOST)?.ok_or_else(not_running)?;
-    // Its codes are in its database, which stops with it.
-    if command.first() == Some(&"codes") && !services::is_running(home, HOST)? {
+    // Its codes and what it counts are in its database, which stops with it.
+    if matches!(command.first(), Some(&("codes" | "counts"))) && !services::is_running(home, HOST)?
+    {
         return Err(not_running());
     }
     let done = Command::new(services::beside_this_program(HOST)?)

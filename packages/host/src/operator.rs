@@ -1,9 +1,9 @@
-//! What whoever runs a host types at it, and what it says back: `check`, `codes`, `key` and `close`,
-//! and the sentence a host stops with.
+//! What whoever runs a host types at it, and what it says back: `check`, `codes`, `counts`, `key` and
+//! `close`, and the sentence a host stops with.
 //!
 //! Like `owner-key` and `splint`, the one-shots write to stdout because someone is reading. Each
 //! runs beside a running host, with that host's settings, and none of them restarts it: `check`
-//! changes nothing, `codes` writes rows the running host reads on every join, and `key` (in
+//! and `counts` change nothing, `codes` writes rows the running host reads on every join, and `key` (in
 //! `own_id::commands`) changes files the running host reads again every couple of seconds, and
 //! `close` (in `closing`) writes the one row the running host reads every couple of seconds too.
 
@@ -13,13 +13,13 @@ use std::fmt;
 use std::io::{self, Write};
 
 use aws_lc_rs::rand::{SecureRandom, SystemRandom};
-use splint_core::signup_id;
 use splint_core::transport::Scheme;
+use splint_core::{canonical_domain, signup_id};
 use sqlx::PgPool;
 
 use crate::closing::USAGE as CLOSE_USAGE;
 use crate::own_id::commands::USAGE as KEY_USAGE;
-use crate::{closing, database, own_id, registry};
+use crate::{closing, counts, database, own_id, registry};
 
 pub const USAGE: &str = "\
 splint-host                 Runs the host, with the settings in its environment.
@@ -28,7 +28,10 @@ splint-host check           Reads every setting as a start does, and says which 
 splint-host codes add N     Makes N signup codes and prints them, one a line. The running host
                             takes them at once, with no restart. Each lets one agent in, once.
 splint-host codes list      Prints every signup code: those still unused first, one a line, then
-                            the spent ones, each followed by the word spent.";
+                            the spent ones, each followed by the word spent.
+splint-host counts          Prints how many agents, owners and other hosts use this host, each
+                            number under a fixed label. It reads only this host's database, writes
+                            nothing and calls out to nothing, and never prints an ID or a name.";
 
 /// A code is 16 random bytes in hex, which is the shortest a host takes.
 const CODE_BYTES: usize = 16;
@@ -100,8 +103,8 @@ enum CommandError {
     #[error("codes add takes how many to make, from 1 to {MAX_CODES_AT_ONCE}")]
     HowMany,
     #[error(
-        "this host hasn't started on its database yet, so there's nowhere to keep codes: start \
-         it once, then run this again"
+        "this host hasn't started on its database yet, so there's nothing there yet: start it \
+         once, then run this again"
     )]
     NeverStarted,
     #[error("this machine couldn't make a random code")]
@@ -121,9 +124,18 @@ pub async fn run(command: &[&str]) -> Result<(), Stopped> {
                 .ok()
                 .filter(|count| (1..=MAX_CODES_AT_ONCE).contains(count))
                 .ok_or(CommandError::HowMany)?;
-            Ok(add_codes(&codes_database().await?, count).await?)
+            Ok(add_codes(&started_database().await?, count).await?)
         }
-        ["codes", "list"] => Ok(list_codes(&codes_database().await?).await?),
+        ["codes", "list"] => Ok(list_codes(&started_database().await?).await?),
+        ["counts"] => {
+            // In the one spelling the host keeps it in, as a start reads it.
+            let domain = canonical_domain(&required("SPLINT_DOMAIN")?)
+                .map_err(|_| SettingError::NotAHostName("SPLINT_DOMAIN"))?;
+            let lines = counts::lines(&started_database().await?, &domain)
+                .await
+                .map_err(CommandError::Database)?;
+            Ok(say(&lines)?)
+        }
         ["key", ..] => Ok(own_id::commands::run(command)?),
         ["close", ..] => Ok(closing::run(command).await?),
         ["help" | "--help" | "-h"] => Ok(say(&format!("{USAGE}\n{KEY_USAGE}\n{CLOSE_USAGE}"))?),
@@ -158,7 +170,8 @@ async fn check() -> Result<(), Stopped> {
 }
 
 /// Only what reaching the database takes, so a one-shot says nothing about settings it doesn't use.
-async fn codes_database() -> Result<PgPool, Stopped> {
+/// The host makes its tables as it starts, so one that never has has nothing to read or add to.
+async fn started_database() -> Result<PgPool, Stopped> {
     let scheme = Scheme::from_env()?;
     let db = database::connect(
         &required(database::SETTING)?,
